@@ -2,7 +2,8 @@ import { Game } from './game.js';
 import { Net } from './net.js';
 import { initAudio } from './audio.js';
 import { WEAPONS, SLOTS, SLOT_NAMES, SHORT, validLoadout } from './weapons.js';
-import { MAPS, MAP_ORDER } from './maps.js';
+import { MAPS, MAP_ORDER, quality } from './maps.js';
+import { TouchControls } from './touch.js';
 import { COLORS, randCode, store } from './util.js';
 import { MODES, MODE_ORDER } from './host.js';
 import { HostPanel } from './hostpanel.js';
@@ -20,7 +21,17 @@ const settings = {
 if (!MAPS[settings.map]) settings.map = 'warehouse';
 if (!MODES[settings.mode]) settings.mode = 'ffa';
 
-const game = new Game($('game'));
+// Phones/tablets get touch controls and lighter graphics (?mobile / ?desktop to force).
+const params = new URLSearchParams(location.search);
+const mobile = params.has('mobile') || (!params.has('desktop') &&
+  (matchMedia('(pointer: coarse)').matches || (navigator.maxTouchPoints > 0 && matchMedia('(hover: none)').matches)));
+if (mobile) {
+  quality.shadowSize = 1024;
+  document.body.classList.add('mobile');
+  document.querySelector('#death .small').innerHTML = 'Tap <kbd>II</kbd> to change your loadout';
+}
+
+const game = new Game($('game'), { mobile });
 window.game = game; // handy for debugging from the console
 let net = null;
 let busy = false;
@@ -195,6 +206,8 @@ async function joinLobby() {
 
 function leave(reason) {
   if (net) { net.destroy(); net = null; }
+  touch.show(false);
+  game.setLocked(false);
   game.reset();
   game.loadMap(settings.map);
   $('pause').classList.add('hidden');
@@ -206,10 +219,22 @@ function leave(reason) {
 
 $('btn-host').onclick = hostLobby;
 $('btn-join').onclick = joinLobby;
+const touch = new TouchControls(game, () => {
+  game.setLocked(false);
+  touch.show(false);
+  game.onUnlock();
+});
 $('btn-resume').onclick = () => {
   initAudio();
   $('pause').classList.add('hidden');
   game.lock();
+  if (mobile) {
+    touch.show(true);
+    const el = document.documentElement;
+    if (!document.fullscreenElement && el.requestFullscreen) {
+      el.requestFullscreen().then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape').catch(() => {})).catch(() => {});
+    }
+  }
 };
 $('btn-leave').onclick = () => leave();
 const hostPanel = new HostPanel();
@@ -231,7 +256,7 @@ $('btn-copy').onclick = async () => {
   setTimeout(() => { $('btn-copy').textContent = 'Copy invite link'; }, 1500);
 };
 $('game').addEventListener('click', () => {
-  if (game.active && !game.locked && $('pause').classList.contains('hidden')) game.lock();
+  if (!mobile && game.active && !game.locked && $('pause').classList.contains('hidden')) game.lock();
 });
 
 game.onUnlock = () => {

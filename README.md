@@ -40,6 +40,9 @@ The lobby creator gets a **Host panel** button in the pause menu (Esc):
 | Container Yard | Outdoor, stacked containers, central towers joined by a bridge |
 | Desert Town | Adobe buildings you can enter, rooftops, market stalls |
 | Neon Pit | Small night arena with a central platform and jump pads |
+| Snow Outpost | Snowy base with a climbable bunker, watchtowers, huts and sandbags |
+| Office Tower | Two floors around a central atrium, offices, cubicles and staircases |
+| Jungle Ruins | Four-sided temple pyramid, broken columns and ruined walls |
 
 ## Loadout
 
@@ -58,6 +61,13 @@ The Grenade Launcher one-shots on a direct hit but slows you down while it's out
 
 WASD move · Mouse aim · LMB fire · RMB aim/scope · Space jump · Shift sprint · Ctrl/C crouch ·
 R reload · 1–4 / wheel switch · G quick grenade · F quick melee · T inspect · Tab scoreboard · Esc pause/loadout
+
+## Mobile
+
+Phones and tablets get touch controls automatically (play in landscape):
+floating joystick on the left, drag on the right to look, and buttons for fire (drag it to aim while shooting),
+aim, jump, crouch, reload, weapon swap, grenade, melee, scoreboard and pause.
+Add `?mobile` or `?desktop` to the URL to force a mode.
 
 ## Run locally
 

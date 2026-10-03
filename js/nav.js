@@ -18,12 +18,13 @@ export class NavGrid {
         const tops = [];
         for (const b of boxes) {
           if (x < b.x0 || x > b.x1 || z < b.z0 || z > b.z1 || b.y1 > 12) continue;
-          if (tops.some((t) => Math.abs(t - b.y1) < 0.05)) continue;
-          tops.push(b.y1);
+          if (tops.some((t) => Math.abs(t.y - b.y1) < 0.05)) continue;
+          tops.push({ y: b.y1, mat: b.mat });
         }
-        for (const y of tops) {
-          if (overlap(x, y + 0.02, z, 0.34, 1.75)) continue;
-          const node = { id: this.nodes.length, x, y, z, ix, iz, edges: [] };
+        for (const { y, mat } of tops) {
+          // Checked from knee height: anything lower can be stepped over.
+          if (overlap(x, y + 0.5, z, 0.3, 1.3)) continue;
+          const node = { id: this.nodes.length, x, y, z, ix, iz, mat, edges: [] };
           this.nodes.push(node);
           const key = ix + ',' + iz;
           if (!this.cells.has(key)) this.cells.set(key, []);
@@ -37,13 +38,31 @@ export class NavGrid {
           if (!dx && !dz) continue;
           for (const b of this.cells.get(a.ix + dx + ',' + (a.iz + dz)) || []) {
             const dy = b.y - a.y;
-            if (dy > STEP_UP || dy < -MAX_DROP) continue;
+            if (dy < -MAX_DROP) continue;
+            // Steep stairs climb ~1m per cell; allow it if there's a step in between.
+            if (dy > STEP_UP) {
+              if (dy > STEP_UP * 2) continue;
+              const mid = surfaceAt((a.x + b.x) / 2, (a.z + b.z) / 2, b.y);
+              if (mid - a.y > STEP_UP || b.y - mid > STEP_UP) continue;
+            }
             if (dx && dz && (!this.near(a.ix + dx, a.iz, a.y, b.y) || !this.near(a.ix, a.iz + dz, a.y, b.y))) continue;
             const mx = (a.x + b.x) / 2, mz = (a.z + b.z) / 2;
-            if (overlap(mx, Math.max(a.y, b.y) + 0.02, mz, 0.3, 1.7)) continue;
+            if (overlap(mx, Math.max(a.y, b.y) + 0.5, mz, 0.3, 1.25)) continue;
             a.edges.push({ to: b.id, cost: Math.hypot(b.x - a.x, b.z - a.z) + Math.abs(dy) + (dy < -0.6 ? 1.5 : 0) });
           }
         }
+      }
+    }
+    this.linkPads();
+  }
+
+  // Jump pads launch you up onto nearby high ground.
+  linkPads() {
+    for (const a of this.nodes) {
+      if (a.mat !== 'pad') continue;
+      for (const b of this.nodes) {
+        const dy = b.y - a.y, d = Math.hypot(b.x - a.x, b.z - a.z);
+        if (dy > 1 && dy < 5 && d < 4.5) a.edges.push({ to: b.id, cost: d + 2 });
       }
     }
   }
@@ -105,6 +124,16 @@ export class NavGrid {
     }
     return null;
   }
+}
+
+// Highest walkable top at (x, z) not above maxY.
+function surfaceAt(x, z, maxY) {
+  let best = -Infinity;
+  for (const b of boxes) {
+    if (x < b.x0 || x > b.x1 || z < b.z0 || z > b.z1 || b.y1 > maxY + 0.05) continue;
+    if (b.y1 > best) best = b.y1;
+  }
+  return best;
 }
 
 function push(h, item) {

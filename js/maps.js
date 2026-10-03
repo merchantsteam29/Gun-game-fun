@@ -5,7 +5,9 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 // These arrays are mutated in place when the map changes so importers keep valid references.
 export const boxes = [];
 export const spawns = [];
-export const MAP_ORDER = ['warehouse', 'yard', 'town', 'pit'];
+export const MAP_ORDER = ['warehouse', 'yard', 'town', 'pit', 'outpost', 'office', 'ruins'];
+// Render quality (lowered on mobile before any map is built).
+export const quality = { shadowSize: 2048 };
 
 // ---------- Builder API ----------
 
@@ -84,7 +86,24 @@ function makeApi() {
       else fn(w.fixed[0], r, z0, w.fixed[1], r + 0.8, z1, mat);
     }
   };
-  return { add, add2, add4, spawn, spawn2, spawn4, crate2, stairs, building };
+  // Thin walls with door gaps: gaps = [[center, width], ...].
+  const wallX = (z, x0, x1, gaps, y0, h, mat, fn = add2, t = 0.15) => {
+    let cur = x0;
+    for (const [c, w] of [...gaps].sort((a, b) => a[0] - b[0])) {
+      if (c - w / 2 > cur) fn(cur, y0, z - t, c - w / 2, y0 + h, z, mat);
+      cur = c + w / 2;
+    }
+    if (x1 > cur) fn(cur, y0, z - t, x1, y0 + h, z, mat);
+  };
+  const wallZ = (x, z0, z1, gaps, y0, h, mat, fn = add2, t = 0.15) => {
+    let cur = z0;
+    for (const [c, w] of [...gaps].sort((a, b) => a[0] - b[0])) {
+      if (c - w / 2 > cur) fn(x - t, y0, cur, x, y0 + h, c - w / 2, mat);
+      cur = c + w / 2;
+    }
+    if (z1 > cur) fn(x - t, y0, cur, x, y0 + h, z1, mat);
+  };
+  return { add, add2, add4, spawn, spawn2, spawn4, crate2, stairs, building, wallX, wallZ };
 }
 
 // ---------- Maps ----------
@@ -318,6 +337,155 @@ export const MAPS = {
       }
     },
   },
+
+  outpost: {
+    name: 'Snow Outpost',
+    theme: { sky: '#c9d6e3', fog: [30, 110], hemi: ['#eef4ff', '#9aa6b2', 2.0], sun: ['#ffffff', 2.2, [-20, 35, 25]] },
+    bounds: 33,
+    hills: [[0, 0, -6, 4], [-22, 0, -14, 3], [22, 0, 14, 3], [-4, 4.5, -18, 2], [4, 4.5, 18, 2], [0, 0, 6, 4]],
+    build({ add, add2, crate2, spawn2, stairs, building }) {
+      add(-33, -1, -25, 33, 0, 25, 'snow');
+      add(-33, 0, 24, 33, 4, 25, 'palisade');
+      add(-33, 0, -25, 33, 4, -24, 'palisade');
+      add(32, 0, -24, 33, 4, 24, 'palisade');
+      add(-33, 0, -24, -32, 4, 24, 'palisade');
+      // Bunker with roof access
+      building(-26, -18, -18, -10, 3,
+        [{ side: 'e', at: -14, w: 2 }, { side: 'n', at: -22, w: 1.8 }, { side: 's', at: -22, w: 1.6, y0: 1.3, h: 0.5 }],
+        { mat: 'concreteWall', roofMat: 'concreteWall', parapet: ['n', 'e'] });
+      stairs(-28, -18, -26.2, -10.2, 0, 3.3, '+z', 'wood');
+      // Watchtower
+      add2(-6, 4.2, -20, -2, 4.5, -16, 'wood');
+      for (const [x, z] of [[-6, -20], [-2.3, -20], [-6, -16.3], [-2.3, -16.3]]) add2(x, 0, z, x + 0.3, 4.2, z + 0.3, 'bark');
+      add2(-6, 4.5, -20, -2, 5.3, -19.85, 'wood');
+      add2(-6, 4.5, -19.85, -5.85, 5.3, -16, 'wood');
+      add2(-2.15, 4.5, -19.85, -2, 5.3, -16, 'wood');
+      stairs(-5.5, -16, -2.5, -11, 0, 4.5, '-z', 'wood');
+      // Hut
+      building(-16, 14, -8, 20, 3, [{ side: 's', at: -12, w: 1.8 }, { side: 'e', at: 17, w: 1.6 }], { mat: 'palisade', roofMat: 'wood' });
+      // Cover
+      add(-1.5, 0, -1.5, 1.5, 2.4, 1.5, 'tank');
+      add2(-10, 0, -4, -7, 0.9, -3.4, 'snowBank');
+      add2(-16, 0, 10, -12, 0.9, 10.6, 'snowBank');
+      add2(-14, 0, 2, -10, 1, 2.8, 'sandbag');
+      add2(-20, 0, 6, -19.2, 1, 10, 'sandbag');
+      crate2(-12, -14); crate2(-12, -14, 1.2); crate2(-10.8, -14);
+      crate2(-29, -21);
+      add2(-28, 0, 14, -27.6, 4, 14.4, 'bark');
+      add2(-22, 0, -2, -21.6, 4, -1.6, 'bark');
+      add2(-6, 0, 20, -5.6, 4, 20.4, 'bark');
+      for (const [x, y, z] of [[-22, 0, -14], [-22, 3.3, -14], [-4, 4.5, -18], [-28, 0, 0], [-14, 0, -20], [-8, 0, 10], [-24, 0, 18], [-2, 0, -8], [-12, 0, 17]]) spawn2(x, y, z);
+    },
+    decor(g, M) {
+      const needles = [], caps = [];
+      for (const [x, z] of [[-27.8, 14.2], [27.8, -14.2], [-21.8, -1.8], [21.8, 1.8], [-5.8, 20.2], [5.8, -20.2]]) {
+        needles.push(new THREE.ConeGeometry(1.8, 3.2, 8).translate(x, 4.2, z));
+        needles.push(new THREE.ConeGeometry(1.3, 2.6, 8).translate(x, 5.8, z));
+        caps.push(new THREE.ConeGeometry(0.8, 1.2, 8).translate(x, 7.1, z));
+      }
+      addMerged(g, needles, M.pine, true);
+      addMerged(g, caps, M.pineSnow, true);
+      addMerged(g, [new THREE.CylinderGeometry(0.08, 0.12, 14, 6).translate(0, 9.4, 0), new THREE.BoxGeometry(1.4, 0.1, 0.1).translate(0, 15, 0)], M.steel, true);
+    },
+  },
+
+  office: {
+    name: 'Office Tower',
+    theme: { sky: '#a8c4e0', fog: [40, 120], hemi: ['#f4f6fa', '#7d7468', 2.4], sun: ['#fff4e2', 2.4, [18, 40, 12]] },
+    bounds: 25,
+    hills: [[0, 0, 0, 3.5], [-18, 4, 13, 3], [18, 4, -13, 3], [-18, 0, -3, 3], [18, 0, 3, 3]],
+    build({ add, add2, spawn2, stairs, wallX, wallZ }) {
+      add(-25, -1, -17, 25, 0, 17, 'carpet');
+      add(-25, 0, 16, 25, 8, 17, 'officeExt');
+      add(-25, 0, -17, 25, 8, -16, 'officeExt');
+      add(24, 0, -16, 25, 8, 16, 'officeExt');
+      add(-25, 0, -16, -24, 8, 16, 'officeExt');
+      // Second floor with a central atrium
+      add2(-24, 3.7, -16, 24, 4, -5, 'carpet');
+      add2(-24, 3.7, -5, -6, 4, 5, 'carpet');
+      stairs(-6, -5, 2, -3, 0, 4, '-x', 'stairs');
+      add2(-6, 4, -5.15, 6, 5, -5, 'rail');
+      add2(-6.15, 4, -3, -6, 5, 5, 'rail');
+      add2(-12.4, 0, -5.4, -11.6, 8, -4.6, 'officeExt');
+      add2(-12.4, 0, 4.6, -11.6, 8, 5.4, 'officeExt');
+      // Ground floor offices
+      wallX(10, -24, 24, [[-18, 2], [-6, 2], [6, 2], [18, 2]], 0, 3.7, 'officeWall');
+      for (const x of [-12, 0, 12]) wallZ(x, 10, 16, [], 0, 3.7, 'officeWall');
+      add2(-22, 0, 13, -19, 0.8, 14.2, 'desk');
+      add2(-10, 0, 14, -7, 0.8, 15.2, 'desk');
+      add2(2, 0, 12.5, 4, 0.8, 15, 'desk');
+      add2(16, 0, 13, 19, 0.8, 14.2, 'desk');
+      // Ground floor cubicles
+      add2(-22, 0, 6, -14, 1.4, 6.15, 'cubicle');
+      add2(-22, 0, 1, -14, 1.4, 1.15, 'cubicle');
+      for (const z of [6.15, 1.15]) for (const x of [-21, -17]) add2(x, 0, z, x + 2, 0.8, z + 0.85, 'desk');
+      // Upper floor rooms
+      wallX(10, -24, 24, [[-18, 2], [-6, 2], [6, 2], [18, 2]], 4, 3.7, 'officeWall');
+      for (const x of [-12, 12]) wallZ(x, 10, 16, [], 4, 3.7, 'officeWall');
+      add2(-22, 4, 13, -19, 4.8, 14.2, 'desk');
+      add2(-4, 4, 12, 4, 4.8, 14, 'desk');
+      add2(-22, 4, 2, -16, 5.4, 2.15, 'cubicle');
+      add2(-21, 4, 2.15, -19, 4.8, 3, 'desk');
+      for (const [x, y, z] of [[-20, 0, 12], [-6, 0, 13], [-20, 0, -3], [-9, 0, -7], [-2, 0, -1], [-20, 4, 12], [-18, 4, -1], [-14, 4, -8], [0, 4, 15]]) spawn2(x, y, z);
+    },
+    decor(g, M) {
+      const lights = [];
+      for (let x = -20; x <= 20; x += 8) for (const z of [-12, -7.5, 7.5, 12]) lights.push(new THREE.BoxGeometry(1.6, 0.04, 0.6).translate(x, 3.66, z));
+      addMerged(g, lights, M.lightPanel);
+      const glass = [];
+      for (let x = -22; x <= 22; x += 4) {
+        glass.push(new THREE.BoxGeometry(3, 2, 0.05).translate(x, 2, 16.95));
+        glass.push(new THREE.BoxGeometry(3, 2, 0.05).translate(x, 2, -16.95));
+        glass.push(new THREE.BoxGeometry(3, 2, 0.05).translate(x, 6, 16.95));
+        glass.push(new THREE.BoxGeometry(3, 2, 0.05).translate(x, 6, -16.95));
+      }
+      addMerged(g, glass, M.glass);
+    },
+  },
+
+  ruins: {
+    name: 'Jungle Ruins',
+    theme: { sky: '#a9c9b0', fog: [35, 110], hemi: ['#e8ffe8', '#4a5a3a', 1.9], sun: ['#fff0c8', 2.6, [25, 38, -18]] },
+    bounds: 31,
+    hills: [[0, 4.5, 0, 3], [-20, 0, -20, 4], [20, 0, 20, 4], [20, 0, -20, 4], [-20, 0, 20, 4]],
+    build({ add, add4, spawn, spawn4, stairs }) {
+      add(-31, -1, -31, 31, 0, 31, 'grass');
+      add4(-31, 0, -31, 31, 5, -30, 'mossDark');
+      // Stepped temple
+      add(-8, 0, -8, 8, 1.5, 8, 'moss');
+      add(-6, 1.5, -6, 6, 3, 6, 'moss');
+      add(-4, 3, -4, 4, 4.5, 4, 'moss');
+      stairs(-1.5, -12, 1.5, -8, 0, 1.5, '+z', 'moss', add4);
+      stairs(-1.5, -8, 1.5, -6, 1.5, 3, '+z', 'moss', add4);
+      stairs(-1.5, -6, 1.5, -4, 3, 4.5, '+z', 'moss', add4);
+      // Columns, ruined walls, blocks
+      add4(-16, 0, -16, -15, 5, -15, 'mossDark');
+      add4(-16, 0, -6, -15, 3.5, -5, 'mossDark');
+      add4(-6, 0, -16, -5, 2, -15, 'mossDark');
+      add4(-24, 0, -24, -22.5, 6, -22.5, 'mossDark');
+      add4(-24, 0, -12, -23.4, 3, -4, 'moss');
+      add4(-12, 0, -20, -4, 1.2, -19.4, 'moss');
+      add4(-20, 0, -14, -18, 1.2, -12, 'moss');
+      add4(-26, 0, -16, -25.5, 5, -15.5, 'bark');
+      add4(-12, 0, -26, -11.5, 5, -25.5, 'bark');
+      spawn4(-26, 0, -6);
+      spawn4(-20, 0, -24);
+      spawn4(-10, 0, -24);
+      spawn(0, 4.5, 0);
+    },
+    decor(g, M) {
+      const leaves = [];
+      const trunks = [[-25.75, -15.75], [-11.75, -25.75]];
+      for (let i = 0; i < 4; i++) {
+        for (const t of trunks) {
+          leaves.push(new THREE.SphereGeometry(2.2, 8, 6).scale(1, 0.6, 1).translate(t[0], 5.6, t[1]));
+          leaves.push(new THREE.SphereGeometry(1.4, 8, 6).scale(1, 0.6, 1).translate(t[0] + 0.8, 6.4, t[1] - 0.5));
+          t.splice(0, 2, -t[1], t[0]);
+        }
+      }
+      addMerged(g, leaves, M.jungle, true);
+    },
+  },
 };
 
 export function setMapData(id) {
@@ -464,6 +632,36 @@ const TEX = {
     for (let y = 0; y < s; y += 64) { g.fillStyle = 'rgba(255,255,255,0.04)'; g.fillRect(0, y, s, 30); }
     g.fillStyle = 'rgba(255,62,200,0.35)'; g.fillRect(0, s / 2 - 2, s, 4);
   }),
+  snow: () => makeTex((g, s) => {
+    g.fillStyle = '#e9eef4'; g.fillRect(0, 0, s, s);
+    speckle(g, s, 5000, ['rgba(150,170,200,0.12)', 'rgba(255,255,255,0.5)', 'rgba(120,140,170,0.08)'], 3);
+    stains(g, s, 6, 'rgba(170,190,215,0.18)');
+  }),
+  carpet: () => makeTex((g, s) => {
+    g.fillStyle = '#4a566a'; g.fillRect(0, 0, s, s);
+    speckle(g, s, 9000, ['rgba(255,255,255,0.05)', 'rgba(0,0,0,0.12)'], 1.5);
+    g.strokeStyle = 'rgba(0,0,0,0.25)'; g.lineWidth = 2; g.strokeRect(1, 1, s - 2, s - 2);
+  }),
+  panel: () => makeTex((g, s) => {
+    g.fillStyle = '#d9d4c7'; g.fillRect(0, 0, s, s);
+    speckle(g, s, 1500, ['rgba(0,0,0,0.04)', 'rgba(255,255,255,0.08)']);
+    g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect(0, 0, 3, s); g.fillRect(0, s - 26, s, 26);
+  }),
+  grass: () => makeTex((g, s) => {
+    g.fillStyle = '#5b7a3a'; g.fillRect(0, 0, s, s);
+    speckle(g, s, 9000, ['rgba(140,180,80,0.25)', 'rgba(30,50,20,0.25)', 'rgba(120,100,60,0.15)'], 2);
+    stains(g, s, 8, 'rgba(90,70,40,0.25)');
+  }),
+  moss: () => makeTex((g, s) => {
+    g.fillStyle = '#8a8a78'; g.fillRect(0, 0, s, s);
+    g.strokeStyle = 'rgba(40,40,30,0.5)'; g.lineWidth = 3;
+    for (let y = 0; y < s; y += 48) {
+      g.beginPath(); g.moveTo(0, y); g.lineTo(s, y); g.stroke();
+      for (let x = (y / 48) % 2 ? 0 : 40; x < s; x += 80) { g.beginPath(); g.moveTo(x, y); g.lineTo(x, y + 48); g.stroke(); }
+    }
+    stains(g, s, 10, 'rgba(70,110,40,0.4)');
+    speckle(g, s, 2500, ['rgba(90,140,50,0.2)', 'rgba(0,0,0,0.1)']);
+  }),
   pad: () => makeTex((g, s) => {
     g.fillStyle = '#0d2a1a'; g.fillRect(0, 0, s, s);
     g.strokeStyle = '#4dff9a'; g.lineWidth = 10;
@@ -506,6 +704,21 @@ function mats() {
     neonWall: { map: TEX.neonWall(), tile: 3, roughness: 0.5, metalness: 0.2 },
     neonBlock: { map: TEX.neonWall(), tile: 2, roughness: 0.5, metalness: 0.1, color: '#c3c9ff', emissive: '#2a2f5a', emissiveIntensity: 1 },
     neonPillar: { color: '#22263a', roughness: 0.4, emissive: '#5b2b7a', emissiveIntensity: 0.6 },
+    snow: { map: TEX.snow(), tile: 5, roughness: 0.95 },
+    snowBank: { map: TEX.snow(), tile: 2, roughness: 1, color: '#f4f8fc' },
+    sandbag: { map: concrete, tile: 0.8, roughness: 1, color: '#b9a27a' },
+    palisade: { map: wood, tile: 2, roughness: 0.9, color: '#8c7a66' },
+    bark: { color: '#5a4030', roughness: 1 },
+    tank: { color: '#7f8c5a', roughness: 0.6, metalness: 0.2 },
+    carpet: { map: TEX.carpet(), tile: 3, roughness: 1 },
+    officeWall: { map: TEX.panel(), tile: 3, roughness: 0.8 },
+    officeExt: { map: concrete, tile: 3, roughness: 0.8, color: '#9aa3ad' },
+    ceiling: { color: '#e8e8e4', roughness: 0.9 },
+    desk: { map: wood, tile: 1, roughness: 0.6, color: '#c9a27a' },
+    cubicle: { color: '#7d8794', roughness: 1 },
+    grass: { map: TEX.grass(), tile: 4, roughness: 1 },
+    moss: { map: TEX.moss(), tile: 2, roughness: 0.95 },
+    mossDark: { map: TEX.moss(), tile: 2, roughness: 0.95, color: '#9a9a8a' },
     pad: { map: TEX.pad(), fit: true, roughness: 0.4, emissive: '#2dff7a', emissiveIntensity: 0.8, emissiveMap: true },
   };
   return MATS;
@@ -518,6 +731,11 @@ const DECOR_MATS = {
   leaf: new THREE.MeshStandardMaterial({ color: '#4f7a2a', roughness: 0.9, side: THREE.DoubleSide }),
   neonCyan: new THREE.MeshBasicMaterial({ color: '#36e0ff' }),
   neonPink: new THREE.MeshBasicMaterial({ color: '#ff3ec8' }),
+  pine: new THREE.MeshStandardMaterial({ color: '#2f5a3a', roughness: 0.9 }),
+  pineSnow: new THREE.MeshStandardMaterial({ color: '#e9f0f6', roughness: 0.9 }),
+  jungle: new THREE.MeshStandardMaterial({ color: '#3f7a2a', roughness: 0.9 }),
+  lightPanel: new THREE.MeshStandardMaterial({ color: '#fff', emissive: '#fff6e0', emissiveIntensity: 1.2 }),
+  glass: new THREE.MeshStandardMaterial({ color: '#9cc4e4', transparent: true, opacity: 0.35, roughness: 0.1, metalness: 0.3 }),
 };
 
 function addMerged(g, geos, mat, shadow = false) {
@@ -573,7 +791,7 @@ export function buildMapScene(scene, id) {
   const sun = new THREE.DirectionalLight(t.sun[0], t.sun[1]);
   sun.position.set(...t.sun[2]);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.mapSize.set(quality.shadowSize, quality.shadowSize);
   const r = map.bounds * 1.35;
   Object.assign(sun.shadow.camera, { left: -r, right: r, top: r, bottom: -r, near: 1, far: 140 });
   sun.shadow.bias = -0.0004;

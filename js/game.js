@@ -27,10 +27,12 @@ const r2 = (v) => Math.round(v * 100) / 100;
 const arr = (v) => [r2(v.x), r2(v.y), r2(v.z)];
 
 export class Game {
-  constructor(canvas) {
+  constructor(canvas, { mobile = false } = {}) {
     this.canvas = canvas;
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    this.touch = mobile;
+    this.joy = { x: 0, y: 0 };
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: !mobile, powerPreference: 'high-performance' });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, mobile ? 1.25 : 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -190,12 +192,8 @@ export class Game {
       if (e.code === 'Tab') this.showScores = false;
     });
     document.addEventListener('mousemove', (e) => {
-      if (!this.locked || !this.me.alive) return;
-      const dx = clamp(e.movementX, -250, 250), dy = clamp(e.movementY, -250, 250);
-      const s = BASE_SENS * this.sens * (this.camera.fov / 75);
-      this.me.yaw -= dx * s;
-      this.me.pitch = clamp(this.me.pitch - dy * s, -1.5, 1.5);
-      this.vm.look(dx, dy);
+      if (!this.locked || this.touch) return;
+      this.look(clamp(e.movementX, -250, 250), clamp(e.movementY, -250, 250));
     });
     this.canvas.addEventListener('mousedown', (e) => {
       if (!this.locked) return;
@@ -208,15 +206,11 @@ export class Game {
     });
     this.canvas.addEventListener('wheel', (e) => {
       if (!this.locked || !this.me.alive) return;
-      const dir = Math.sign(e.deltaY);
-      for (let i = 1; i <= 4; i++) {
-        const n = this.loadout.length;
-        const s = (this.slot + dir * i + n * 2) % n;
-        if (s !== this.slot && (s !== 3 || this.util > 0)) { this.switchSlot(s); break; }
-      }
+      this.cycleSlot(Math.sign(e.deltaY));
     }, { passive: true });
     document.addEventListener('contextmenu', (e) => e.preventDefault());
     document.addEventListener('pointerlockchange', () => {
+      if (this.touch) return;
       this.locked = document.pointerLockElement === this.canvas;
       if (!this.locked) {
         this.keys.clear();
@@ -227,7 +221,29 @@ export class Game {
     window.addEventListener('blur', () => this.keys.clear());
   }
 
+  look(dx, dy) {
+    if (!this.me.alive) return;
+    const s = BASE_SENS * this.sens * (this.camera.fov / 75);
+    this.me.yaw -= dx * s;
+    this.me.pitch = clamp(this.me.pitch - dy * s, -1.5, 1.5);
+    this.vm.look(dx, dy);
+  }
+
+  cycleSlot(dir) {
+    const n = this.loadout.length;
+    for (let i = 1; i <= n; i++) {
+      const s = (this.slot + dir * i + n * 2) % n;
+      if (s !== this.slot && (s !== 3 || this.util > 0)) { this.switchSlot(s); break; }
+    }
+  }
+
+  setLocked(v) {
+    this.locked = v;
+    if (!v) { this.keys.clear(); this.mouse.left = this.mouse.right = false; }
+  }
+
   lock() {
+    if (this.touch) { this.setLocked(true); return; }
     try {
       const p = this.canvas.requestPointerLock({ unadjustedMovement: true });
       if (p && p.catch) {
@@ -574,23 +590,29 @@ export class Game {
 
   updateMovement(dt) {
     const me = this.me, k = this.keys, w = WEAPONS[this.curW];
-    const f = (k.has('KeyW') ? 1 : 0) - (k.has('KeyS') ? 1 : 0);
-    const s = (k.has('KeyD') ? 1 : 0) - (k.has('KeyA') ? 1 : 0);
+    let f = (k.has('KeyW') ? 1 : 0) - (k.has('KeyS') ? 1 : 0);
+    let s = (k.has('KeyD') ? 1 : 0) - (k.has('KeyA') ? 1 : 0);
+    let analog = 1;
+    if (this.touch && (this.joy.x || this.joy.y)) {
+      f = -this.joy.y; s = this.joy.x;
+      analog = Math.min(1, Math.hypot(f, s));
+    }
 
     const wantCrouch = k.has('ControlLeft') || k.has('KeyC');
     if (wantCrouch && !me.crouch) { me.crouch = true; me.h = CROUCH_H; }
     else if (!wantCrouch && me.crouch && !overlap(me.pos.x, me.pos.y, me.pos.z, PLAYER_R, STAND_H)) { me.crouch = false; me.h = STAND_H; }
     me.eye += ((me.crouch ? EYE_CROUCH : EYE_STAND) - me.eye) * Math.min(1, dt * 14);
 
-    this.sprinting = k.has('ShiftLeft') && f > 0 && !me.crouch && !this.ads && !this.mouse.left && this.reloadT <= 0;
+    const touchSprint = this.touch && f > 0.9 && Math.abs(s) < 0.45;
+    this.sprinting = (k.has('ShiftLeft') || touchSprint) && f > 0 && !me.crouch && !this.ads && !this.mouse.left && this.reloadT <= 0;
     const speed = WALK * this.rules.moveSpeed * w.speedMul * (this.sprinting ? SPRINT : 1) * (me.crouch ? CROUCH_SPD : 1) * (this.ads ? 0.7 : 1);
     const sy = Math.sin(me.yaw), cy = Math.cos(me.yaw);
     let wx = -sy * f + cy * s, wz = -cy * f - sy * s;
     const len = Math.hypot(wx, wz);
     if (len > 0) { wx /= len; wz /= len; }
     const a = me.onGround ? 1 - Math.exp(-dt * 14) : 1 - Math.exp(-dt * (len > 0 ? 2.5 : 0.4));
-    me.vel.x += (wx * speed - me.vel.x) * a;
-    me.vel.z += (wz * speed - me.vel.z) * a;
+    me.vel.x += (wx * speed * analog - me.vel.x) * a;
+    me.vel.z += (wz * speed * analog - me.vel.z) * a;
 
     if (k.has('Space') && me.onGround) {
       me.vel.y = JUMP * this.rules.jump;
