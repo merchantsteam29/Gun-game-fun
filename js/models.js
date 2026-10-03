@@ -16,6 +16,7 @@ const M = {
   lens: new THREE.MeshStandardMaterial({ color: '#2a6cff', roughness: 0.1, metalness: 0.3, emissive: '#0a2a66' }),
   led: new THREE.MeshStandardMaterial({ color: '#ff2020', emissive: '#ff2020', emissiveIntensity: 2 }),
   gray: new THREE.MeshStandardMaterial({ color: '#8d9399', roughness: 0.7 }),
+  zombie: new THREE.MeshStandardMaterial({ color: '#5f8f3a', roughness: 0.9 }),
 };
 
 function box(p, mat, sx, sy, sz, x, y, z, rx = 0, ry = 0, rz = 0) {
@@ -202,6 +203,12 @@ const builders = {
     box(g, M.mid, 0.06, 0.02, 0.02, 0, 0, -0.05);
     box(g, M.steel, 0.008, 0.035, 0.2, 0, 0.004, -0.16);
     anchor(g, 'muzzle', 0, 0, -0.26);
+  },
+  claws(g) {
+    const fist = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.1), M.zombie);
+    g.add(fist);
+    for (let i = -1; i <= 1; i++) box(g, M.steel, 0.008, 0.02, 0.2, i * 0.025, 0.02, -0.14, 0.15, i * 0.12, 0);
+    anchor(g, 'muzzle', 0, 0, -0.24);
   },
   axe(g) {
     box(g, M.wood, 0.035, 0.04, 0.7, 0, 0, -0.24);

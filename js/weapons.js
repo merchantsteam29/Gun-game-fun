@@ -83,6 +83,12 @@ export const WEAPONS = {
     spread: 0, moveSpread: 0, speedMul: 1.0, switch: 0.35,
   },
 
+  claws: {
+    id: 'claws', name: 'Zombie Claws', type: 'melee', style: 'slash',
+    rate: 0.45, dmg: 50, backstab: 150, range: 2.5, hitDelay: 0.08,
+    spread: 0, moveSpread: 0, speedMul: 1.25, switch: 0.1,
+  },
+
   // ---------- Utility ----------
   frag: {
     id: 'frag', name: 'Frag Grenade', type: 'throw',
@@ -120,5 +126,8 @@ export function validLoadout(l) {
 export const SHORT = {
   ar: 'AR', smg: 'SMG', burst: 'Burst', lmg: 'LMG', sniper: 'Sniper', shotgun: 'Shotgun', gl: 'Launcher',
   pistol: 'Pistol', revolver: 'Revolver', mpistol: 'M-Pistol', knife: 'Knife', axe: 'Axe',
-  frag: 'Frag', sticky: 'Sticky', smoke: 'Smoke',
+  frag: 'Frag', sticky: 'Sticky', smoke: 'Smoke', claws: 'Claws',
 };
+
+// Gun Game: one kill per level; a melee kill knocks the victim down a level.
+export const GUNGAME_LADDER = ['revolver', 'mpistol', 'smg', 'shotgun', 'burst', 'ar', 'lmg', 'sniper', 'gl', 'pistol', 'knife'];

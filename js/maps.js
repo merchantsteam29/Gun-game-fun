@@ -94,6 +94,7 @@ export const MAPS = {
     name: 'Warehouse',
     theme: { sky: '#9fb2c6', fog: [45, 120], hemi: ['#e4edf7', '#6a5d50', 2.0], sun: ['#fff1da', 2.4, [22, 40, 14]] },
     bounds: 32,
+    hills: [[0, 0, -6, 4], [-14, 4, 16.5, 3.5], [22, 0, 0, 4], [14, 4, -16.5, 3.5], [-22, 0, 0, 4]],
     build({ add, add2, crate2, spawn2, stairs }) {
       add(-31, -1, -21, 31, 0, 21, 'floor');
       add(-31, 0, 20, 31, 10, 21, 'wall');
@@ -149,6 +150,7 @@ export const MAPS = {
     name: 'Container Yard',
     theme: { sky: '#8ec5f5', fog: [60, 160], hemi: ['#e6f1ff', '#6b6458', 1.9], sun: ['#fff6e6', 2.8, [-30, 45, 20]] },
     bounds: 37,
+    hills: [[0, 0, -9, 4], [-9, 5.2, -1.3, 2.5], [26, 0, 1, 4], [0, 0, 9, 4], [9, 5.2, 1.3, 2.5], [-26, 0, -1, 4]],
     build({ add, add2, crate2, spawn2, stairs }) {
       add(-37, -1, -27, 37, 0, 27, 'asphalt');
       add(-37, 0, 25, 37, 4, 27, 'concreteWall');
@@ -213,6 +215,7 @@ export const MAPS = {
     name: 'Desert Town',
     theme: { sky: '#e8cfa0', fog: [40, 120], hemi: ['#fff1d6', '#8a6a48', 1.8], sun: ['#ffd9a0', 3.0, [35, 28, -20]] },
     bounds: 33,
+    hills: [[0, 0, 0, 5], [-23, 0, 14, 3.5], [24, 0, 16, 3], [23, 0, -14, 3.5], [-24, 0, -16, 3]],
     build({ add, add2, crate2, spawn2, stairs, building }) {
       add(-33, -1, -25, 33, 0, 25, 'sand');
       add(-33, 0, 24, 33, 5, 25, 'adobeDark');
@@ -275,6 +278,7 @@ export const MAPS = {
     name: 'Neon Pit',
     theme: { sky: '#0b0f1e', fog: [25, 70], hemi: ['#6f7cff', '#2a1838', 1.6], sun: ['#b9c6ff', 1.1, [10, 30, 18]], night: true },
     bounds: 21,
+    hills: [[0, 2, 0, 3.5], [-16.75, 3.5, -16.75, 2.5], [16.75, 3.5, 16.75, 2.5], [16.75, 3.5, -16.75, 2.5], [-16.75, 3.5, 16.75, 2.5]],
     build({ add, add4, spawn, spawn4, stairs }) {
       add(-21, -1, -21, 21, 0, 21, 'neonFloor');
       add(-21, 0, 20, 21, 6, 21, 'neonWall');

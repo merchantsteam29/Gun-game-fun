@@ -4,6 +4,8 @@ import { initAudio } from './audio.js';
 import { WEAPONS, SLOTS, SLOT_NAMES, SHORT, validLoadout } from './weapons.js';
 import { MAPS, MAP_ORDER } from './maps.js';
 import { COLORS, randCode, store } from './util.js';
+import { MODES, MODE_ORDER } from './host.js';
+import { HostPanel } from './hostpanel.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -12,9 +14,11 @@ const settings = {
   color: store.get('color', COLORS[Math.floor(Math.random() * COLORS.length)]),
   loadout: validLoadout(store.get('loadout', null)),
   map: store.get('map', 'warehouse'),
+  mode: store.get('mode', 'ffa'),
   sens: store.get('sens', 1),
 };
 if (!MAPS[settings.map]) settings.map = 'warehouse';
+if (!MODES[settings.mode]) settings.mode = 'ffa';
 
 const game = new Game($('game'));
 window.game = game; // handy for debugging from the console
@@ -89,6 +93,20 @@ for (const id of MAP_ORDER) {
   $('map-pick').appendChild(o);
 }
 $('map-pick').value = settings.map;
+for (const id of MODE_ORDER) {
+  const o = document.createElement('option');
+  o.value = id;
+  o.textContent = MODES[id].name;
+  $('mode-pick').appendChild(o);
+}
+$('mode-pick').value = settings.mode;
+const showModeDesc = () => { $('mode-desc').textContent = MODES[settings.mode].desc; };
+showModeDesc();
+$('mode-pick').addEventListener('change', () => {
+  settings.mode = $('mode-pick').value;
+  store.set('mode', settings.mode);
+  showModeDesc();
+});
 $('map-pick').addEventListener('change', () => {
   settings.map = $('map-pick').value;
   store.set('map', settings.map);
@@ -126,6 +144,7 @@ function enterGame() {
 
 function showPause() {
   renderLoadout($('pause-loadout'));
+  $('btn-hostpanel').classList.toggle('hidden', !(net && net.isHost));
   $('pause').classList.remove('hidden');
 }
 
@@ -138,7 +157,7 @@ async function hostLobby() {
     status(`Creating lobby ${code}…`);
     net = newNet();
     try {
-      await net.host(code, settings.name || 'Player', settings.color, settings.map);
+      await net.host(code, settings.name || 'Player', settings.color, { map: settings.map, mode: settings.mode });
       setBusy(false);
       status('');
       enterGame();
@@ -179,6 +198,7 @@ function leave(reason) {
   game.reset();
   game.loadMap(settings.map);
   $('pause').classList.add('hidden');
+  $('host-panel').classList.add('hidden');
   $('menu').classList.remove('hidden');
   history.replaceState(null, '', location.pathname);
   status(reason || '', !!reason);
@@ -192,6 +212,14 @@ $('btn-resume').onclick = () => {
   game.lock();
 };
 $('btn-leave').onclick = () => leave();
+const hostPanel = new HostPanel();
+hostPanel.onClose = () => $('pause').classList.remove('hidden');
+$('btn-hostpanel').onclick = () => {
+  if (!net || !net.isHost) return;
+  $('pause').classList.add('hidden');
+  hostPanel.open(net.logic);
+};
+game.onKicked = () => leave('You were kicked by the host.');
 $('btn-copy').onclick = async () => {
   const link = `${location.origin}${location.pathname}?lobby=${net ? net.code : ''}`;
   try {

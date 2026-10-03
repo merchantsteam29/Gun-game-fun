@@ -20,7 +20,7 @@ export class Net {
     this.nextId = 1;
   }
 
-  host(code, name, color, map) {
+  host(code, name, color, opts) {
     return new Promise((resolve, reject) => {
       const peer = new Peer(PREFIX + code);
       this.peer = peer;
@@ -29,7 +29,8 @@ export class Net {
         opened = true;
         this.isHost = true;
         this.code = code;
-        this.logic = new HostLogic((id, m) => this.sendTo(id, m), (m, except) => this.broadcast(m, except), map);
+        this.logic = new HostLogic((id, m) => this.sendTo(id, m), (m, except) => this.broadcast(m, except), opts);
+        this.logic.onKick = (id) => { const c = this.conns.get(id); if (c) setTimeout(() => c.close(), 300); };
         peer.on('connection', (conn) => this.accept(conn));
         // WebRTC can take a long time to notice a closed tab, so drop silent players.
         this.reaper = setInterval(() => {

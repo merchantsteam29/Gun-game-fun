@@ -2,6 +2,8 @@ import { boxes } from './maps.js';
 
 export const PLAYER_R = 0.38;
 export const GRAVITY = 20;
+// Runtime-tunable physics (host panel).
+export const phys = { gravity: 1 };
 const STEP = 0.55;
 const EPS = 1e-4;
 
@@ -41,7 +43,7 @@ function step(body, dt, h) {
     v[ax] = 0;
   }
 
-  v.y -= GRAVITY * dt;
+  v.y -= GRAVITY * phys.gravity * dt;
   const dy = v.y * dt;
   const oldY = p.y;
   p.y += dy;

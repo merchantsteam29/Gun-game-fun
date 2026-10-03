@@ -124,6 +124,23 @@ export class RemotePlayer {
     scene.add(this.root, this.limbs);
   }
 
+  // Team/zombie color; ally name tags show through walls.
+  setLook(color, ally) {
+    if (color === this.lookColor && ally === this.ally) return;
+    this.lookColor = color;
+    this.ally = ally;
+    this.bodyMat.color.set(color);
+    const old = this.tag;
+    this.tag = nameTag(this.name, color);
+    this.tag.position.copy(old.position);
+    this.tag.material.depthTest = !ally;
+    this.tag.renderOrder = ally ? 10 : 0;
+    this.root.remove(old);
+    old.material.map.dispose();
+    old.material.dispose();
+    this.root.add(this.tag);
+  }
+
   setWeapon(id) {
     if (id === this.weapon || !WEAPONS[id]) return;
     if (this.weapon && this.guns[this.weapon]) this.guns[this.weapon].visible = false;

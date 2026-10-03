@@ -29,7 +29,7 @@
   <div id="dmg-dir"></div>
 
   <div id="lobby-tag"></div>
-  <div id="match-info"><div id="timer">10:00</div><div id="leader"></div></div>
+  <div id="match-info"><div id="timer">10:00</div><div id="mode-bar"></div><div id="leader"></div></div>
   <div id="killfeed"></div>
   <div id="notice"></div>
 
@@ -47,8 +47,8 @@
   <div id="reload-hint">RELOADING</div>
 
   <div id="scoreboard" class="hidden">
-    <h2>FREE FOR ALL</h2>
-    <table><thead><tr><th></th><th>Player</th><th>K</th><th>D</th><th>K/D</th></tr></thead><tbody id="sb-body"></tbody></table>
+    <h2 id="sb-title">SCOREBOARD</h2>
+    <table><thead><tr id="sb-head"></tr></thead><tbody id="sb-body"></tbody></table>
   </div>
 
   <div id="death" class="hidden">
@@ -81,10 +81,17 @@
       <label>Loadout</label>
       <div id="menu-loadout" class="loadout"></div>
     </div>
-    <div class="field">
-      <label for="map-pick">Starting map (maps rotate each match)</label>
-      <select id="map-pick"></select>
+    <div class="field two">
+      <div>
+        <label for="mode-pick">Game mode</label>
+        <select id="mode-pick"></select>
+      </div>
+      <div>
+        <label for="map-pick">Starting map</label>
+        <select id="map-pick"></select>
+      </div>
     </div>
+    <div id="mode-desc" class="loadout-note"></div>
     <div class="actions">
       <button id="btn-host" class="primary">Create Lobby</button>
       <div class="join">
@@ -127,7 +134,41 @@
     </div>
     <div class="actions">
       <button id="btn-resume" class="primary">Click to play</button>
+      <button id="btn-hostpanel" class="hidden">Host panel</button>
       <button id="btn-leave" class="danger">Leave lobby</button>
+    </div>
+  </div>
+</div>
+
+<!-- Host panel -->
+<div id="host-panel" class="overlay hidden">
+  <div class="panel wide">
+    <div class="hp-head"><h2>HOST PANEL</h2><button id="hp-close">Close</button></div>
+    <div class="hp-grid">
+      <section>
+        <h3>Mode &amp; map</h3>
+        <div class="field two">
+          <div><label for="hp-mode">Mode</label><select id="hp-mode"></select></div>
+          <div><label for="hp-map">Map</label><select id="hp-map"></select></div>
+        </div>
+        <label class="check"><input type="checkbox" id="hp-rotate"> Rotate maps after each match</label>
+        <button id="hp-restart" class="primary">Restart match with these</button>
+        <h3>Match rules</h3>
+        <div id="hp-rules"></div>
+      </section>
+      <section>
+        <h3>Physics</h3>
+        <div id="hp-physics"></div>
+        <h3>Bots</h3>
+        <div class="bot-add">
+          <select id="hp-botdiff"><option value="easy">Easy</option><option value="normal" selected>Normal</option><option value="hard">Hard</option></select>
+          <button id="hp-addbot">+ Add bot</button>
+          <button id="hp-fill">Fill to 8</button>
+          <button id="hp-clearbots" class="danger">Remove all</button>
+        </div>
+        <h3>Players</h3>
+        <div id="hp-players"></div>
+      </section>
     </div>
   </div>
 </div>

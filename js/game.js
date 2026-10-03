@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { MAPS, setMapData, buildMapScene } from './maps.js';
-import { moveBody, overlap, raycast, rayAABB, PLAYER_R } from './physics.js';
-import { WEAPONS, DEFAULT_LOADOUT } from './weapons.js';
+import { moveBody, overlap, raycast, rayAABB, PLAYER_R, phys } from './physics.js';
+import { MODES, TEAM_COLORS, ZOMBIE_COLOR, defaultSettings } from './host.js';
+import { WEAPONS, DEFAULT_LOADOUT, GUNGAME_LADDER } from './weapons.js';
 import { Viewmodel } from './viewmodel.js';
 import { RemotePlayer } from './remote.js';
 import { Effects } from './effects.js';
@@ -56,6 +57,21 @@ export class Game {
     this.sens = 1;
     this.nextLoadout = DEFAULT_LOADOUT.slice();
     this.onUnlock = null;
+    this.onKicked = null;
+    this.rules = defaultSettings();
+    this.maxHp = 100;
+    this.myColor = '#3498db';
+    this.teamScore = null;
+    this.zone = null;
+    this.infection = 0;
+    this.zoneMesh = new THREE.Group();
+    const zoneMat = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.18, side: THREE.DoubleSide, depthWrite: false });
+    this.zoneWall = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 40, 1, true), zoneMat);
+    this.zoneRing = new THREE.Mesh(new THREE.RingGeometry(0.94, 1, 48), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false }));
+    this.zoneRing.rotation.x = -Math.PI / 2;
+    this.zoneMesh.add(this.zoneWall, this.zoneRing);
+    this.zoneMesh.visible = false;
+    this.scene.add(this.zoneMesh);
 
     this.me = {
       pos: new THREE.Vector3(), vel: new THREE.Vector3(), onGround: false, ground: null,
@@ -91,7 +107,39 @@ export class Game {
     renderer.setAnimationLoop(() => this.frame());
   }
 
-  get curW() { return this.loadout[this.slot]; }
+  get curW() { return this.loadout[this.slot] || this.loadout[0]; }
+  get teams() { return MODES[this.rules.mode].teams; }
+  get myTeam() { const p = this.players.get(this.myId); return p ? p.team : 0; }
+  get utilId() { return this.loadout[3]; }
+
+  // Teammates can't be damaged (unless friendly fire is on in TDM).
+  isAlly(r) {
+    if (!this.teams || (this.rules.friendlyFire && this.rules.mode === 'tdm')) return false;
+    const p = this.players.get(r.id);
+    return !!p && p.team === this.myTeam;
+  }
+
+  colorFor(p) {
+    if (this.rules.mode === 'infection') return p.team === 2 ? ZOMBIE_COLOR : p.color;
+    if (this.teams && TEAM_COLORS[p.team]) return TEAM_COLORS[p.team];
+    return p.color;
+  }
+
+  applySettings(s) {
+    const modeChanged = s.mode !== this.rules.mode;
+    this.rules = { ...this.rules, ...s };
+    phys.gravity = this.rules.gravity;
+    if (modeChanged) this.refreshColors();
+  }
+
+  refreshColors() {
+    for (const r of this.remotes.values()) {
+      const p = this.players.get(r.id);
+      if (p) r.setLook(this.colorFor(p), this.teams && p.team === this.myTeam && this.rules.mode !== 'infection');
+    }
+    const me = this.players.get(this.myId);
+    if (me) this.vm.setColor(this.colorFor(me));
+  }
 
   resize() {
     const w = innerWidth, h = innerHeight;
@@ -161,8 +209,9 @@ export class Game {
       if (!this.locked || !this.me.alive) return;
       const dir = Math.sign(e.deltaY);
       for (let i = 1; i <= 4; i++) {
-        const s = (this.slot + dir * i + 8) % 4;
-        if (s !== 3 || this.util > 0) { this.switchSlot(s); break; }
+        const n = this.loadout.length;
+        const s = (this.slot + dir * i + n * 2) % n;
+        if (s !== this.slot && (s !== 3 || this.util > 0)) { this.switchSlot(s); break; }
       }
     }, { passive: true });
     document.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -212,6 +261,11 @@ export class Game {
     this.me.alive = false;
     this.matchOver = false;
     this.deathInfo = null;
+    this.rules = defaultSettings();
+    phys.gravity = 1;
+    this.zone = null;
+    this.teamScore = null;
+    this.zoneMesh.visible = false;
     this.hud.show(false);
     this.hud.death(false);
     this.hud.end(false);
@@ -233,18 +287,37 @@ export class Game {
       case 'welcome':
         this.myId = m.id;
         this.active = true;
-        this.loadMap(m.map);
+        this.applySettings(m.settings);
+        this.loadMap(m.settings.map);
         this.players.clear();
         for (const p of m.players) {
-          this.players.set(p.id, { id: p.id, name: p.name, color: p.color, k: p.k, d: p.d });
+          this.players.set(p.id, { id: p.id, name: p.name, color: p.color, k: p.k, d: p.d, team: p.team, sc: p.sc, bot: p.bot });
           this.addRemote(p);
         }
+        this.refreshColors();
         this.hud.show(true);
         break;
       case 'pjoin':
-        this.players.set(m.id, { id: m.id, name: m.name, color: m.color, k: 0, d: 0 });
+        this.players.set(m.id, { id: m.id, name: m.name, color: m.color, k: 0, d: 0, team: m.team, sc: 0, bot: m.bot });
         this.addRemote(m);
+        this.refreshColors();
         this.hud.say(`${m.name} joined`);
+        break;
+      case 'settings':
+        this.applySettings(m.s);
+        break;
+      case 'notice':
+        this.hud.say(m.text);
+        break;
+      case 'kicked':
+        if (this.onKicked) this.onKicked();
+        break;
+      case 'loadout':
+        if (this.me.alive) {
+          this.setLoadout(m.l);
+          if (m.hp) { this.me.hp = m.hp; this.maxHp = m.hp; }
+          sfx.equip(0.8);
+        }
         break;
       case 'pleave': {
         this.players.delete(m.id);
@@ -255,13 +328,21 @@ export class Game {
       }
       case 'snap':
         this.timeLeft = m.tl;
+        this.teamScore = m.ts || null;
+        this.zone = m.z || null;
+        this.infection = m.inf ?? 0;
+        let teamsChanged = false;
         for (const id in m.s) {
           const a = m.s[id];
           const pl = this.players.get(id);
-          if (pl) { pl.k = a[9]; pl.d = a[10]; }
+          if (pl) {
+            pl.k = a[9]; pl.d = a[10]; pl.sc = a[13];
+            if (pl.team !== a[12]) { pl.team = a[12]; teamsChanged = true; }
+          }
           if (id === this.myId) { if (this.me.alive) this.me.hp = a[8]; }
           else { const r = this.remotes.get(id); if (r) r.setState(a); }
         }
+        if (teamsChanged) this.refreshColors();
         break;
       case 'spawn': this.respawn(m); break;
       case 'dmg': this.onDamaged(m); break;
@@ -282,7 +363,7 @@ export class Game {
       case 'boom': this.remoteBoom(m); break;
       case 'end':
         this.matchOver = true;
-        this.endInfo = { scores: m.scores, until: performance.now() + m.next * 1000, nextMap: m.nextMap };
+        this.endInfo = { scores: m.scores, until: performance.now() + m.next * 1000, nextMap: m.nextMap, title: m.title };
         this.me.alive = false;
         this.deathInfo = null;
         this.hud.death(false);
@@ -294,8 +375,8 @@ export class Game {
         this.matchOver = false;
         this.endInfo = null;
         this.hud.end(false);
-        for (const p of this.players.values()) { p.k = 0; p.d = 0; }
-        this.hud.say(MAPS[m.map] ? MAPS[m.map].name.toUpperCase() : '');
+        for (const p of this.players.values()) { p.k = 0; p.d = 0; p.sc = 0; }
+        this.hud.say(`${MODES[m.mode] ? MODES[m.mode].name.toUpperCase() : ''} · ${MAPS[m.map] ? MAPS[m.map].name.toUpperCase() : ''}`);
         break;
     }
   }
@@ -311,20 +392,28 @@ export class Game {
     me.crouch = false;
     me.h = STAND_H;
     me.eye = EYE_STAND;
-    this.loadout = this.nextLoadout.slice();
-    this.ammo = {};
-    for (const id of this.loadout) this.ammo[id] = WEAPONS[id].mag || 0;
-    this.util = WEAPONS[this.loadout[3]].count;
-    this.slot = -1;
-    this.switchSlot(0, true);
-    this.reloadT = 0;
-    this.fireCd = 0;
-    this.burstLeft = 0;
-    this.pendingMelee = this.pendingThrow = null;
+    me.hp = this.maxHp = m.hp || 100;
+    const pl = this.players.get(this.myId);
+    if (pl && m.team !== undefined) pl.team = m.team;
+    this.refreshColors();
+    this.setLoadout(m.l || this.nextLoadout);
     this.recoil = 0;
     this.deathInfo = null;
     this.hud.death(false);
     this.vm.setVisible(true);
+  }
+
+  setLoadout(l) {
+    this.loadout = l.slice();
+    this.ammo = {};
+    for (const id of this.loadout) this.ammo[id] = WEAPONS[id].mag || 0;
+    this.util = this.utilId ? WEAPONS[this.utilId].count : 0;
+    this.slot = -1;
+    this.reloadT = 0;
+    this.fireCd = 0;
+    this.burstLeft = 0;
+    this.pendingMelee = this.pendingThrow = null;
+    this.switchSlot(0, true);
   }
 
   onDamaged(m) {
@@ -347,7 +436,8 @@ export class Game {
   }
 
   onKill(m) {
-    const k = this.players.get(m.k), v = this.players.get(m.v);
+    const pk = this.players.get(m.k), pv = this.players.get(m.v);
+    const k = pk && { ...pk, color: this.colorFor(pk) }, v = pv && { ...pv, color: this.colorFor(pv) };
     if (v) this.hud.feed(k, v, m.w, m.head, m.k === this.myId || m.v === this.myId);
     if (m.k === this.myId && m.v !== this.myId && v) {
       this.hud.say(`ELIMINATED ${v.name}`);
@@ -382,9 +472,10 @@ export class Game {
     const now = performance.now();
     const dt = Math.min(0.05, (now - this.last) / 1000);
     this.last = now;
-    if (this.active) this.update(dt, now);
+    const gdt = this.active ? dt * this.rules.gameSpeed : dt;
+    if (this.active) this.update(gdt, now);
     else this.menuCam(now);
-    this.fx.update(dt);
+    this.fx.update(gdt);
     this.renderer.clear();
     this.renderer.render(this.scene, this.camera);
     if (this.active && this.me.alive && !this.scoped) this.vm.render(this.renderer);
@@ -452,6 +543,7 @@ export class Game {
       if (r.tag.visible && this.fx.smokes.length && this.fx.blocked(cam.position, r.headPos(_c))) r.tag.visible = false;
     }
     this.updateProjectiles(dt);
+    this.updateZone(now);
 
     this.vm.update(dt, {
       speed: hs, strafe, vy: me.vel.y, ads: this.ads, sprint: this.sprinting, onGround: me.onGround,
@@ -488,7 +580,7 @@ export class Game {
     me.eye += ((me.crouch ? EYE_CROUCH : EYE_STAND) - me.eye) * Math.min(1, dt * 14);
 
     this.sprinting = k.has('ShiftLeft') && f > 0 && !me.crouch && !this.ads && !this.mouse.left && this.reloadT <= 0;
-    const speed = WALK * w.speedMul * (this.sprinting ? SPRINT : 1) * (me.crouch ? CROUCH_SPD : 1) * (this.ads ? 0.7 : 1);
+    const speed = WALK * this.rules.moveSpeed * w.speedMul * (this.sprinting ? SPRINT : 1) * (me.crouch ? CROUCH_SPD : 1) * (this.ads ? 0.7 : 1);
     const sy = Math.sin(me.yaw), cy = Math.cos(me.yaw);
     let wx = -sy * f + cy * s, wz = -cy * f - sy * s;
     const len = Math.hypot(wx, wz);
@@ -498,7 +590,7 @@ export class Game {
     me.vel.z += (wz * speed - me.vel.z) * a;
 
     if (k.has('Space') && me.onGround) {
-      me.vel.y = JUMP;
+      me.vel.y = JUMP * this.rules.jump;
       me.onGround = false;
       sfx.jump(0.4);
     }
@@ -511,7 +603,7 @@ export class Game {
       sfx.land(0.3 + kk * 0.4);
     }
     if (me.onGround && me.ground && me.ground.mat === 'pad') {
-      me.vel.y = PAD_JUMP;
+      me.vel.y = PAD_JUMP * this.rules.jump;
       me.onGround = false;
       sfx.pad(0.7);
     }
@@ -526,7 +618,7 @@ export class Game {
   // ---------- Weapons ----------
 
   switchSlot(i, instant = false) {
-    if (i === this.slot) return;
+    if (i === this.slot || i >= this.loadout.length) return;
     if (i === 3 && this.util <= 0) return;
     this.slot = i;
     this.reloadT = 0;
@@ -548,14 +640,15 @@ export class Game {
   }
 
   quickThrow() {
-    if (this.util <= 0 || this.fireCd > 0 || this.switchT > 0 || this.pendingThrow) return;
+    if (!this.utilId || this.util <= 0 || this.fireCd > 0 || this.switchT > 0 || this.pendingThrow) return;
     this.reloadT = 0;
     this.throwUtil(this.slot !== 3);
   }
 
   quickMelee() {
-    if (this.fireCd > 0 && this.slot === 2) return;
-    this.switchSlot(2, true);
+    const ms = this.meleeSlot();
+    if (ms < 0 || (this.fireCd > 0 && this.slot === ms)) return;
+    this.switchSlot(ms, true);
     this.fireCd = 0;
     this.melee();
   }
@@ -623,7 +716,7 @@ export class Game {
   }
 
   fireRound(id, w) {
-    this.ammo[id]--;
+    if (!this.rules.infiniteAmmo) this.ammo[id]--;
     this.recoil += w.recoil * (this.ads ? 0.6 : 1);
     this.me.yaw += (Math.random() - 0.5) * w.recoil * 0.4;
     this.vm.fire(w);
@@ -654,7 +747,7 @@ export class Game {
       let maxT = wh ? wh.t : w.range;
       let best = null;
       for (const rp of this.remotes.values()) {
-        if (!rp.alive) continue;
+        if (!rp.alive || this.isAlly(rp)) continue;
         for (const hb of rp.hitboxes()) {
           const t = rayAABB(o.x, o.y, o.z, dir.x, dir.y, dir.z, hb.x0, hb.y0, hb.z0, hb.x1, hb.y1, hb.z1, maxT);
           if (t >= 0 && t < maxT) { maxT = t; best = { rp, head: hb.head }; }
@@ -694,8 +787,10 @@ export class Game {
     return !raycast(a.x, a.y, a.z, _d.x, _d.y, _d.z, len - 0.05);
   }
 
+  meleeSlot() { return this.loadout.findIndex((id) => WEAPONS[id].type === 'melee'); }
+
   melee() {
-    const w = WEAPONS[this.loadout[2]];
+    const w = WEAPONS[this.loadout[this.meleeSlot()]] || WEAPONS.knife;
     this.fireCd = w.rate;
     this.vm.swing(w.style);
     (w.id === 'axe' ? sfx.axe : sfx.knife)(0.7);
@@ -709,7 +804,7 @@ export class Game {
     this.camBasis();
     let best = null, bestD = w.range;
     for (const rp of this.remotes.values()) {
-      if (!rp.alive) continue;
+      if (!rp.alive || this.isAlly(rp)) continue;
       const hb = rp.hitboxes()[1];
       const cp = _c.set(clamp(o.x, hb.x0, hb.x1), clamp(o.y, hb.y0, hb.y1 + 0.45), clamp(o.z, hb.z0, hb.z1));
       const d = cp.distanceTo(o);
@@ -747,9 +842,10 @@ export class Game {
   }
 
   throwUtil(quick) {
-    const id = this.loadout[3], w = WEAPONS[id];
+    const id = this.utilId, w = WEAPONS[id];
+    if (!w) return;
     if (this.util <= 0) { sfx.empty(0.6); return; }
-    this.util--;
+    if (!this.rules.infiniteAmmo) this.util--;
     this.fireCd = w.rate;
     this.vm.throwAnim(quick ? id : null);
     this.pendingThrow = { id, t: THROW_RELEASE };
@@ -807,7 +903,7 @@ export class Game {
         let victim = null;
         if (p.local && (p.kind === 'gl' || p.kind === 'sticky')) {
           for (const rp of this.remotes.values()) {
-            if (!rp.alive) continue;
+            if (!rp.alive || this.isAlly(rp)) continue;
             for (const hb of rp.hitboxes()) {
               const t = rayAABB(p.pos.x, p.pos.y, p.pos.z, dir.x, dir.y, dir.z,
                 hb.x0 - 0.1, hb.y0 - 0.1, hb.z0 - 0.1, hb.x1 + 0.1, hb.y1 + 0.1, hb.z1 + 0.1, travel);
@@ -902,7 +998,7 @@ export class Game {
 
     let any = false;
     for (const rp of this.remotes.values()) {
-      if (!rp.alive || rp.id === directId) continue;
+      if (!rp.alive || rp.id === directId || this.isAlly(rp)) continue;
       const c = rp.center(new THREE.Vector3());
       const d = c.distanceTo(p.pos);
       const stuck = p.attach && p.attach.id === rp.id;
@@ -976,12 +1072,55 @@ export class Game {
     fn(vol, d < 1 ? 0 : _c.dot(_r) * 0.8);
   }
 
+  updateZone(now) {
+    const z = this.zone;
+    this.zoneMesh.visible = !!z && !this.matchOver;
+    if (!z) return;
+    const [x, y, zz, r, state, holder] = z;
+    this.zoneMesh.position.set(x, y + 0.02, zz);
+    this.zoneWall.scale.set(r, 3, r);
+    this.zoneWall.position.y = 1.5;
+    this.zoneRing.scale.set(r, r, 1);
+    let color = '#ffffff';
+    if (state === 2) color = '#ff4040';
+    else if (state === 1) color = holder === this.myId ? '#4dff9a' : '#ffb020';
+    this.zoneWall.material.color.set(color);
+    this.zoneRing.material.color.set(color);
+    this.zoneWall.material.opacity = 0.12 + Math.sin(now * 0.004) * 0.05;
+  }
+
+  modeBar() {
+    const mode = this.rules.mode, me = this.players.get(this.myId);
+    if (mode === 'tdm' && this.teamScore) {
+      const [r, b] = this.teamScore;
+      const mine = me && me.team === 1 ? 'red' : 'blue';
+      return `<span class="team red ${mine === 'red' ? 'mine' : ''}">RED ${r}</span><span class="lim">/ ${this.rules.scoreLimit}</span><span class="team blue ${mine === 'blue' ? 'mine' : ''}">BLUE ${b}</span>`;
+    }
+    if (mode === 'gungame' && me) {
+      const lvl = Math.min(me.sc + 1, GUNGAME_LADDER.length);
+      return `LEVEL ${lvl}/${GUNGAME_LADDER.length} · ${WEAPONS[GUNGAME_LADDER[lvl - 1]].name.toUpperCase()}`;
+    }
+    if (mode === 'koth' && this.zone) {
+      const [, , , , state, holder, secs] = this.zone;
+      const h = holder && this.players.get(holder);
+      const st = state === 2 ? 'CONTESTED' : state === 1 ? `HELD BY ${h ? h.name : '?'}` : 'NEUTRAL';
+      return `HILL: ${st} · MOVES IN ${secs}s · YOU ${me ? me.sc : 0}/${this.rules.scoreLimit}`;
+    }
+    if (mode === 'infection') {
+      let s = 0, z = 0;
+      for (const p of this.players.values()) if (p.team === 2) z++; else s++;
+      if (this.infection > 0) return `INFECTION IN ${this.infection}s`;
+      return `<span class="team blue">SURVIVORS ${s}</span><span class="team zombie">ZOMBIES ${z}</span>${me && me.team === 2 ? ' · YOU ARE INFECTED' : ''}`;
+    }
+    return `${MODES[mode].short} · FIRST TO ${this.rules.scoreLimit}`;
+  }
+
   // ---------- HUD ----------
 
   updateHud(dt, now) {
     const me = this.me, hud = this.hud;
     const id = this.curW, w = WEAPONS[id];
-    hud.health(me.alive ? me.hp : 0);
+    hud.health(me.alive ? me.hp : 0, this.maxHp);
     hud.ammo(id, this.ammo[id] ?? 0, w.mag || 0, this.util);
     hud.slots(this.loadout, this.slot, this.util);
     hud.reloading(this.reloadT > 0 && me.alive);
@@ -992,18 +1131,19 @@ export class Game {
     if (this.hudAcc > 0) return;
     this.hudAcc = 0.1;
     let leader = null;
-    for (const p of this.players.values()) if (!leader || p.k > leader.k) leader = p;
-    hud.timer(this.timeLeft, leader && leader.k > 0 ? leader : null);
-    hud.lobby(this.net.code, this.players.size, MAPS[this.mapId].name);
-    hud.scoreboard(this.showScores && !this.matchOver, this.players, this.myId);
+    for (const p of this.players.values()) if (!leader || p.sc > leader.sc) leader = p;
+    hud.timer(this.timeLeft, !this.teams && leader && leader.sc > 0 ? leader : null);
+    hud.modeBar(this.modeBar());
+    hud.lobby(this.net.code, this.players.size, `${MODES[this.rules.mode].short} · ${MAPS[this.mapId].name}`);
+    hud.scoreboard(this.showScores && !this.matchOver, this.players, this.myId, this.rules.mode, (p) => this.colorFor(p));
     if (!me.alive && this.deathInfo && !this.matchOver) {
-      const secs = Math.ceil(3 - (now - this.deathInfo.at) / 1000);
+      const secs = Math.ceil(this.rules.respawn - (now - this.deathInfo.at) / 1000);
       const killer = this.deathInfo.killer && this.players.get(this.deathInfo.killer);
       hud.death(true, killer ? killer.name : null, this.deathInfo.w, secs);
     }
     if (this.matchOver && this.endInfo) {
       const next = MAPS[this.endInfo.nextMap];
-      hud.end(true, this.endInfo.scores, this.myId, Math.max(0, Math.ceil((this.endInfo.until - now) / 1000)), next ? next.name : '');
+      hud.end(true, this.endInfo.scores, this.myId, Math.max(0, Math.ceil((this.endInfo.until - now) / 1000)), next ? next.name : '', this.endInfo.title, this.rules.mode);
     }
   }
 }

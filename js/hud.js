@@ -24,11 +24,16 @@ export class Hud {
     if (html !== this.lastLobby) { this.lastLobby = html; $('lobby-tag').innerHTML = html; }
   }
 
-  health(hp) {
+  health(hp, max = 100) {
     $('hp-num').textContent = Math.max(0, Math.ceil(hp));
     const f = $('hp-fill');
-    f.style.width = Math.max(0, hp) + '%';
-    f.classList.toggle('low', hp <= 35);
+    const pct = Math.max(0, Math.min(100, (hp / max) * 100));
+    f.style.width = pct + '%';
+    f.classList.toggle('low', pct <= 35);
+  }
+
+  modeBar(html) {
+    if (html !== this.lastMode) { this.lastMode = html; $('mode-bar').innerHTML = html; }
   }
 
   ammo(id, cur, mag, frags) {
@@ -108,16 +113,20 @@ export class Hud {
   timer(sec, leader) {
     const m = Math.floor(sec / 60), s = sec % 60;
     $('timer').textContent = `${m}:${String(s).padStart(2, '0')}`;
-    $('leader').innerHTML = leader ? `Leader: <span style="color:${esc(leader.color)}">${esc(leader.name)}</span> · ${leader.k}` : '';
+    $('leader').innerHTML = leader ? `Leader: <span style="color:${esc(leader.color)}">${esc(leader.name)}</span> · ${leader.sc}` : '';
   }
 
-  scoreboard(show, players, myId) {
+  scoreboard(show, players, myId, mode, colorFor) {
     $('scoreboard').classList.toggle('hidden', !show);
     if (!show) return;
-    const rows = [...players.values()].sort((a, b) => b.k - a.k || a.d - b.d);
-    $('sb-body').innerHTML = rows.map((p) =>
-      `<tr class="${p.id === myId ? 'me' : ''}"><td><span class="dot" style="background:${esc(p.color)}"></span></td><td>${esc(p.name)}</td><td>${p.k}</td><td>${p.d}</td><td>${(p.k / Math.max(1, p.d)).toFixed(2)}</td></tr>`
-    ).join('');
+    const scoreLabel = { gungame: 'Lvl', koth: 'Pts', infection: 'Inf' }[mode] || 'Score';
+    $('sb-head').innerHTML = `<th></th><th>Player</th><th>${scoreLabel}</th><th>K</th><th>D</th>`;
+    const rows = [...players.values()].sort((a, b) => (a.team || 0) - (b.team || 0) || b.sc - a.sc || b.k - a.k || a.d - b.d);
+    $('sb-body').innerHTML = rows.map((p) => {
+      const c = colorFor ? colorFor(p) : p.color;
+      const sc = mode === 'gungame' ? p.sc + 1 : p.sc;
+      return `<tr class="${p.id === myId ? 'me' : ''}"><td><span class="dot" style="background:${esc(c)}"></span></td><td>${esc(p.name)}</td><td>${sc}</td><td>${p.k}</td><td>${p.d}</td></tr>`;
+    }).join('');
   }
 
   death(show, killerName, weapon, secs) {
@@ -127,13 +136,13 @@ export class Hud {
     $('death-timer').textContent = secs > 0 ? `Respawning in ${secs}` : 'Respawning…';
   }
 
-  end(show, scores, myId, secs, nextMap) {
+  end(show, scores, myId, secs, nextMap, title, mode) {
     $('endscreen').classList.toggle('hidden', !show);
     if (!show) return;
-    const w = scores[0];
-    $('end-title').innerHTML = w ? `<span style="color:${esc(w.color)}">${esc(w.name)}</span> WINS` : 'MATCH OVER';
+    $('end-title').textContent = title || 'MATCH OVER';
+    const label = { gungame: 'LVL', koth: 'PTS', infection: 'INF' }[mode] || 'PTS';
     $('end-body').innerHTML = scores.map((p, i) =>
-      `<tr class="${p.id === myId ? 'me' : ''}"><td>#${i + 1}</td><td><span class="dot" style="background:${esc(p.color)}"></span> ${esc(p.name)}</td><td>${p.k} K</td><td>${p.d} D</td></tr>`
+      `<tr class="${p.id === myId ? 'me' : ''}"><td>#${i + 1}</td><td><span class="dot" style="background:${esc(p.color)}"></span> ${esc(p.name)}</td><td>${p.sc} ${label}</td><td>${p.k} K</td><td>${p.d} D</td></tr>`
     ).join('');
     $('end-timer').textContent = `Next match${nextMap ? ' on ' + nextMap : ''} in ${secs}s`;
   }

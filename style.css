@@ -153,3 +153,37 @@ select { width: 100%; padding: 9px 10px; background: #1a1e25; color: var(--text)
   #health .bar { width: 120px; }
   #scoreboard, #endscreen { min-width: 0; }
 }
+
+/* ---------- Modes ---------- */
+.field.two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+#mode-bar { font-size: 14px; font-weight: 700; letter-spacing: 1px; margin-top: 4px; padding: 3px 12px;
+  background: rgba(0,0,0,0.4); border-radius: 4px; display: inline-block; }
+#mode-bar:empty { display: none; }
+#mode-bar .team { padding: 0 8px; }
+#mode-bar .team.mine { text-decoration: underline; }
+#mode-bar .red { color: #ff6b5e; }
+#mode-bar .blue { color: #6fb2ff; }
+#mode-bar .zombie { color: #8fe05a; }
+#mode-bar .lim { color: var(--muted); font-size: 12px; }
+
+/* ---------- Host panel ---------- */
+.panel.wide { width: 860px; }
+.hp-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.hp-head h2 { margin: 0; }
+.hp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.hp-grid h3 { font-size: 13px; letter-spacing: 1.5px; color: var(--accent); margin: 16px 0 10px; text-transform: uppercase; }
+.hp-grid h3:first-child { margin-top: 0; }
+.hp-grid section > button { width: 100%; margin-top: 10px; }
+.check { display: flex; align-items: center; gap: 8px; font-size: 14px; margin: 6px 0; cursor: pointer; }
+.check input { accent-color: var(--accent); width: 16px; height: 16px; }
+.slider { display: grid; grid-template-columns: 120px 1fr 48px; align-items: center; gap: 8px; font-size: 13px; margin: 6px 0; }
+.slider span:last-child { text-align: right; color: var(--accent); font-weight: 700; }
+.num { display: grid; grid-template-columns: 1fr 90px; align-items: center; gap: 8px; font-size: 13px; margin: 6px 0; }
+.num input { padding: 6px 8px; font-size: 14px; }
+.bot-add { display: flex; gap: 6px; flex-wrap: wrap; }
+.bot-add select { width: auto; flex: 1; }
+.bot-add button { padding: 8px 10px; font-size: 12px; }
+.prow { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 14px; }
+.prow .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.prow button, .prow select { padding: 4px 8px; font-size: 11px; width: auto; }
+@media (max-width: 760px) { .hp-grid { grid-template-columns: 1fr; } }
