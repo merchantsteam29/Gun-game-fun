@@ -2,6 +2,7 @@ import * as THREE from 'three';
 
 const unitBox = new THREE.BoxGeometry(1, 1, 1);
 const sphereGeo = new THREE.SphereGeometry(1, 16, 12);
+const _c = new THREE.Vector3(), _ab = new THREE.Vector3(), _ac = new THREE.Vector3();
 
 // Pooled transient effects: tracers, particles, explosions, flash lights.
 export class Effects {
@@ -10,6 +11,7 @@ export class Effects {
     this.tracers = [];
     this.particles = [];
     this.booms = [];
+    this.smokes = [];
 
     this.tracerMat = new THREE.MeshBasicMaterial({ color: '#ffe9a8', transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false });
     this.partMats = {};
@@ -74,7 +76,71 @@ export class Effects {
     this.burst(pos, new THREE.Vector3(0, 1, 0), '#2a2725', 10, 5, 0.1, 0.9);
   }
 
+  smoke(pos, radius, duration) {
+    if (!this.smokeTex) {
+      const c = document.createElement('canvas');
+      c.width = c.height = 64;
+      const g = c.getContext('2d');
+      const grd = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+      grd.addColorStop(0, 'rgba(255,255,255,1)');
+      grd.addColorStop(0.5, 'rgba(255,255,255,0.6)');
+      grd.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = grd;
+      g.fillRect(0, 0, 64, 64);
+      this.smokeTex = new THREE.CanvasTexture(c);
+    }
+    const puffs = [];
+    for (let i = 0; i < 26; i++) {
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.smokeTex, color: '#c9cbcf', transparent: true, opacity: 0, depthWrite: false, fog: true }));
+      const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * radius * 0.75;
+      s.userData.off = new THREE.Vector3(Math.cos(a) * r, 0.6 + Math.random() * radius * 0.55, Math.sin(a) * r);
+      s.userData.size = radius * (0.7 + Math.random() * 0.5);
+      s.userData.spin = (Math.random() - 0.5) * 0.3;
+      s.position.copy(pos);
+      this.scene.add(s);
+      puffs.push(s);
+    }
+    this.smokes.push({ pos: pos.clone(), radius, duration, t: 0, puffs });
+  }
+
+  // True if the segment a->b passes through an active smoke cloud.
+  blocked(a, b) {
+    for (const s of this.smokes) {
+      if (s.t < 0.6 || s.t > s.duration - 1) continue;
+      const c = _c.copy(s.pos); c.y += s.radius * 0.35;
+      const ab = _ab.subVectors(b, a);
+      const t = Math.max(0, Math.min(1, _ac.subVectors(c, a).dot(ab) / Math.max(1e-6, ab.lengthSq())));
+      if (_ac.copy(a).addScaledVector(ab, t).distanceTo(c) < s.radius * 0.8) return true;
+    }
+    return false;
+  }
+
+  clear() {
+    for (const tr of this.tracers) this.scene.remove(tr.m);
+    for (const p of this.particles) this.scene.remove(p.m);
+    for (const b of this.booms) this.scene.remove(b.fire, b.smoke);
+    for (const s of this.smokes) this.scene.remove(...s.puffs);
+    this.tracers = []; this.particles = []; this.booms = []; this.smokes = [];
+  }
+
   update(dt) {
+    for (let i = this.smokes.length - 1; i >= 0; i--) {
+      const s = this.smokes[i];
+      s.t += dt;
+      const grow = Math.min(1, s.t / 1.2);
+      const fade = Math.min(1, (s.duration - s.t) / 2.5);
+      for (const p of s.puffs) {
+        p.position.copy(s.pos).addScaledVector(p.userData.off, 0.4 + 0.6 * grow);
+        p.position.y += s.t * 0.05;
+        p.scale.setScalar(p.userData.size * (0.4 + 0.6 * grow));
+        p.material.opacity = Math.max(0, 0.85 * grow * fade);
+        p.material.rotation += p.userData.spin * dt;
+      }
+      if (s.t >= s.duration) {
+        for (const p of s.puffs) { this.scene.remove(p); p.material.dispose(); }
+        this.smokes.splice(i, 1);
+      }
+    }
     for (let i = this.tracers.length - 1; i >= 0; i--) {
       const tr = this.tracers[i];
       tr.t -= dt;

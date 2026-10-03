@@ -19,10 +19,10 @@ kbd { display: inline-block; padding: 1px 6px; border: 1px solid var(--line); bo
 /* ---------- Overlays / panels ---------- */
 .overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
   background: radial-gradient(ellipse at center, rgba(0,0,0,0.25), rgba(0,0,0,0.7)); z-index: 20; padding: 16px; }
-.panel { width: 440px; max-width: 100%; max-height: 100%; overflow-y: auto; background: var(--panel);
+.panel { width: 500px; max-width: 100%; max-height: 100%; overflow-y: auto; background: var(--panel);
   border: 1px solid var(--line); border-top: 3px solid var(--accent); padding: 26px 28px; border-radius: 6px;
   box-shadow: 0 20px 60px rgba(0,0,0,0.6); backdrop-filter: blur(6px); }
-.panel.small { width: 380px; }
+.panel.small { width: 470px; }
 h1 { margin: 0 0 20px; font-size: 36px; letter-spacing: 2px; font-weight: 700; }
 h1 span { color: var(--accent); }
 h2 { margin: 0 0 16px; letter-spacing: 2px; }
@@ -45,6 +45,18 @@ button:disabled { opacity: 0.5; cursor: default; }
 .pick { display: flex; gap: 6px; }
 .pick button { flex: 1; padding: 9px 4px; font-size: 13px; }
 .pick button.sel { background: rgba(255,176,32,0.18); border-color: var(--accent); color: var(--accent); }
+.loadout { display: flex; flex-direction: column; gap: 6px; }
+.loadout .row { display: flex; align-items: center; gap: 6px; }
+.loadout .row span { width: 70px; flex: none; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+.loadout .row .pick { flex: 1; flex-wrap: wrap; }
+.loadout .row .pick button { flex: 1 1 auto; padding: 6px 6px; font-size: 11px; min-width: 52px; }
+select { width: 100%; padding: 9px 10px; background: #1a1e25; color: var(--text); border: 1px solid var(--line);
+  border-radius: 4px; font: inherit; }
+#scope { position: absolute; inset: 0;
+  background: radial-gradient(circle at center, transparent 0, transparent 34vmin, rgba(0,0,0,0.6) 34.5vmin, #000 35.5vmin); }
+#scope i { position: absolute; background: rgba(0,0,0,0.85); }
+#scope .h { left: 15%; right: 15%; top: 50%; height: 1px; }
+#scope .v { top: 15%; bottom: 15%; left: 50%; width: 1px; }
 .loadout-note { font-size: 13px; color: var(--muted); margin: -4px 0 18px; }
 .actions { display: flex; flex-direction: column; gap: 10px; }
 .join { display: flex; gap: 8px; }

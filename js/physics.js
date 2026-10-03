@@ -1,4 +1,4 @@
-import { boxes } from './map.js';
+import { boxes } from './maps.js';
 
 export const PLAYER_R = 0.38;
 export const GRAVITY = 20;
@@ -46,9 +46,10 @@ function step(body, dt, h) {
   const oldY = p.y;
   p.y += dy;
   body.onGround = false;
+  body.ground = null;
   const b = overlap(p.x, p.y, p.z, r, h);
   if (b) {
-    if (dy < 0) { p.y = b.y1; body.onGround = true; }
+    if (dy < 0) { p.y = b.y1; body.onGround = true; body.ground = b; }
     else p.y = b.y0 - h - EPS;
     if (overlap(p.x, p.y, p.z, r, h)) p.y = oldY;
     v.y = 0;

@@ -1,8 +1,8 @@
-import { WEAPONS, SLOT_NAMES } from './weapons.js';
+import { WEAPONS, SLOT_NAMES, SHORT } from './weapons.js';
 import { esc } from './util.js';
 
 const $ = (id) => document.getElementById(id);
-const W_LABEL = { ar: 'AR', shotgun: 'Shotgun', gl: 'Launcher', pistol: 'Pistol', knife: 'Knife', frag: 'Frag', fall: 'Fall' };
+const W_LABEL = SHORT;
 
 export class Hud {
   constructor() {
@@ -19,8 +19,9 @@ export class Hud {
 
   show(v) { this.el.classList.toggle('hidden', !v); }
 
-  lobby(code, count) {
-    $('lobby-tag').innerHTML = `LOBBY <b>${esc(code)}</b> · ${count} player${count === 1 ? '' : 's'}`;
+  lobby(code, count, mapName) {
+    const html = `LOBBY <b>${esc(code)}</b> · ${count} player${count === 1 ? '' : 's'} · ${esc(mapName)}`;
+    if (html !== this.lastLobby) { this.lastLobby = html; $('lobby-tag').innerHTML = html; }
   }
 
   health(hp) {
@@ -46,11 +47,16 @@ export class Hud {
     if (key === this.lastSlots) return;
     this.lastSlots = key;
     $('slots').innerHTML = loadout.map((id, i) =>
-      `<div class="${i === slot ? 'sel' : ''} ${id === 'frag' && frags === 0 ? 'off' : ''}" title="${SLOT_NAMES[i]}"><b>${i + 1}</b>${W_LABEL[id]}${id === 'frag' ? ' ×' + frags : ''}</div>`
+      `<div class="${i === slot ? 'sel' : ''} ${i === 3 && frags === 0 ? 'off' : ''}" title="${SLOT_NAMES[i]}"><b>${i + 1}</b>${W_LABEL[id]}${i === 3 ? ' ×' + frags : ''}</div>`
     ).join('');
   }
 
   reloading(v) { $('reload-hint').classList.toggle('show', v); }
+
+  scope(v) {
+    $('scope').classList.toggle('hidden', !v);
+    this.crosshair.classList.toggle('hidden', v);
+  }
 
   spread(px, ads) {
     this.crosshair.style.setProperty('--gap', Math.round(4 + px) + 'px');
@@ -114,15 +120,14 @@ export class Hud {
     ).join('');
   }
 
-  death(show, killerName, weapon, secs, primary) {
+  death(show, killerName, weapon, secs) {
     $('death').classList.toggle('hidden', !show);
     if (!show) return;
     $('death-by').innerHTML = killerName ? `by <b>${esc(killerName)}</b> · ${W_LABEL[weapon] || ''}` : '';
     $('death-timer').textContent = secs > 0 ? `Respawning in ${secs}` : 'Respawning…';
-    $('death-primary').textContent = WEAPONS[primary].name;
   }
 
-  end(show, scores, myId, secs) {
+  end(show, scores, myId, secs, nextMap) {
     $('endscreen').classList.toggle('hidden', !show);
     if (!show) return;
     const w = scores[0];
@@ -130,6 +135,6 @@ export class Hud {
     $('end-body').innerHTML = scores.map((p, i) =>
       `<tr class="${p.id === myId ? 'me' : ''}"><td>#${i + 1}</td><td><span class="dot" style="background:${esc(p.color)}"></span> ${esc(p.name)}</td><td>${p.k} K</td><td>${p.d} D</td></tr>`
     ).join('');
-    $('end-timer').textContent = `Next match in ${secs}s`;
+    $('end-timer').textContent = `Next match${nextMap ? ' on ' + nextMap : ''} in ${secs}s`;
   }
 }

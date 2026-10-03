@@ -1,7 +1,8 @@
 import { Game } from './game.js';
 import { Net } from './net.js';
 import { initAudio } from './audio.js';
-import { WEAPONS, PRIMARIES } from './weapons.js';
+import { WEAPONS, SLOTS, SLOT_NAMES, SHORT, validLoadout } from './weapons.js';
+import { MAPS, MAP_ORDER } from './maps.js';
 import { COLORS, randCode, store } from './util.js';
 
 const $ = (id) => document.getElementById(id);
@@ -9,10 +10,11 @@ const $ = (id) => document.getElementById(id);
 const settings = {
   name: store.get('name', 'Player' + Math.floor(Math.random() * 900 + 100)),
   color: store.get('color', COLORS[Math.floor(Math.random() * COLORS.length)]),
-  primary: store.get('primary', 'ar'),
+  loadout: validLoadout(store.get('loadout', null)),
+  map: store.get('map', 'warehouse'),
   sens: store.get('sens', 1),
 };
-if (!WEAPONS[settings.primary]) settings.primary = 'ar';
+if (!MAPS[settings.map]) settings.map = 'warehouse';
 
 const game = new Game($('game'));
 window.game = game; // handy for debugging from the console
@@ -33,22 +35,31 @@ function renderColors() {
   }
 }
 
-function renderPrimary(el) {
-  const current = game.active ? game.nextPrimary : settings.primary;
+function renderLoadout(el) {
   el.innerHTML = '';
-  for (const id of PRIMARIES) {
-    const b = document.createElement('button');
-    b.textContent = WEAPONS[id].name;
-    b.className = id === current ? 'sel' : '';
-    b.onclick = () => {
-      settings.primary = id;
-      store.set('primary', id);
-      game.nextPrimary = id;
-      renderPrimary($('primary-pick'));
-      renderPrimary($('pause-primary'));
-    };
-    el.appendChild(b);
-  }
+  SLOTS.forEach((options, slot) => {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML = `<span>${SLOT_NAMES[slot]}</span>`;
+    const pick = document.createElement('div');
+    pick.className = 'pick';
+    for (const id of options) {
+      const b = document.createElement('button');
+      b.textContent = SHORT[id];
+      b.title = WEAPONS[id].name;
+      b.className = settings.loadout[slot] === id ? 'sel' : '';
+      b.onclick = () => {
+        settings.loadout[slot] = id;
+        store.set('loadout', settings.loadout);
+        game.nextLoadout = settings.loadout.slice();
+        renderLoadout($('menu-loadout'));
+        renderLoadout($('pause-loadout'));
+      };
+      pick.appendChild(b);
+    }
+    row.appendChild(pick);
+    el.appendChild(row);
+  });
 }
 
 function status(msg, err = false) {
@@ -71,8 +82,21 @@ $('sens').addEventListener('input', () => {
   game.sens = settings.sens;
   store.set('sens', settings.sens);
 });
+for (const id of MAP_ORDER) {
+  const o = document.createElement('option');
+  o.value = id;
+  o.textContent = MAPS[id].name;
+  $('map-pick').appendChild(o);
+}
+$('map-pick').value = settings.map;
+$('map-pick').addEventListener('change', () => {
+  settings.map = $('map-pick').value;
+  store.set('map', settings.map);
+  game.loadMap(settings.map); // preview behind the menu
+});
+game.loadMap(settings.map);
 renderColors();
-renderPrimary($('primary-pick'));
+renderLoadout($('menu-loadout'));
 
 const urlCode = new URLSearchParams(location.search).get('lobby');
 if (urlCode) $('join-code').value = urlCode.toUpperCase().slice(0, 5);
@@ -87,7 +111,7 @@ function newNet() {
   const n = new Net();
   n.onMessage = (m) => game.onNet(m);
   n.onClose = (reason) => leave(reason);
-  game.attach(n, { primary: settings.primary, color: settings.color, sens: settings.sens });
+  game.attach(n, { loadout: settings.loadout, color: settings.color, sens: settings.sens });
   return n;
 }
 
@@ -95,12 +119,13 @@ function enterGame() {
   $('menu').classList.add('hidden');
   $('pause-code').textContent = net.code;
   $('pause-title').textContent = net.isHost ? 'LOBBY CREATED' : 'JOINED LOBBY';
+  $('btn-resume').textContent = 'Click to play';
   history.replaceState(null, '', '?lobby=' + net.code);
   showPause();
 }
 
 function showPause() {
-  renderPrimary($('pause-primary'));
+  renderLoadout($('pause-loadout'));
   $('pause').classList.remove('hidden');
 }
 
@@ -113,7 +138,7 @@ async function hostLobby() {
     status(`Creating lobby ${code}…`);
     net = newNet();
     try {
-      await net.host(code, settings.name || 'Player', settings.color);
+      await net.host(code, settings.name || 'Player', settings.color, settings.map);
       setBusy(false);
       status('');
       enterGame();
@@ -152,6 +177,7 @@ async function joinLobby() {
 function leave(reason) {
   if (net) { net.destroy(); net = null; }
   game.reset();
+  game.loadMap(settings.map);
   $('pause').classList.add('hidden');
   $('menu').classList.remove('hidden');
   history.replaceState(null, '', location.pathname);

@@ -24,6 +24,7 @@
 <div id="hud" class="hidden">
   <div id="crosshair"><i class="t"></i><i class="b"></i><i class="l"></i><i class="r"></i><b></b></div>
   <div id="hitmarker"><i></i><i></i><i></i><i></i></div>
+  <div id="scope" class="hidden"><i class="h"></i><i class="v"></i></div>
   <div id="vignette"></div>
   <div id="dmg-dir"></div>
 
@@ -54,7 +55,7 @@
     <div class="big">ELIMINATED</div>
     <div id="death-by"></div>
     <div id="death-timer"></div>
-    <div class="small">Next life primary: <span id="death-primary"></span> &nbsp;·&nbsp; press <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> to change</div>
+    <div class="small">Press <kbd>Esc</kbd> to change your loadout</div>
   </div>
 
   <div id="endscreen" class="hidden">
@@ -77,10 +78,13 @@
       <div id="colors" class="swatches"></div>
     </div>
     <div class="field">
-      <label>Primary weapon</label>
-      <div id="primary-pick" class="pick"></div>
+      <label>Loadout</label>
+      <div id="menu-loadout" class="loadout"></div>
     </div>
-    <div class="loadout-note">Secondary: Pistol &nbsp;·&nbsp; Melee: Knife &nbsp;·&nbsp; Utility: 2× Frag</div>
+    <div class="field">
+      <label for="map-pick">Starting map (maps rotate each match)</label>
+      <select id="map-pick"></select>
+    </div>
     <div class="actions">
       <button id="btn-host" class="primary">Create Lobby</button>
       <div class="join">
@@ -97,7 +101,8 @@
         <span><kbd>Space</kbd> jump</span><span><kbd>Shift</kbd> sprint</span>
         <span><kbd>Ctrl</kbd>/<kbd>C</kbd> crouch</span><span><kbd>R</kbd> reload</span>
         <span><kbd>1-4</kbd> / wheel switch</span><span><kbd>G</kbd> quick frag</span>
-        <span><kbd>F</kbd> quick melee</span><span><kbd>Tab</kbd> scoreboard</span>
+        <span><kbd>F</kbd> quick melee</span><span><kbd>T</kbd> inspect</span>
+        <span><kbd>Tab</kbd> scoreboard</span><span><kbd>Esc</kbd> loadout / pause</span>
       </div>
     </details>
   </div>
@@ -113,8 +118,8 @@
       <button id="btn-copy">Copy invite link</button>
     </div>
     <div class="field">
-      <label>Primary (next spawn)</label>
-      <div id="pause-primary" class="pick"></div>
+      <label>Loadout (applies next spawn)</label>
+      <div id="pause-loadout" class="loadout"></div>
     </div>
     <div class="field">
       <label for="sens">Mouse sensitivity <span id="sens-val"></span></label>

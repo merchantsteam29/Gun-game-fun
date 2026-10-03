@@ -1,4 +1,4 @@
-import { spawns } from './map.js';
+import { spawns, setMapData, MAP_ORDER, MAPS } from './maps.js';
 
 export const KILL_LIMIT = 25;
 export const MATCH_SECONDS = 600;
@@ -10,7 +10,9 @@ const TICK_MS = 50;
 // Authoritative game state that runs inside the lobby creator's browser.
 // Movement and aiming are client-side; health, kills, spawns and the match clock live here.
 export class HostLogic {
-  constructor(sendTo, broadcast) {
+  constructor(sendTo, broadcast, map) {
+    this.map = MAPS[map] ? map : MAP_ORDER[0];
+    setMapData(this.map);
     this.sendTo = sendTo;
     this.broadcast = broadcast;
     this.players = new Map();
@@ -27,13 +29,14 @@ export class HostLogic {
     name = String(name || 'Player').slice(0, 16);
     const p = {
       id, name, color, kills: 0, deaths: 0, hp: 100, alive: false,
-      st: [0, -50, 0, 0, 0, 'ar', 0], lastDmg: 0, respawnAt: 0, protectUntil: 0,
+      st: [0, -50, 0, 0, 0, 'ar', 0, 0], lastDmg: 0, respawnAt: 0, protectUntil: 0,
     };
     this.players.set(id, p);
     this.sendTo(id, {
       t: 'welcome', id,
       players: [...this.players.values()].map((q) => ({ id: q.id, name: q.name, color: q.color, k: q.kills, d: q.deaths })),
       killLimit: KILL_LIMIT,
+      map: this.map,
     });
     this.broadcast({ t: 'pjoin', id, name, color }, id);
     if (this.phase === 'playing') this.spawn(p);
@@ -71,9 +74,9 @@ export class HostLogic {
     if (!p) return;
     switch (m.t) {
       case 'st':
-        if (p.alive && Array.isArray(m.p)) p.st = [m.p[0], m.p[1], m.p[2], m.y, m.pi, m.w, m.c ? 1 : 0];
+        if (p.alive && Array.isArray(m.p)) p.st = [m.p[0], m.p[1], m.p[2], m.y, m.pi, m.w, m.c ? 1 : 0, m.a | 0];
         break;
-      case 'shot': case 'proj': case 'boom':
+      case 'shot': case 'proj': case 'boom': case 'fx':
         this.broadcast({ ...m, id }, id);
         break;
       case 'hit':
@@ -86,7 +89,7 @@ export class HostLogic {
     if (this.phase !== 'playing') return;
     const v = this.players.get(m.v);
     if (!v || !v.alive) return;
-    const explosive = m.w === 'gl' || m.w === 'frag';
+    const explosive = m.w === 'gl' || m.w === 'frag' || m.w === 'sticky';
     if (!attacker.alive && !explosive) return;
     const now = Date.now();
     if (now < v.protectUntil && v !== attacker) return;
@@ -111,7 +114,7 @@ export class HostLogic {
     const scores = [...this.players.values()]
       .map((p) => ({ id: p.id, name: p.name, color: p.color, k: p.kills, d: p.deaths }))
       .sort((a, b) => b.k - a.k || a.d - b.d);
-    return { t: 'end', scores, next: Math.max(0, Math.ceil((this.restartAt - Date.now()) / 1000)) };
+    return { t: 'end', scores, next: Math.max(0, Math.ceil((this.restartAt - Date.now()) / 1000)), nextMap: this.nextMap() };
   }
 
   endMatch() {
@@ -121,11 +124,17 @@ export class HostLogic {
     this.broadcast(this.endMsg());
   }
 
+  nextMap() {
+    return MAP_ORDER[(MAP_ORDER.indexOf(this.map) + 1) % MAP_ORDER.length];
+  }
+
   startMatch() {
+    this.map = this.nextMap();
+    setMapData(this.map);
     this.phase = 'playing';
     this.endsAt = Date.now() + MATCH_SECONDS * 1000;
     for (const p of this.players.values()) { p.kills = 0; p.deaths = 0; }
-    this.broadcast({ t: 'start' });
+    this.broadcast({ t: 'start', map: this.map });
     for (const p of this.players.values()) this.spawn(p);
   }
 
@@ -147,7 +156,7 @@ export class HostLogic {
     const s = {};
     for (const p of this.players.values()) {
       const st = p.st;
-      s[p.id] = [r2(st[0]), r2(st[1]), r2(st[2]), r2(st[3]), r2(st[4]), st[5], st[6], p.alive ? 1 : 0, Math.ceil(p.hp), p.kills, p.deaths];
+      s[p.id] = [r2(st[0]), r2(st[1]), r2(st[2]), r2(st[3]), r2(st[4]), st[5], st[6], p.alive ? 1 : 0, Math.ceil(p.hp), p.kills, p.deaths, st[7]];
     }
     const tl = this.phase === 'playing' ? Math.max(0, Math.ceil((this.endsAt - now) / 1000)) : 0;
     this.broadcast({ t: 'snap', s, tl });
