@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Warehouse FFA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<!-- In-game HUD -->
+<div id="hud" class="hidden">
+  <div id="crosshair"><i class="t"></i><i class="b"></i><i class="l"></i><i class="r"></i><b></b></div>
+  <div id="hitmarker"><i></i><i></i><i></i><i></i></div>
+  <div id="vignette"></div>
+  <div id="dmg-dir"></div>
+
+  <div id="lobby-tag"></div>
+  <div id="match-info"><div id="timer">10:00</div><div id="leader"></div></div>
+  <div id="killfeed"></div>
+  <div id="notice"></div>
+
+  <div id="health">
+    <div class="label">HP</div>
+    <div class="bar"><div id="hp-fill"></div></div>
+    <div id="hp-num">100</div>
+  </div>
+
+  <div id="weapon-info">
+    <div id="ammo"><span id="ammo-cur">30</span><span id="ammo-mag">/ 30</span></div>
+    <div id="wname">Assault Rifle</div>
+    <div id="slots"></div>
+  </div>
+  <div id="reload-hint">RELOADING</div>
+
+  <div id="scoreboard" class="hidden">
+    <h2>FREE FOR ALL</h2>
+    <table><thead><tr><th></th><th>Player</th><th>K</th><th>D</th><th>K/D</th></tr></thead><tbody id="sb-body"></tbody></table>
+  </div>
+
+  <div id="death" class="hidden">
+    <div class="big">ELIMINATED</div>
+    <div id="death-by"></div>
+    <div id="death-timer"></div>
+    <div class="small">Next life primary: <span id="death-primary"></span> &nbsp;·&nbsp; press <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> to change</div>
+  </div>
+
+  <div id="endscreen" class="hidden">
+    <div class="big" id="end-title">MATCH OVER</div>
+    <table><tbody id="end-body"></tbody></table>
+    <div id="end-timer"></div>
+  </div>
+</div>
+
+<!-- Main menu -->
+<div id="menu" class="overlay">
+  <div class="panel">
+    <h1>WAREHOUSE <span>FFA</span></h1>
+    <div class="field">
+      <label for="name">Callsign</label>
+      <input id="name" maxlength="16" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="field">
+      <label>Color</label>
+      <div id="colors" class="swatches"></div>
+    </div>
+    <div class="field">
+      <label>Primary weapon</label>
+      <div id="primary-pick" class="pick"></div>
+    </div>
+    <div class="loadout-note">Secondary: Pistol &nbsp;·&nbsp; Melee: Knife &nbsp;·&nbsp; Utility: 2× Frag</div>
+    <div class="actions">
+      <button id="btn-host" class="primary">Create Lobby</button>
+      <div class="join">
+        <input id="join-code" maxlength="5" placeholder="CODE" autocomplete="off" spellcheck="false">
+        <button id="btn-join">Join</button>
+      </div>
+    </div>
+    <p id="menu-status"></p>
+    <details class="controls">
+      <summary>Controls</summary>
+      <div class="grid">
+        <span><kbd>WASD</kbd> move</span><span><kbd>Mouse</kbd> aim</span>
+        <span><kbd>LMB</kbd> fire</span><span><kbd>RMB</kbd> aim down sights</span>
+        <span><kbd>Space</kbd> jump</span><span><kbd>Shift</kbd> sprint</span>
+        <span><kbd>Ctrl</kbd>/<kbd>C</kbd> crouch</span><span><kbd>R</kbd> reload</span>
+        <span><kbd>1-4</kbd> / wheel switch</span><span><kbd>G</kbd> quick frag</span>
+        <span><kbd>F</kbd> quick melee</span><span><kbd>Tab</kbd> scoreboard</span>
+      </div>
+    </details>
+  </div>
+</div>
+
+<!-- Pause / click-to-play -->
+<div id="pause" class="overlay hidden">
+  <div class="panel small">
+    <h2 id="pause-title">PAUSED</h2>
+    <div class="code-box">
+      <div class="label">Lobby code</div>
+      <div id="pause-code">-----</div>
+      <button id="btn-copy">Copy invite link</button>
+    </div>
+    <div class="field">
+      <label>Primary (next spawn)</label>
+      <div id="pause-primary" class="pick"></div>
+    </div>
+    <div class="field">
+      <label for="sens">Mouse sensitivity <span id="sens-val"></span></label>
+      <input id="sens" type="range" min="0.2" max="3" step="0.05">
+    </div>
+    <div class="actions">
+      <button id="btn-resume" class="primary">Click to play</button>
+      <button id="btn-leave" class="danger">Leave lobby</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
