@@ -56,6 +56,16 @@ export class Hud {
     ).join('');
   }
 
+  // White-out that fades over up to ~4 seconds.
+  flash(amount) {
+    const el = $('flash');
+    el.style.transition = 'none';
+    el.style.opacity = Math.max(Number(el.style.opacity) || 0, amount);
+    void el.offsetWidth;
+    el.style.transition = `opacity ${1 + amount * 3}s ease-in ${amount * 0.8}s`;
+    el.style.opacity = 0;
+  }
+
   reloading(v) { $('reload-hint').classList.toggle('show', v); }
 
   scope(v) {

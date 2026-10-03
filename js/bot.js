@@ -3,11 +3,11 @@ import { WEAPONS } from './weapons.js';
 
 const WALK = 5.6, JUMP = 8, EYE = 1.62;
 const DIFF = {
-  easy: { react: 0.85, err: 0.1, turn: 3.5, see: 35, pause: 0.6 },
-  normal: { react: 0.45, err: 0.05, turn: 7, see: 55, pause: 0.25 },
-  hard: { react: 0.22, err: 0.022, turn: 12, see: 80, pause: 0.08 },
+  easy: { react: 1.4, err: 0.2, turn: 2.2, see: 26, pause: 1.1, fov: 1.2, head: 0, forget: 0.5 },
+  normal: { react: 0.85, err: 0.11, turn: 4, see: 38, pause: 0.55, fov: 1.4, head: 0.03, forget: 0.25 },
+  hard: { react: 0.5, err: 0.055, turn: 6.5, see: 52, pause: 0.3, fov: 1.6, head: 0.1, forget: 0.1 },
 };
-export const BOT_PRIMARIES = ['ar', 'smg', 'burst', 'lmg', 'shotgun'];
+export const BOT_PRIMARIES = ['ar', 'smg', 'burst', 'lmg', 'shotgun', 'dmr', 'doublebarrel'];
 export const BOT_NAMES = ['Viper', 'Ghost', 'Razor', 'Blaze', 'Echo', 'Havoc', 'Nova', 'Raptor', 'Specter', 'Talon', 'Onyx', 'Fang', 'Jinx', 'Rook'];
 
 const angDiff = (a, b) => ((((b - a + Math.PI) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)) - Math.PI;
@@ -95,11 +95,13 @@ export class Bot {
       const dist = Math.hypot(e.st[0] - b.pos.x, e.st[2] - b.pos.z);
       if (dist >= bestD) continue;
       const ang = Math.abs(angDiff(this.yaw, Math.atan2(-(e.st[0] - b.pos.x), -(e.st[2] - b.pos.z))));
-      if (ang > 1.9 && dist > 4 && e !== this.target) continue;
+      if (ang > d.fov && dist > 3 && e !== this.target) continue;
       if (!this.visible(e, eye)) continue;
       best = e; bestD = dist;
     }
-    if (best !== this.target) { this.target = best; this.reactT = d.react * (0.7 + Math.random() * 0.6); }
+    // Bots sometimes lose track of a target they were already fighting.
+    if (best && best === this.target && Math.random() < d.forget * dt) best = null;
+    if (best !== this.target) { this.target = best; this.reactT = d.react * (0.7 + Math.random() * 0.8); }
     if (best) { this.lastSeen = { x: best.st[0], y: best.st[1], z: best.st[2] }; this.lastSeenT = 5; }
     this.lastSeenT -= dt;
     this.reactT -= dt;
@@ -181,7 +183,7 @@ export class Bot {
         this.aimErr.y = (Math.random() - 0.5) * 2 * d.err;
       }
       const t = this.target;
-      const headshot = this.difficulty === 'hard' && Math.random() < 0.3;
+      const headshot = Math.random() < d.head;
       const tx = t.st[0] - eye.x, ty = t.st[1] + (headshot ? 1.6 : 1.15) - eye.y, tz = t.st[2] - eye.z;
       wantYaw = Math.atan2(-tx, -tz) + this.aimErr.x;
       wantPitch = Math.atan2(ty, Math.hypot(tx, tz)) + this.aimErr.y;
@@ -200,7 +202,7 @@ export class Bot {
       this.reloadT -= dt;
       if (this.reloadT <= 0) this.ammo = w.mag;
     }
-    if (this.target && this.reactT <= 0 && this.fireCd <= 0 && this.reloadT <= 0 && this.pauseT <= 0 && Math.abs(dy) < 0.25) {
+    if (this.target && this.reactT <= 0 && this.fireCd <= 0 && this.reloadT <= 0 && this.pauseT <= 0 && Math.abs(dy) < 0.15) {
       if (melee) {
         if (bestD < (w.range || 2.4)) this.melee(w);
       } else if (bestD < (w.range || 100)) this.shoot(w, eye);
@@ -222,13 +224,14 @@ export class Bot {
     const L = this.logic;
     this.fireCd = w.rate;
     if (!L.s.infiniteAmmo) this.ammo--;
-    if (!w.auto || Math.random() < 0.15) this.pauseT = this.d.pause * Math.random();
+    if (!w.auto || Math.random() < 0.3) this.pauseT = this.d.pause * (0.5 + Math.random());
     const cy = Math.cos(this.pitch);
     const fx = -Math.sin(this.yaw) * cy, fy = Math.sin(this.pitch), fz = -Math.cos(this.yaw) * cy;
     const ends = [];
     const hits = new Map();
     for (let i = 0; i < (w.pellets || 1); i++) {
-      const s = w.spread + this.d.err * 0.3;
+      const moving = Math.hypot(this.body.vel.x, this.body.vel.z) > 1 ? 1.5 : 1;
+      const s = (w.spread + this.d.err * 0.6) * moving;
       let dx = fx + (Math.random() - 0.5) * 2 * s, dy = fy + (Math.random() - 0.5) * 2 * s, dz = fz + (Math.random() - 0.5) * 2 * s;
       const l = Math.hypot(dx, dy, dz);
       dx /= l; dy /= l; dz /= l;

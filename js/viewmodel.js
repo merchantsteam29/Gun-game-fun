@@ -10,8 +10,12 @@ const HIP = {
   pistol: [0.15, -0.15, -0.38], revolver: [0.15, -0.15, -0.38], mpistol: [0.15, -0.15, -0.38],
   knife: [0.2, -0.2, -0.36], axe: [0.2, -0.24, -0.34], claws: [0.2, -0.22, -0.36],
   frag: [0.17, -0.18, -0.34], sticky: [0.17, -0.18, -0.34], smoke: [0.17, -0.18, -0.34],
+  dmr: [0.17, -0.17, -0.42], minigun: [0.2, -0.25, -0.45], doublebarrel: [0.17, -0.17, -0.42],
+  rocket: [0.2, -0.21, -0.36], crossbow: [0.17, -0.18, -0.4], handcannon: [0.15, -0.15, -0.38],
+  sawedoff: [0.15, -0.15, -0.36], katana: [0.2, -0.24, -0.36], bat: [0.2, -0.25, -0.34],
+  flash: [0.17, -0.18, -0.34], tknife: [0.17, -0.18, -0.34],
 };
-const REST_ROT = { knife: [0.25, 0.15, -0.35], axe: [0.55, 0.1, -0.15], claws: [0.35, 0.1, -0.2] };
+const REST_ROT = { knife: [0.25, 0.15, -0.35], axe: [0.55, 0.1, -0.15], claws: [0.35, 0.1, -0.2], katana: [0.75, 0.15, -0.35], bat: [0.7, 0.1, -0.2], tknife: [0.25, 0.1, -0.3] };
 const SHOULDER_R = new THREE.Vector3(0.21, -0.4, 0.04);
 const SHOULDER_L = new THREE.Vector3(-0.16, -0.42, -0.02);
 const POLE_R = new THREE.Vector3(1, -1.2, 0.3);
@@ -90,6 +94,7 @@ export class Viewmodel {
     this.bobT = 0;
     this.sway = new THREE.Vector2();
     this.pos = new THREE.Vector3(...HIP.ar);
+    this.spinAngle = 0;
     this.rot = new THREE.Vector3();
     this.tPos = new THREE.Vector3();
     this.tRot = new THREE.Vector3();
@@ -122,7 +127,7 @@ export class Viewmodel {
 
   fire(w) {
     this.inspectT = -1;
-    const big = w.type === 'proj' || w.id === 'shotgun' || w.id === 'sniper' || w.id === 'revolver';
+    const big = w.type === 'proj' || ['shotgun', 'sniper', 'revolver', 'doublebarrel', 'sawedoff', 'handcannon', 'dmr'].includes(w.id);
     this.kick = Math.min(1.4, this.kick + (big ? 1 : 0.45));
     this.kickYaw = (Math.random() - 0.5) * (big ? 0.12 : 0.05);
     this.flashT = 0.05;
@@ -130,7 +135,7 @@ export class Viewmodel {
     if (w.id === 'revolver') this.cylTarget += Math.PI / 3;
     if (w.id === 'gl') this.cylTarget += Math.PI / 2;
     if (w.cycle) this.cycleAnim = { name: w.cycle, t: -0.12, dur: w.cycle === 'bolt' ? 0.8 : 0.45 };
-    else if (w.type === 'gun' && w.id !== 'revolver') this.eject();
+    else if (w.type === 'gun' && !['revolver', 'doublebarrel', 'sawedoff'].includes(w.id)) this.eject();
   }
 
   eject() {
@@ -190,7 +195,7 @@ export class Viewmodel {
     if (s.reload >= 0 || s.sprint) this.inspectT = -1;
 
     // ----- Base pose -----
-    const tp = this.tPos.fromArray(HIP[id]);
+    const tp = this.tPos.fromArray(HIP[id] || HIP.ar);
     const tr = this.tRot.set(0, 0, 0);
     if (REST_ROT[id]) tr.fromArray(REST_ROT[id]);
     tp.lerp(_v.fromArray(m.ads), this.adsT);
@@ -222,7 +227,8 @@ export class Viewmodel {
     if (P.cyl) P.cyl.rotation.z = this.cylAngle;
 
     let leftKeys = null, rightKeys = null, leftP = 0, rightP = 0;
-    let leftMode = w.type === 'gun' || w.type === 'proj' || id === 'axe' ? 'fore' : 'restL';
+    let leftMode = P.fore ? 'fore' : 'restL';
+    if (P.spin) P.spin.rotation.z += dt * 45 * (s.spin || 0);
 
     // ----- Reload -----
     if (s.reload >= 0 && !this.quick) {

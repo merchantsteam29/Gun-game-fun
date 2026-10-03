@@ -22,6 +22,7 @@ const _f = new THREE.Vector3(), _r = new THREE.Vector3(), _u = new THREE.Vector3
 const _c = new THREE.Vector3(), _d = new THREE.Vector3(), _n = new THREE.Vector3();
 const _q = new THREE.Quaternion(), _m4 = new THREE.Matrix4();
 const UP = new THREE.Vector3(0, 1, 0);
+const FWD = new THREE.Vector3(0, 0, -1);
 const r2 = (v) => Math.round(v * 100) / 100;
 const arr = (v) => [r2(v.x), r2(v.y), r2(v.z)];
 
@@ -82,7 +83,7 @@ export class Game {
     this.ammo = {};
     this.util = 0;
     this.fireCd = 0; this.switchT = 0; this.reloadT = 0; this.autoSwitchT = 0;
-    this.burstLeft = 0; this.burstT = 0;
+    this.burstLeft = 0; this.burstT = 0; this.spin = 0;
     this.pendingMelee = null; this.pendingThrow = null; this.cycleSfxT = 0;
     this.recoil = 0; this.shake = 0; this.flinch = 0; this.landDip = 0;
     this.bobPhase = 0; this.stepAcc = 0; this.roll = 0;
@@ -355,9 +356,10 @@ export class Game {
       case 'proj': {
         const p = new THREE.Vector3(...m.p);
         this.spawnProjectile(m.k, p, new THREE.Vector3(...m.v), false, m.id, m.pid);
-        this.posSound(m.k === 'gl' ? sfx.gl : sfx.throw, p, 0.9);
+        const W = WEAPONS[m.k];
+        this.posSound(W && W.type === 'proj' ? sfx[m.k] || sfx.gl : sfx.throw, p, 0.9);
         const r = this.remotes.get(m.id);
-        if (r && m.k !== 'gl') r.throwAnim();
+        if (r && W) { if (W.type === 'proj') r.fire(); else r.throwAnim(); }
         break;
       }
       case 'boom': this.remoteBoom(m); break;
@@ -522,7 +524,7 @@ export class Game {
     else { this.ads = false; this.scoped = false; }
 
     let fovTarget = 75;
-    if (this.ads) fovTarget = w.scope ? (this.vm.adsT > 0.85 ? w.zoom : 50) : w.type === 'proj' ? 62 : 55;
+    if (this.ads) fovTarget = w.scope ? (this.vm.adsT > 0.85 ? w.zoom : 50) : w.adsFov || (w.type === 'proj' ? 62 : 55);
     if (Math.abs(cam.fov - fovTarget) > 0.05) {
       cam.fov += (fovTarget - cam.fov) * Math.min(1, dt * (w.scope ? 20 : 14));
       cam.updateProjectionMatrix();
@@ -549,6 +551,7 @@ export class Game {
       speed: hs, strafe, vy: me.vel.y, ads: this.ads, sprint: this.sprinting, onGround: me.onGround,
       reload: this.reloadT > 0 && w.reload ? 1 - this.reloadT / w.reload : -1,
       hasUtil: this.util > 0,
+      spin: w.spinup ? this.spin / w.spinup : 0,
     });
     this.updateHud(dt, now);
   }
@@ -694,7 +697,15 @@ export class Game {
       }
     }
 
-    if (this.mouse.left) this.tryFire();
+    // Minigun: barrels spin up while the trigger is held.
+    if (w.spinup) {
+      const want = this.mouse.left && this.reloadT <= 0 && this.switchT <= 0;
+      const before = this.spin;
+      this.spin = want ? Math.min(w.spinup, this.spin + dt) : Math.max(0, this.spin - dt * 0.8);
+      if (want && before === 0) sfx.cycle(0.4);
+    } else this.spin = 0;
+
+    if (this.mouse.left && (!w.spinup || this.spin >= w.spinup)) this.tryFire();
 
     if ((w.type === 'gun' || w.type === 'proj') && this.ammo[id] === 0 && this.reloadT <= 0 && this.fireCd <= 0 && this.switchT <= 0 && this.burstLeft === 0) {
       this.startReload();
@@ -724,7 +735,7 @@ export class Game {
     const muzzle = this.scoped ? this.camera.position.clone().addScaledVector(this.camera.getWorldDirection(_d), 0.4).addScaledVector(UP, -0.1)
       : this.vm.muzzleWorld(this.camera, new THREE.Vector3());
     this.fx.muzzleFlash(muzzle);
-    if (w.type === 'proj') this.launchGrenade();
+    if (w.type === 'proj') this.launchProjectile(id);
     else this.hitscan(id, w, muzzle);
   }
 
@@ -793,7 +804,7 @@ export class Game {
     const w = WEAPONS[this.loadout[this.meleeSlot()]] || WEAPONS.knife;
     this.fireCd = w.rate;
     this.vm.swing(w.style);
-    (w.id === 'axe' ? sfx.axe : sfx.knife)(0.7);
+    (sfx[w.id] || sfx.knife)(0.7);
     this.net.send({ t: 'fx', k: 'melee', s: w.style });
     this.pendingMelee = { w, t: w.hitDelay };
   }
@@ -817,7 +828,12 @@ export class Game {
     if (!best) return;
     const theirFwdX = -Math.sin(best.yaw), theirFwdZ = -Math.cos(best.yaw);
     const back = theirFwdX * -Math.sin(me.yaw) + theirFwdZ * -Math.cos(me.yaw) > 0.55;
-    this.net.send({ t: 'hit', v: best.id, dmg: back ? w.backstab : w.dmg, w: w.id, head: back });
+    let imp = null;
+    if (w.knockback) {
+      const k = w.knockback;
+      imp = [r2(_f.x * k), r2(Math.max(0.3, _f.y) * k * 0.4 + 4), r2(_f.z * k)];
+    }
+    this.net.send({ t: 'hit', v: best.id, dmg: back ? w.backstab : w.dmg, w: w.id, head: back, imp });
     this.fx.blood(best.center(_c));
     this.hud.hit(back ? 'head' : null);
     this.shake = Math.max(this.shake, 0.15);
@@ -832,13 +848,13 @@ export class Game {
     return o.clone().addScaledVector(_f, wh ? Math.max(0, wh.t - 0.2) : dist);
   }
 
-  launchGrenade() {
-    const w = WEAPONS.gl;
+  launchProjectile(id) {
+    const w = WEAPONS[id];
     const p = this.launchPoint(0.5);
     const v = _f.clone().multiplyScalar(w.projSpeed);
     const pid = ++this.pid;
-    this.spawnProjectile('gl', p, v, true, this.myId, pid);
-    this.net.send({ t: 'proj', pid, k: 'gl', p: arr(p), v: arr(v) });
+    this.spawnProjectile(id, p, v, true, this.myId, pid);
+    this.net.send({ t: 'proj', pid, k: id, p: arr(p), v: arr(v) });
   }
 
   throwUtil(quick) {
@@ -858,7 +874,7 @@ export class Game {
     const p = this.launchPoint(0.5);
     p.y -= 0.1;
     const v = _f.clone().multiplyScalar(w.throwSpeed);
-    v.y += 3;
+    v.y += w.bolt ? 1 : 3;
     v.addScaledVector(this.me.vel, 0.5);
     const pid = ++this.pid;
     this.spawnProjectile(id, p, v, true, this.myId, pid);
@@ -894,39 +910,54 @@ export class Game {
         else { p.attach = null; p.rest = false; p.vel.set(0, 0, 0); }
       }
       if (!p.rest && !p.attach) {
-        p.vel.y -= (p.kind === 'gl' ? W.projGravity : BOUNCE_GRAVITY) * dt;
+        // impact: explodes or embeds on contact (launchers, bolts, knives); otherwise it bounces.
+        const impact = W.type === 'proj' || W.bolt;
+        p.vel.y -= (W.projGravity ?? BOUNCE_GRAVITY) * dt;
         const step = p.vel.length() * dt;
         const dir = _d.copy(p.vel).normalize();
         const wh = step > 0 ? raycast(p.pos.x, p.pos.y, p.pos.z, dir.x, dir.y, dir.z, step) : null;
         let travel = wh ? wh.t : step;
 
-        let victim = null;
-        if (p.local && (p.kind === 'gl' || p.kind === 'sticky')) {
+        let victim = null, head = false;
+        if (p.local && (impact || p.kind === 'sticky')) {
+          const pad = W.bolt ? 0.04 : 0.1;
           for (const rp of this.remotes.values()) {
             if (!rp.alive || this.isAlly(rp)) continue;
             for (const hb of rp.hitboxes()) {
               const t = rayAABB(p.pos.x, p.pos.y, p.pos.z, dir.x, dir.y, dir.z,
-                hb.x0 - 0.1, hb.y0 - 0.1, hb.z0 - 0.1, hb.x1 + 0.1, hb.y1 + 0.1, hb.z1 + 0.1, travel);
-              if (t >= 0 && t < travel) { travel = t; victim = rp; }
+                hb.x0 - pad, hb.y0 - pad, hb.z0 - pad, hb.x1 + pad, hb.y1 + pad, hb.z1 + pad, travel);
+              if (t >= 0 && t < travel) { travel = t; victim = rp; head = hb.head; }
             }
           }
         }
         p.pos.addScaledVector(dir, travel);
+        if (W.trail && Math.random() < 0.7) this.fx.burst(p.pos, null, '#9a9692', 1, 0.6, 0.12, 0.6);
 
-        if (p.kind === 'gl') {
+        if (impact) {
           if (victim) {
-            this.net.send({ t: 'hit', v: victim.id, dmg: W.directDmg, w: 'gl', head: false });
-            this.hud.hit('head');
-            this.explode(p, victim.id);
+            const dmg = Math.round(W.directDmg * (head && W.head ? W.head : 1));
+            this.net.send({ t: 'hit', v: victim.id, dmg, w: p.kind, head });
+            this.hud.hit(head || dmg >= 100 ? 'head' : null);
+            (head ? sfx.head : sfx.hit)(0.8);
+            if (W.bolt) { this.fx.blood(p.pos); this.net.send({ t: 'boom', pid: p.pid, p: arr(p.pos), k: p.kind }); this.removeProjectile(p); }
+            else this.explode(p, victim.id);
             continue;
           }
           if (wh) {
-            p.pos.addScaledVector(_n.set(wh.nx, wh.ny, wh.nz), 0.15);
-            if (p.local) { this.explode(p, null); continue; }
-            p.rest = true;
-            p.vel.set(0, 0, 0);
+            if (W.bolt) {
+              // Embed in the surface and stay there for a while.
+              p.pos.addScaledVector(dir, 0.08);
+              p.rest = true;
+              p.vel.set(0, 0, 0);
+              this.posSound(sfx.thunk, p.pos, 0.7);
+            } else {
+              p.pos.addScaledVector(_n.set(wh.nx, wh.ny, wh.nz), 0.15);
+              if (p.local) { this.explode(p, null); continue; }
+              p.rest = true;
+              p.vel.set(0, 0, 0);
+            }
           }
-          if (p.vel.lengthSq() > 0) p.mesh.quaternion.setFromUnitVectors(UP, dir);
+          if (p.vel.lengthSq() > 0 && p.mesh.userData.aligned) p.mesh.quaternion.setFromUnitVectors(FWD, dir);
         } else if (p.kind === 'sticky') {
           if (victim) {
             const off = p.pos.clone().sub(victim.pos);
@@ -959,10 +990,12 @@ export class Game {
         p.beep -= dt;
         if (p.beep <= 0) { p.beep = Math.max(0.12, 0.45 - p.age * 0.15); this.posSound(sfx.beep, p.pos, 0.5); }
       }
-      if (p.local) {
-        const fuse = p.kind === 'gl' ? 5 : W.fuse;
-        if (p.age >= fuse) this.explode(p, null);
-      } else if (p.age > (p.kind === 'gl' ? 6 : W.fuse + 1.5)) {
+      const life = W.bolt ? 8 : W.type === 'proj' ? 5 : W.fuse;
+      if (W.bolt) {
+        if (p.age >= life) this.removeProjectile(p);
+      } else if (p.local) {
+        if (p.age >= life) this.explode(p, null);
+      } else if (p.age > life + 1.5) {
         this.removeProjectile(p);
       }
     }
@@ -981,6 +1014,21 @@ export class Game {
     this.shake = Math.max(this.shake, clamp(1 - d / 16, 0, 1) * 0.8);
   }
 
+  // Blinds the local player based on distance, line of sight and whether they were facing it.
+  flashFx(pos) {
+    this.fx.burst(pos, null, '#ffffff', 10, 6, 0.06, 0.3);
+    this.fx.muzzleFlash(pos);
+    this.posSound(sfx.flashbang, pos, 1.1);
+    if (!this.me.alive) return;
+    const cam = this.camera.position;
+    const d = cam.distanceTo(pos);
+    const R = WEAPONS.flash.radius;
+    if (d > R || !this.los(pos, cam)) return;
+    const facing = this.camera.getWorldDirection(_c).dot(_n.subVectors(pos, cam).normalize());
+    const amount = (1 - d / R) * (facing > 0 ? 0.65 + 0.35 * facing : 0.3) + (d < 4 ? 0.3 : 0);
+    this.hud.flash(Math.min(1, amount));
+  }
+
   smokeFx(pos) {
     const W = WEAPONS.smoke;
     this.fx.smoke(pos, W.radius, W.smokeTime);
@@ -994,6 +1042,7 @@ export class Game {
     const W = WEAPONS[p.kind], R = W.radius;
     this.net.send({ t: 'boom', pid: p.pid, p: arr(p.pos), k: p.kind });
     if (W.smoke) { this.smokeFx(p.pos); return; }
+    if (W.flash) { this.flashFx(p.pos); return; }
     this.boomFx(p.pos, R);
 
     let any = false;
@@ -1030,9 +1079,12 @@ export class Game {
     const p = this.projectiles.find((q) => q.owner === m.id && q.pid === m.pid);
     if (p) this.removeProjectile(p);
     const kind = m.k || (p ? p.kind : 'gl');
+    const W = WEAPONS[kind] || WEAPONS.gl;
     const pos = new THREE.Vector3(...m.p);
-    if (WEAPONS[kind] && WEAPONS[kind].smoke) this.smokeFx(pos);
-    else this.boomFx(pos, (WEAPONS[kind] || WEAPONS.gl).radius);
+    if (W.smoke) this.smokeFx(pos);
+    else if (W.flash) this.flashFx(pos);
+    else if (W.bolt) this.fx.blood(pos);
+    else this.boomFx(pos, W.radius);
   }
 
   remoteShot(m) {

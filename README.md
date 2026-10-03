@@ -18,7 +18,7 @@ The next match starts automatically on the next map.
 |---|---|
 | Free For All | First to 25 kills |
 | Team Deathmatch | Red vs Blue, first team to 50 kills |
-| Gun Game | Each kill moves you to the next of 11 weapons; finish with a knife kill. Melee kills demote the victim |
+| Gun Game | Each kill moves you to the next of 13 weapons; finish with a knife kill. Melee kills demote the victim |
 | King of the Hill | Stand in the zone alone to score points; it moves every minute. First to 90 |
 | Infection | After 10s one player becomes a zombie; anyone killed joins them. Survive the 4 minutes |
 
@@ -47,10 +47,10 @@ Pick one per slot in the menu or pause menu (applies on next spawn).
 
 | Slot | Options |
 |---|---|
-| Primary | Assault Rifle, SMG, Burst Rifle, LMG, Sniper Rifle (scoped), Shotgun, Grenade Launcher |
-| Secondary | Pistol, Revolver, Machine Pistol |
-| Melee | Combat Knife, Fire Axe (backstabs one-shot) |
-| Utility | Frag Grenade, Sticky Grenade, Smoke Grenade |
+| Primary | Assault Rifle, SMG, Burst Rifle, LMG, DMR, Minigun (spins up), Sniper Rifle (scoped), Shotgun, Double Barrel, Grenade Launcher, Rocket Launcher, Crossbow |
+| Secondary | Pistol, Revolver, Machine Pistol, Hand Cannon, Sawed-Off |
+| Melee | Combat Knife, Fire Axe, Katana, Baseball Bat (knockback) — backstabs one-shot |
+| Utility | Frag, Sticky, Smoke, Flashbang, Throwing Knives |
 
 The Grenade Launcher one-shots on a direct hit but slows you down while it's out.
 

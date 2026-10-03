@@ -187,3 +187,5 @@ select { width: 100%; padding: 9px 10px; background: #1a1e25; color: var(--text)
 .prow .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .prow button, .prow select { padding: 4px 8px; font-size: 11px; width: auto; }
 @media (max-width: 760px) { .hp-grid { grid-template-columns: 1fr; } }
+
+#flash { position: absolute; inset: 0; background: #fff; opacity: 0; }

@@ -51,6 +51,40 @@ export const WEAPONS = {
     switch: 0.6, reloadStyle: 'drum',
   },
 
+  dmr: {
+    id: 'dmr', name: 'DMR', type: 'gun', auto: false,
+    rate: 0.24, dmg: 40, head: 2.0, pellets: 1, mag: 15, reload: 2.2,
+    spread: 0.015, moveSpread: 0.04, adsMul: 0.12, range: 300, adsFov: 42,
+    recoil: 0.03, speedMul: 0.95, switch: 0.4, reloadStyle: 'mag',
+  },
+  minigun: {
+    id: 'minigun', name: 'Minigun', type: 'gun', auto: true, spinup: 0.6,
+    rate: 0.045, dmg: 13, head: 1.4, pellets: 1, mag: 200, reload: 5,
+    spread: 0.035, moveSpread: 0.03, adsMul: 0.7, range: 150,
+    recoil: 0.006, speedMul: 0.7, switch: 0.8, reloadStyle: 'box',
+  },
+  doublebarrel: {
+    id: 'doublebarrel', name: 'Double Barrel', type: 'gun', auto: false,
+    rate: 0.22, dmg: 12, head: 1.3, pellets: 12, mag: 2, reload: 2.0,
+    spread: 0.09, moveSpread: 0.02, adsMul: 0.8, range: 45, falloff: [6, 22, 0.25],
+    recoil: 0.07, speedMul: 1.0, switch: 0.35, reloadStyle: 'shells',
+  },
+  rocket: {
+    id: 'rocket', name: 'Rocket Launcher', type: 'proj', auto: false,
+    rate: 0.8, mag: 1, reload: 2.6,
+    projSpeed: 42, projGravity: 0, trail: true,
+    directDmg: 120, splash: 110, radius: 5,
+    spread: 0, moveSpread: 0, adsMul: 1,
+    recoil: 0.08, speedMul: 0.78, switch: 0.7, reloadStyle: 'drum',
+  },
+  crossbow: {
+    id: 'crossbow', name: 'Crossbow', type: 'proj', auto: false, bolt: true,
+    rate: 0.5, mag: 1, reload: 1.6,
+    projSpeed: 65, projGravity: 5, directDmg: 95, head: 2,
+    spread: 0, moveSpread: 0, adsMul: 1, adsFov: 45,
+    recoil: 0.04, speedMul: 0.95, switch: 0.4, reloadStyle: 'mag',
+  },
+
   // ---------- Secondaries ----------
   pistol: {
     id: 'pistol', name: 'Pistol', type: 'gun', auto: false,
@@ -71,6 +105,19 @@ export const WEAPONS = {
     recoil: 0.008, speedMul: 1.05, switch: 0.25, reloadStyle: 'mag',
   },
 
+  handcannon: {
+    id: 'handcannon', name: 'Hand Cannon', type: 'gun', auto: false,
+    rate: 0.42, dmg: 58, head: 2.0, pellets: 1, mag: 7, reload: 1.9,
+    spread: 0.012, moveSpread: 0.04, adsMul: 0.3, range: 160,
+    recoil: 0.07, speedMul: 1.0, switch: 0.35, reloadStyle: 'mag',
+  },
+  sawedoff: {
+    id: 'sawedoff', name: 'Sawed-Off', type: 'gun', auto: false,
+    rate: 0.25, dmg: 11, head: 1.2, pellets: 9, mag: 2, reload: 1.8,
+    spread: 0.11, moveSpread: 0.02, adsMul: 0.85, range: 30, falloff: [4, 15, 0.2],
+    recoil: 0.06, speedMul: 1.05, switch: 0.25, reloadStyle: 'shells',
+  },
+
   // ---------- Melee ----------
   knife: {
     id: 'knife', name: 'Combat Knife', type: 'melee', style: 'slash',
@@ -83,6 +130,16 @@ export const WEAPONS = {
     spread: 0, moveSpread: 0, speedMul: 1.0, switch: 0.35,
   },
 
+  katana: {
+    id: 'katana', name: 'Katana', type: 'melee', style: 'slash',
+    rate: 0.55, dmg: 70, backstab: 150, range: 3.0, hitDelay: 0.1,
+    spread: 0, moveSpread: 0, speedMul: 1.1, switch: 0.3,
+  },
+  bat: {
+    id: 'bat', name: 'Baseball Bat', type: 'melee', style: 'chop',
+    rate: 0.7, dmg: 45, backstab: 100, range: 2.7, hitDelay: 0.28, knockback: 13,
+    spread: 0, moveSpread: 0, speedMul: 1.05, switch: 0.3,
+  },
   claws: {
     id: 'claws', name: 'Zombie Claws', type: 'melee', style: 'slash',
     rate: 0.45, dmg: 50, backstab: 150, range: 2.5, hitDelay: 0.08,
@@ -102,6 +159,16 @@ export const WEAPONS = {
     splash: 100, radius: 4.2,
     spread: 0, moveSpread: 0, speedMul: 1.05, switch: 0.25,
   },
+  flash: {
+    id: 'flash', name: 'Flashbang', type: 'throw', flash: true,
+    rate: 0.9, count: 2, fuse: 1.4, throwSpeed: 17, radius: 18,
+    spread: 0, moveSpread: 0, speedMul: 1.05, switch: 0.25,
+  },
+  tknife: {
+    id: 'tknife', name: 'Throwing Knives', type: 'throw', bolt: true,
+    rate: 0.45, count: 3, fuse: 8, throwSpeed: 30, projGravity: 9, directDmg: 70, head: 2,
+    spread: 0, moveSpread: 0, speedMul: 1.05, switch: 0.2,
+  },
   smoke: {
     id: 'smoke', name: 'Smoke Grenade', type: 'throw', smoke: true,
     rate: 0.9, count: 1, fuse: 1.2, throwSpeed: 15,
@@ -111,10 +178,10 @@ export const WEAPONS = {
 };
 
 export const SLOTS = [
-  ['ar', 'smg', 'burst', 'lmg', 'sniper', 'shotgun', 'gl'],
-  ['pistol', 'revolver', 'mpistol'],
-  ['knife', 'axe'],
-  ['frag', 'sticky', 'smoke'],
+  ['ar', 'smg', 'burst', 'lmg', 'dmr', 'minigun', 'sniper', 'shotgun', 'doublebarrel', 'gl', 'rocket', 'crossbow'],
+  ['pistol', 'revolver', 'mpistol', 'handcannon', 'sawedoff'],
+  ['knife', 'axe', 'katana', 'bat'],
+  ['frag', 'sticky', 'smoke', 'flash', 'tknife'],
 ];
 export const SLOT_NAMES = ['Primary', 'Secondary', 'Melee', 'Utility'];
 export const DEFAULT_LOADOUT = ['ar', 'pistol', 'knife', 'frag'];
@@ -127,7 +194,9 @@ export const SHORT = {
   ar: 'AR', smg: 'SMG', burst: 'Burst', lmg: 'LMG', sniper: 'Sniper', shotgun: 'Shotgun', gl: 'Launcher',
   pistol: 'Pistol', revolver: 'Revolver', mpistol: 'M-Pistol', knife: 'Knife', axe: 'Axe',
   frag: 'Frag', sticky: 'Sticky', smoke: 'Smoke', claws: 'Claws',
+  dmr: 'DMR', minigun: 'Minigun', doublebarrel: 'Dbl Barrel', rocket: 'Rocket', crossbow: 'Crossbow',
+  handcannon: 'H-Cannon', sawedoff: 'Sawed-Off', katana: 'Katana', bat: 'Bat', flash: 'Flash', tknife: 'T-Knives',
 };
 
 // Gun Game: one kill per level; a melee kill knocks the victim down a level.
-export const GUNGAME_LADDER = ['revolver', 'mpistol', 'smg', 'shotgun', 'burst', 'ar', 'lmg', 'sniper', 'gl', 'pistol', 'knife'];
+export const GUNGAME_LADDER = ['revolver', 'mpistol', 'smg', 'doublebarrel', 'burst', 'dmr', 'ar', 'minigun', 'sniper', 'rocket', 'handcannon', 'pistol', 'knife'];

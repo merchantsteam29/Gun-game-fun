@@ -91,5 +91,18 @@ export const sfx = {
   pad: play((o) => { tone(o, { dur: 0.35, f0: 180, f1: 900, type: 'sawtooth', gain: 0.2 }); nz(o, { dur: 0.3, f0: 800, f1: 3000, type: 'bandpass', gain: 0.4 }); }),
   cycle: play((o) => { nz(o, { dur: 0.05, f0: 2500, type: 'highpass', gain: 0.4 }); nz(o, { dur: 0.05, f0: 1800, type: 'highpass', gain: 0.4 }); }),
 };
+sfx.dmr = play((o) => { nz(o, { dur: 0.3, f0: 3200, f1: 250, gain: 1.15 }); tone(o, { dur: 0.15, f0: 110, f1: 40, gain: 0.8 }); });
+sfx.minigun = play((o) => { nz(o, { dur: 0.06, f0: 3500, f1: 900, gain: 0.55 }); tone(o, { dur: 0.04, f0: 180, f1: 90, gain: 0.3 }); });
+sfx.doublebarrel = play((o) => { nz(o, { dur: 0.4, f0: 2000, f1: 150, gain: 1.4 }); tone(o, { dur: 0.2, f0: 90, f1: 30, gain: 1.1 }); });
+sfx.sawedoff = sfx.doublebarrel;
+sfx.handcannon = play((o) => { nz(o, { dur: 0.32, f0: 2800, f1: 200, gain: 1.3 }); tone(o, { dur: 0.16, f0: 100, f1: 35, gain: 1.0 }); });
+sfx.rocket = play((o) => { nz(o, { dur: 0.6, f0: 900, f1: 3000, type: 'bandpass', gain: 1.0, attack: 0.02 }); tone(o, { dur: 0.3, f0: 70, f1: 40, gain: 0.8 }); });
+sfx.crossbow = play((o) => { tone(o, { dur: 0.12, f0: 220, f1: 110, type: 'triangle', gain: 0.6 }); nz(o, { dur: 0.1, f0: 1500, type: 'bandpass', gain: 0.4 }); });
+sfx.katana = play((o) => { nz(o, { dur: 0.22, f0: 2000, f1: 6000, type: 'bandpass', q: 3, gain: 0.55, attack: 0.05 }); });
+sfx.bat = sfx.axe;
+sfx.flashbang = play((o) => { nz(o, { dur: 0.5, f0: 6000, f1: 800, gain: 1.4, attack: 0.002 }); tone(o, { dur: 2.5, f0: 3800, gain: 0.15 }); });
+sfx.thunk = play((o) => { tone(o, { dur: 0.08, f0: 300, f1: 120, type: 'triangle', gain: 0.6 }); });
 sfx.sticky = sfx.throw;
+sfx.flash = sfx.throw;
+sfx.tknife = sfx.knife;
 sfx.smoke = sfx.throw;

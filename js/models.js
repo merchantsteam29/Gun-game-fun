@@ -198,6 +198,136 @@ const builders = {
     anchor(g, 'muzzle', 0, 0.05, -0.2);
     g.userData.sight = 0.095;
   },
+  dmr(g) {
+    box(g, M.tan, 0.07, 0.1, 0.46, 0, 0.05, -0.1);
+    cyl(g, M.dark, 0.018, 0.4, 0, 0.065, -0.5);
+    box(g, M.tan, 0.075, 0.085, 0.26, 0, 0.035, -0.36);
+    const mag = grp(g, 'mag', 0, -0.02, -0.12);
+    box(mag, M.black, 0.05, 0.12, 0.08, 0, -0.05, 0, 0.15);
+    box(g, M.black, 0.05, 0.12, 0.06, 0, -0.05, 0.06, -0.3);
+    box(g, M.tan, 0.06, 0.12, 0.24, 0, 0.02, 0.24);
+    cyl(g, M.black, 0.022, 0.16, 0, 0.13, -0.08);
+    cyl(g, M.lens, 0.02, 0.004, 0, 0.13, -0.161);
+    const bolt = grp(g, 'bolt', 0.045, 0.07, -0.02);
+    box(bolt, M.steel, 0.025, 0.02, 0.05, 0, 0, 0);
+    anchor(g, 'fore', 0, -0.01, -0.36);
+    anchor(g, 'muzzle', 0, 0.065, -0.72);
+    g.userData.sight = 0.13;
+  },
+  minigun(g) {
+    box(g, M.dark, 0.14, 0.14, 0.3, 0, 0.0, -0.05);
+    const spin = grp(g, 'spin', 0, 0.0, -0.42);
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      cyl(spin, M.dark, 0.014, 0.55, Math.cos(a) * 0.04, Math.sin(a) * 0.04, 0, 8);
+    }
+    cyl(spin, M.mid, 0.055, 0.03, 0, 0, -0.2);
+    cyl(spin, M.mid, 0.055, 0.03, 0, 0, 0.15);
+    const mag = grp(g, 'mag', 0.0, -0.08, 0.0);
+    box(mag, M.olive, 0.16, 0.14, 0.18, 0.05, -0.05, 0);
+    box(g, M.black, 0.04, 0.12, 0.05, 0, -0.09, 0.08, -0.2);
+    box(g, M.dark, 0.03, 0.08, 0.15, 0, 0.11, -0.05);
+    anchor(g, 'fore', -0.02, 0.12, -0.1);
+    anchor(g, 'muzzle', 0, 0.0, -0.72);
+    g.userData.sight = 0.17;
+  },
+  doublebarrel(g) {
+    cyl(g, M.dark, 0.022, 0.55, -0.022, 0.06, -0.42);
+    cyl(g, M.dark, 0.022, 0.55, 0.022, 0.06, -0.42);
+    box(g, M.dark, 0.08, 0.07, 0.14, 0, 0.04, -0.08);
+    box(g, M.wood, 0.07, 0.06, 0.2, 0, 0.02, -0.3);
+    box(g, M.wood, 0.05, 0.12, 0.06, 0, -0.05, 0.03, -0.3);
+    box(g, M.wood, 0.065, 0.11, 0.28, 0, 0.0, 0.2);
+    anchor(g, 'fore', 0, -0.02, -0.3);
+    anchor(g, 'port', 0, 0.06, -0.14);
+    anchor(g, 'muzzle', 0, 0.06, -0.7);
+    g.userData.sight = 0.1;
+  },
+  rocket(g) {
+    cyl(g, M.olive, 0.075, 0.9, 0, 0.09, -0.2, 14);
+    cyl(g, M.dark, 0.085, 0.08, 0, 0.09, -0.64, 14);
+    cyl(g, M.dark, 0.085, 0.08, 0, 0.09, 0.24, 14);
+    const mag = grp(g, 'mag', 0, 0.09, -0.7);
+    const war = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.18, 10), M.olive);
+    war.rotation.x = -Math.PI / 2;
+    mag.add(war);
+    box(g, M.black, 0.05, 0.13, 0.06, 0, -0.05, 0.0, -0.3);
+    box(g, M.black, 0.05, 0.12, 0.06, 0, -0.03, -0.3);
+    box(g, M.dark, 0.06, 0.08, 0.1, 0.09, 0.14, -0.15);
+    anchor(g, 'fore', 0, -0.05, -0.3);
+    anchor(g, 'muzzle', 0, 0.09, -0.75);
+    g.userData.sight = 0.19;
+  },
+  crossbow(g) {
+    box(g, M.wood, 0.06, 0.07, 0.6, 0, 0.03, -0.12);
+    box(g, M.dark, 0.5, 0.03, 0.04, 0, 0.05, -0.38);
+    box(g, M.black, 0.005, 0.005, 0.5, 0, 0.065, -0.2);
+    const mag = grp(g, 'mag', 0, 0.075, -0.25);
+    box(mag, M.steel, 0.01, 0.01, 0.42, 0, 0, 0);
+    box(g, M.black, 0.05, 0.12, 0.06, 0, -0.05, 0.05, -0.3);
+    box(g, M.wood, 0.06, 0.1, 0.22, 0, 0.0, 0.26);
+    box(g, M.dark, 0.02, 0.05, 0.03, 0, 0.1, -0.02);
+    anchor(g, 'fore', 0, -0.02, -0.3);
+    anchor(g, 'muzzle', 0, 0.075, -0.48);
+    g.userData.sight = 0.12;
+  },
+  handcannon(g) {
+    const slide = grp(g, 'slide', 0, 0, 0);
+    box(slide, M.steel, 0.05, 0.065, 0.27, 0, 0.055, -0.08);
+    box(slide, M.dark, 0.012, 0.018, 0.015, 0, 0.095, -0.2);
+    box(g, M.dark, 0.045, 0.04, 0.22, 0, 0.01, -0.07);
+    box(g, M.black, 0.046, 0.13, 0.065, 0, -0.045, 0.02, -0.25);
+    const mag = grp(g, 'mag', 0, -0.02, 0.02);
+    box(mag, M.dark, 0.036, 0.06, 0.05, 0, -0.08, 0.01, -0.25);
+    anchor(g, 'fore', -0.04, -0.05, 0.0);
+    anchor(g, 'muzzle', 0, 0.055, -0.23);
+    g.userData.sight = 0.1;
+  },
+  sawedoff(g) {
+    cyl(g, M.dark, 0.022, 0.26, -0.022, 0.05, -0.2);
+    cyl(g, M.dark, 0.022, 0.26, 0.022, 0.05, -0.2);
+    box(g, M.dark, 0.08, 0.07, 0.1, 0, 0.035, -0.03);
+    box(g, M.wood, 0.05, 0.13, 0.07, 0, -0.06, 0.03, -0.45);
+    anchor(g, 'fore', -0.04, -0.05, 0.0);
+    anchor(g, 'port', 0, 0.05, -0.08);
+    anchor(g, 'muzzle', 0, 0.05, -0.34);
+    g.userData.sight = 0.09;
+  },
+  katana(g) {
+    box(g, M.black, 0.035, 0.04, 0.22, 0, 0, 0.04);
+    box(g, M.brass, 0.08, 0.015, 0.06, 0, 0, -0.08);
+    box(g, M.steel, 0.008, 0.04, 0.7, 0, 0.005, -0.44);
+    anchor(g, 'muzzle', 0, 0, -0.8);
+  },
+  bat(g) {
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.02, 0.75, 10), M.wood);
+    m.rotation.x = Math.PI / 2;
+    m.position.z = -0.3;
+    g.add(m);
+    box(g, M.black, 0.04, 0.04, 0.14, 0, 0, 0.03);
+    anchor(g, 'fore', 0, 0, -0.1);
+    anchor(g, 'muzzle', 0, 0, -0.65);
+  },
+  flash(g) {
+    const c = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.14, 12), M.steel);
+    g.add(c);
+    for (const y of [-0.04, 0.04]) {
+      const band = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.042, 0.015, 12), M.dark);
+      band.position.y = y;
+      g.add(band);
+    }
+    box(g, M.mid, 0.015, 0.1, 0.015, 0.04, 0.02, 0);
+    const pin = grp(g, 'pin', -0.03, 0.085, 0);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.016, 0.004, 6, 12), M.steel);
+    ring.rotation.y = Math.PI / 2;
+    pin.add(ring);
+    anchor(g, 'muzzle', 0, 0, 0);
+  },
+  tknife(g) {
+    box(g, M.black, 0.025, 0.03, 0.08, 0, 0, 0.02);
+    box(g, M.steel, 0.006, 0.03, 0.15, 0, 0, -0.1);
+    anchor(g, 'muzzle', 0, 0, -0.18);
+  },
   knife(g) {
     box(g, M.black, 0.035, 0.035, 0.13, 0, 0, 0.02);
     box(g, M.mid, 0.06, 0.02, 0.02, 0, 0, -0.05);
@@ -271,13 +401,35 @@ export function buildGun(id) {
   return g;
 }
 
+// Projectiles point down -Z (userData.aligned = should face its velocity).
 export function buildProjectile(kind) {
+  const g = new THREE.Group();
+  g.userData.aligned = true;
   if (kind === 'gl') {
-    const m = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.16, 10), M.tan);
-    m.castShadow = true;
-    return m;
+    cyl(g, M.tan, 0.05, 0.16, 0, 0, 0, 10);
+  } else if (kind === 'rocket') {
+    cyl(g, M.olive, 0.05, 0.4, 0, 0, 0, 10);
+    const war = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.14, 10), M.olive);
+    war.rotation.x = -Math.PI / 2;
+    war.position.z = -0.27;
+    g.add(war);
+    box(g, M.dark, 0.18, 0.01, 0.08, 0, 0, 0.17);
+    box(g, M.dark, 0.01, 0.18, 0.08, 0, 0, 0.17);
+    const flame = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.25, 8),
+      new THREE.MeshBasicMaterial({ color: '#ffb347', transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending }));
+    flame.rotation.x = -Math.PI / 2;
+    flame.position.z = 0.33;
+    g.add(flame);
+  } else if (kind === 'crossbow') {
+    box(g, M.steel, 0.012, 0.012, 0.5, 0, 0, 0);
+    box(g, M.red, 0.04, 0.002, 0.06, 0, 0, 0.22);
+    box(g, M.red, 0.002, 0.04, 0.06, 0, 0, 0.22);
+  } else {
+    const gun = buildGun(kind);
+    gun.scale.setScalar(1.3);
+    g.add(gun);
+    g.userData.aligned = kind === 'tknife';
   }
-  const g = buildGun(kind);
-  g.scale.setScalar(1.3);
+  g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   return g;
 }
