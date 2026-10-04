@@ -134,13 +134,15 @@ select { width: 100%; padding: 9px 10px; background: #181c23; color: var(--text)
 
 /* ---------- HUD ---------- */
 #hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
-#crosshair { position: absolute; left: 50%; top: 50%; --gap: 8px; }
-#crosshair i { position: absolute; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,0.45); transition: opacity 0.1s; }
+#crosshair { position: absolute; left: 50%; top: 50%; --gap: 8px; --cross: #fff; transform: scale(var(--cross-scale, 1)); }
+#crosshair i { position: absolute; background: var(--cross); box-shadow: 0 0 0 1px rgba(0,0,0,0.45); transition: opacity 0.1s; }
+#crosshair.nodot b { display: none; }
 #crosshair .t, #crosshair .b { width: 2px; height: 8px; left: -1px; }
 #crosshair .l, #crosshair .r { height: 2px; width: 8px; top: -1px; }
 #crosshair .t { bottom: var(--gap); } #crosshair .b { top: var(--gap); }
 #crosshair .l { right: var(--gap); } #crosshair .r { left: var(--gap); }
-#crosshair b { position: absolute; width: 2px; height: 2px; left: -1px; top: -1px; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,0.45); }
+#crosshair b { position: absolute; width: 2px; height: 2px; left: -1px; top: -1px; background: var(--cross); box-shadow: 0 0 0 1px rgba(0,0,0,0.45); }
+#fps { position: absolute; left: 16px; top: 44px; font-size: 12px; color: var(--ok); font-variant-numeric: tabular-nums; }
 #crosshair.ads i { opacity: 0; }
 #hitmarker { position: absolute; left: 50%; top: 50%; opacity: 0; transition: opacity 0.15s; }
 #hitmarker.show { opacity: 1; transition: none; }
@@ -253,6 +255,28 @@ select { width: 100%; padding: 9px 10px; background: #181c23; color: var(--text)
   #scoreboard, #endscreen { min-width: 0; }
 }
 
+/* ---------- Settings ---------- */
+.menu-foot { margin-top: 16px; display: flex; justify-content: flex-end; }
+.settings-panel { width: 620px; }
+.set-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-bottom: 16px; }
+.set-tabs button { padding: 9px 6px; font-size: 12px; background: var(--panel-2); }
+.set-tabs button.sel { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
+#set-body { min-height: 230px; }
+.set-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) 54px; align-items: center; gap: 12px;
+  padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 14px; }
+.set-row:has(> .check), .set-row:has(> .pick), .set-row:has(> .swatches) { grid-template-columns: minmax(0, 1fr) auto; }
+.set-row > .check { grid-column: 1 / -1; margin: 0; }
+.set-label small, .set-row .check small { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; line-height: 1.35; }
+.set-row output { text-align: right; color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; }
+.set-row .pick { display: flex; gap: 6px; }
+.set-row .pick button { padding: 8px 14px; font-size: 12px; }
+.set-row .pick button.sel { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.set-foot { margin-top: 16px; display: flex; justify-content: flex-end; }
+@media (max-width: 560px) {
+  .set-row { grid-template-columns: 1fr 48px; }
+  .set-row input[type=range] { grid-column: 1 / -1; grid-row: 2; }
+}
+
 /* ---------- Host panel ---------- */
 .panel.wide { width: 880px; }
 .hp-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
@@ -288,6 +312,18 @@ body.mobile canvas#game { touch-action: none; }
   width: 58px; height: 58px; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; color: #fff;
   background: rgba(20,24,30,0.45); border: 2px solid rgba(255,255,255,0.35); text-shadow: 0 1px 2px #000; }
 .tbtn.on { background: rgba(255,176,32,0.55); border-color: var(--accent); }
+/* Layout editor */
+#touch.editing { z-index: 30; background: rgba(5,7,10,0.55); touch-action: none; }
+#touch.editing .tbtn { cursor: grab; border-style: dashed; }
+#touch.editing .tbtn.picked { border-color: var(--accent); border-style: solid; box-shadow: 0 0 0 3px rgba(255,176,32,0.35); }
+.touch-edit { display: none; }
+#touch.editing .touch-edit { display: flex; position: absolute; left: 50%; top: calc(8px + env(safe-area-inset-top)); transform: translateX(-50%);
+  align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; padding: 8px 12px; max-width: calc(100% - 32px);
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); font-size: 12px; z-index: 2; }
+.touch-edit b { color: var(--accent); letter-spacing: 1px; }
+.touch-edit label { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+.touch-edit input[type=range] { width: 110px; }
+.touch-edit button { padding: 6px 10px; font-size: 11px; }
 .b-fire { right: calc(26px + env(safe-area-inset-right)); bottom: 120px; width: 92px; height: 92px; font-size: 15px;
   background: rgba(229,72,59,0.45); border-color: rgba(255,120,110,0.7); }
 .b-aim { right: calc(132px + env(safe-area-inset-right)); bottom: 170px; }

@@ -8,6 +8,7 @@ import { COLORS, randCode, store } from './util.js';
 import { MODES, MODE_ORDER } from './host.js';
 import { HostPanel } from './hostpanel.js';
 import { modelQuality } from './models.js';
+import { SettingsUI } from './settingsui.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -17,7 +18,6 @@ const settings = {
   loadout: validLoadout(store.get('loadout', null)),
   map: store.get('map', 'warehouse'),
   mode: store.get('mode', 'ffa'),
-  sens: store.get('sens', 1),
 };
 if (!MAPS[settings.map]) settings.map = 'warehouse';
 if (!MODES[settings.mode]) settings.mode = 'ffa';
@@ -100,14 +100,6 @@ function setBusy(v) {
 
 $('name').value = settings.name;
 $('name').addEventListener('input', () => { settings.name = $('name').value.trim(); store.set('name', settings.name); });
-$('sens').value = settings.sens;
-$('sens-val').textContent = Number(settings.sens).toFixed(2);
-$('sens').addEventListener('input', () => {
-  settings.sens = Number($('sens').value);
-  $('sens-val').textContent = settings.sens.toFixed(2);
-  game.sens = settings.sens;
-  store.set('sens', settings.sens);
-});
 for (const id of MAP_ORDER) {
   const o = document.createElement('option');
   o.value = id;
@@ -151,7 +143,7 @@ function newNet() {
   const n = new Net();
   n.onMessage = (m) => game.onNet(m);
   n.onClose = (reason) => leave(reason);
-  game.attach(n, { loadout: settings.loadout, color: settings.color, sens: settings.sens });
+  game.attach(n, { loadout: settings.loadout, color: settings.color });
   return n;
 }
 
@@ -248,6 +240,22 @@ $('btn-resume').onclick = () => {
   }
 };
 $('btn-leave').onclick = () => leave();
+
+// Settings: from the main menu or the pause menu; returns to whichever opened it.
+const settingsUI = new SettingsUI({
+  game, mobile,
+  editLayout: (done) => touch.edit(done),
+});
+$('btn-settings-menu').onclick = () => {
+  $('menu').classList.add('hidden');
+  settingsUI.onClose = () => $('menu').classList.remove('hidden');
+  settingsUI.open();
+};
+$('btn-settings-pause').onclick = () => {
+  $('pause').classList.add('hidden');
+  settingsUI.onClose = () => $('pause').classList.remove('hidden');
+  settingsUI.open();
+};
 const hostPanel = new HostPanel();
 hostPanel.onClose = () => $('pause').classList.remove('hidden');
 $('btn-hostpanel').onclick = () => {

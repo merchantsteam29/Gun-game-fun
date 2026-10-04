@@ -244,7 +244,7 @@ export class Viewmodel {
     tp.lerp(_v.fromArray(m.ads), this.adsT);
     tr.multiplyScalar(1 - this.adsT);
 
-    const amt = Math.min(1, s.speed / 6) * (s.onGround ? 1 : 0.15) * (1 - this.adsT * 0.85);
+    const amt = Math.min(1, s.speed / 6) * (s.onGround ? 1 : 0.15) * (1 - this.adsT * 0.85) * (s.bob ?? 1);
     this.bobT += dt * (4 + s.speed * 1.6);
     const big = 1 + this.sprintT * 0.8;
     tp.x += Math.sin(this.bobT) * 0.012 * amt * big + this.sway.x;

@@ -19,6 +19,15 @@ export class Hud {
 
   show(v) { this.el.classList.toggle('hidden', !v); }
 
+  applyOpts(o) {
+    this.crosshair.style.setProperty('--cross', o.crossColor);
+    this.crosshair.style.setProperty('--cross-scale', o.crossSize);
+    this.crosshair.classList.toggle('nodot', !o.crossDot);
+    $('fps').classList.toggle('hidden', !o.showFps);
+  }
+
+  fps(n) { $('fps').textContent = n + ' FPS'; }
+
   lobby(code, count, mapName) {
     const html = `LOBBY <b>${esc(code)}</b> · ${count} player${count === 1 ? '' : 's'} · ${esc(mapName)}`;
     if (html !== this.lastLobby) { this.lastLobby = html; $('lobby-tag').innerHTML = html; }

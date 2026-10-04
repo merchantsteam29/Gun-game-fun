@@ -10,6 +10,8 @@ import { Hud } from './hud.js';
 import { sfx } from './audio.js';
 import { buildProjectile, modelQuality } from './models.js';
 import { clamp, esc, store } from './util.js';
+import { opts, onOpts } from './settings.js';
+import { setVolume } from './audio.js';
 
 const JUMP = 8, WALK = 5.6, SPRINT = 1.35, CROUCH_SPD = 0.55, PAD_JUMP = 14;
 const STAND_H = 1.8, CROUCH_H = 1.2, EYE_STAND = 1.62, EYE_CROUCH = 1.05;
@@ -74,6 +76,14 @@ export class Game {
     this.fx = new Effects(this.scene);
     this.hud = new Hud();
     this.loadMap('warehouse');
+    this.fps = { frames: 0, acc: 0 };
+    onOpts((o) => {
+      this.vm.camera.fov = o.vmFov;
+      this.vm.camera.updateProjectionMatrix();
+      if (!this.active || !this.ads) { this.camera.fov = o.fov; this.camera.updateProjectionMatrix(); }
+      setVolume(o.volume);
+      this.hud.applyOpts(o);
+    });
 
     this.remotes = new Map(); // id -> RemotePlayer
     this.players = new Map(); // id -> {id, name, color, k, d}
@@ -81,7 +91,6 @@ export class Game {
     this.net = null;
     this.myId = null;
     this.active = false;
-    this.sens = 1;
     this.nextLoadout = DEFAULT_LOADOUT.slice();
     this.onUnlock = null;
     this.onKicked = null;
@@ -238,11 +247,11 @@ export class Game {
     this.canvas.addEventListener('mousedown', (e) => {
       if (!this.locked) return;
       if (e.button === 0) { this.mouse.left = true; this.firedThisPress = false; }
-      if (e.button === 2) this.mouse.right = true;
+      if (e.button === 2) this.mouse.right = opts.aimToggle ? !this.mouse.right : true;
     });
     document.addEventListener('mouseup', (e) => {
       if (e.button === 0) this.mouse.left = false;
-      if (e.button === 2) this.mouse.right = false;
+      if (e.button === 2 && !opts.aimToggle) this.mouse.right = false;
     });
     this.canvas.addEventListener('wheel', (e) => {
       // Trackpads fire a stream of wheel events; one switch per notch.
@@ -263,9 +272,11 @@ export class Game {
     window.addEventListener('blur', () => this.keys.clear());
   }
 
-  look(dx, dy) {
+  // touch: drag-to-look from the touch controls (uses its own sensitivity).
+  look(dx, dy, touch = false) {
     if (!this.me.alive) return;
-    const s = BASE_SENS * this.sens * (this.camera.fov / 75);
+    if (opts.invertY) dy = -dy;
+    const s = BASE_SENS * (touch ? opts.touchSens : opts.sens) * (this.camera.fov / opts.fov) * (this.ads ? opts.adsSens : 1);
     this.me.yaw -= dx * s;
     this.me.pitch = clamp(this.me.pitch - dy * s, -1.5, 1.5);
     this.vm.look(dx, dy);
@@ -301,10 +312,9 @@ export class Game {
 
   // ---------- Lobby lifecycle ----------
 
-  attach(net, { loadout, color, sens }) {
+  attach(net, { loadout, color }) {
     this.net = net;
     this.nextLoadout = loadout.slice();
-    this.sens = sens;
     this.vm.setColor(color);
   }
 
@@ -332,7 +342,7 @@ export class Game {
     this.hud.scoreboard(false);
     this.net = null;
     if (document.pointerLockElement) document.exitPointerLock();
-    this.camera.fov = 75;
+    this.camera.fov = opts.fov;
     this.camera.updateProjectionMatrix();
   }
 
@@ -535,6 +545,12 @@ export class Game {
     const dt = Math.min(0.05, (now - this.last) / 1000);
     this.last = now;
     const gdt = this.active ? dt * this.rules.gameSpeed : dt;
+    if (opts.showFps) {
+      this.fps.frames++;
+      this.fps.acc += (now - this.fps.last || 0) / 1000;
+      this.fps.last = now;
+      if (this.fps.acc >= 0.5) { this.hud.fps(Math.round(this.fps.frames / this.fps.acc)); this.fps.frames = 0; this.fps.acc = 0; }
+    }
     if (this.active) this.update(gdt, now);
     else this.menuCam(now);
     this.fx.update(gdt);
@@ -568,7 +584,7 @@ export class Game {
     if (me.alive) {
       const adsK = this.ads ? 0.3 : 1;
       if (me.onGround) this.bobPhase += dt * hs * 1.9;
-      const bob = me.onGround ? Math.min(1, hs / 6) * adsK : 0;
+      const bob = me.onGround ? Math.min(1, hs / 6) * adsK * opts.bobbing : 0;
       this.roll += (-strafe * 0.018 * adsK - this.roll) * Math.min(1, dt * 8);
       cam.position.set(me.pos.x, me.pos.y + me.eye - this.landDip + Math.sin(this.bobPhase * 2) * 0.022 * bob, me.pos.z);
       cam.rotation.set(
@@ -585,8 +601,9 @@ export class Game {
     if (me.alive && !this.matchOver) this.updateWeapon(dt);
     else { this.ads = false; this.scoped = false; }
 
-    let fovTarget = 75;
-    if (this.ads) fovTarget = w.scope ? (this.vm.adsT > 0.85 ? w.zoom : 50) : w.adsFov || (w.type === 'proj' ? 62 : 55);
+    // ADS zoom keeps the same ratio to the chosen FOV; sniper scopes use their own fixed zoom.
+    let fovTarget = opts.fov;
+    if (this.ads) fovTarget = w.scope ? (this.vm.adsT > 0.85 ? w.zoom : 50) : (w.adsFov || (w.type === 'proj' ? 62 : 55)) * (opts.fov / 75);
     if (Math.abs(cam.fov - fovTarget) > 0.05) {
       cam.fov += (fovTarget - cam.fov) * Math.min(1, dt * (w.scope ? 20 : 14));
       cam.updateProjectionMatrix();
@@ -614,6 +631,7 @@ export class Game {
       reload: this.reloadT > 0 && w.reload ? 1 - this.reloadT / w.reload : -1,
       hasUtil: this.util > 0,
       spin: w.spinup ? this.spin / w.spinup : 0,
+      bob: opts.bobbing,
     });
     this.updateHud(dt, now);
   }

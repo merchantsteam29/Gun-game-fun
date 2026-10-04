@@ -1,11 +1,17 @@
 // Synthesized sound effects (no audio files needed).
-let ctx = null, master = null, noise = null;
+let ctx = null, master = null, noise = null, volume = 1;
+
+// 0..1 master volume (settings).
+export function setVolume(v) {
+  volume = v;
+  if (master) master.gain.value = 0.5 * volume;
+}
 
 export function initAudio() {
   if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
   ctx = new (window.AudioContext || window.webkitAudioContext)();
   master = ctx.createGain();
-  master.gain.value = 0.5;
+  master.gain.value = 0.5 * volume;
   master.connect(ctx.destination);
   noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
   const d = noise.getChannelData(0);

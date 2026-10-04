@@ -81,12 +81,24 @@ Switching holsters your current weapon before drawing the next (heavier weapons 
 immediately and then puts your previous weapon back in your hands. When you throw your last grenade you go back to
 the weapon you had out before.
 
+## Settings
+
+Open **Settings** from the main menu or the pause menu. Everything is saved in your browser.
+
+| Tab | Options |
+|---|---|
+| Controls | Mouse sensitivity (desktop) / look sensitivity (touch), aiming sensitivity, invert look, toggle aim with right mouse |
+| Video | Field of view, weapon field of view, view bobbing, graphics High/Low, FPS counter |
+| HUD & Audio | Volume, crosshair color, size and center dot |
+| Mobile | Edit button layout (drag any touch button anywhere, resize each one), button size, button opacity |
+
 ## Mobile
 
 Phones and tablets get touch controls automatically (play in landscape):
 floating joystick on the left, drag on the right to look, and buttons for fire (drag it to aim while shooting),
 aim, jump, crouch, reload, weapon swap (toggles primary/secondary), grenade, melee, scoreboard and pause.
-Add `?mobile` or `?desktop` to the URL to force a mode.
+Rearrange or resize the buttons in **Settings → Mobile → Edit layout**.
+Add `?mobile` or `?desktop` to the URL to force a mode, and `?lowgfx` to force low graphics.
 
 ## Run locally
 

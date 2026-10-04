@@ -44,6 +44,7 @@
   <div id="dmg-dir"></div>
 
   <div id="lobby-tag"></div>
+  <div id="fps" class="hidden"></div>
   <div id="match-info"><div id="timer">10:00</div><div id="mode-bar"></div><div id="leader"></div></div>
   <div id="killfeed"></div>
   <div id="notice"></div>
@@ -130,6 +131,9 @@
         <div id="menu-loadout" class="loadout"></div>
       </section>
     </div>
+    <div class="menu-foot">
+      <button id="btn-settings-menu">Settings</button>
+    </div>
     <details class="controls">
       <summary>Controls</summary>
       <div class="grid">
@@ -163,15 +167,22 @@
       <label>Loadout <span class="muted">· applies on next spawn</span></label>
       <div id="pause-loadout" class="loadout"></div>
     </div>
-    <div class="field">
-      <label for="sens">Mouse sensitivity <span id="sens-val"></span></label>
-      <input id="sens" type="range" min="0.2" max="3" step="0.05">
-    </div>
     <div class="actions row">
       <button id="btn-resume" class="primary">Click to play</button>
+      <button id="btn-settings-pause">Settings</button>
       <button id="btn-hostpanel" class="hidden">Host panel</button>
       <button id="btn-leave" class="danger">Leave lobby</button>
     </div>
+  </div>
+</div>
+
+<!-- Settings -->
+<div id="settings" class="overlay hidden">
+  <div class="panel settings-panel">
+    <div class="hp-head"><h2>SETTINGS</h2><button id="set-close" class="primary">Done</button></div>
+    <div id="set-tabs" class="set-tabs"></div>
+    <div id="set-body"></div>
+    <div class="set-foot"><button id="set-reset" class="danger">Reset all to defaults</button></div>
   </div>
 </div>
 
