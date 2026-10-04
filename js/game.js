@@ -30,9 +30,10 @@ const r2 = (v) => Math.round(v * 100) / 100;
 const arr = (v) => [r2(v.x), r2(v.y), r2(v.z)];
 
 export class Game {
-  constructor(canvas, { mobile = false } = {}) {
+  constructor(canvas, { mobile = false, tablet = false } = {}) {
     this.canvas = canvas;
     this.touch = mobile;
+    this.tablet = tablet;
     this.joy = { x: 0, y: 0 };
     this.mobile = mobile;
     // Low graphics: no shadows, lower resolution. Turned on automatically (and remembered)
@@ -85,10 +86,11 @@ export class Game {
       this.hud.mission(ms.name, item ? item.name : '');
       sfx.kill(0.9);
     });
+    this.fovK = 1; // widens the view on portrait screens (see resize)
     onOpts((o) => {
-      this.vm.camera.fov = o.vmFov;
+      this.vm.camera.fov = o.vmFov * this.fovK;
       this.vm.camera.updateProjectionMatrix();
-      if (!this.active || !this.ads) { this.camera.fov = o.fov; this.camera.updateProjectionMatrix(); }
+      if (!this.active || !this.ads) { this.camera.fov = o.fov * this.fovK; this.camera.updateProjectionMatrix(); }
       setVolume(o.volume);
       this.hud.applyOpts(o);
     });
@@ -154,7 +156,7 @@ export class Game {
 
   applyGfx() {
     const r = this.renderer, low = this.lowGfx;
-    r.setPixelRatio(Math.min(devicePixelRatio, low ? 1 : this.mobile ? 1.25 : 2));
+    r.setPixelRatio(Math.min(devicePixelRatio, low ? 1 : this.tablet ? 1.5 : this.mobile ? 1.25 : 2));
     modelQuality.remoteShadows = !low && !this.mobile; // other players' shadows are the priciest part on phones
     if (r.shadowMap.enabled === !low) return;
     r.shadowMap.enabled = !low;
@@ -204,6 +206,11 @@ export class Game {
     const w = innerWidth, h = innerHeight;
     this.renderer.setSize(w, h, false);
     this.camera.aspect = this.vm.camera.aspect = w / h;
+    // FOV is vertical, so a portrait screen (tablets) would see a narrow slice with the gun pushed
+    // off the side. Widen it there, gently.
+    this.fovK = w < h ? Math.min(1.5, Math.pow(h / w, 0.6)) : 1;
+    this.vm.camera.fov = opts.vmFov * this.fovK;
+    if (!this.active) this.camera.fov = opts.fov * this.fovK;
     this.camera.updateProjectionMatrix();
     this.vm.camera.updateProjectionMatrix();
   }
@@ -284,7 +291,7 @@ export class Game {
   look(dx, dy, touch = false) {
     if (!this.me.alive) return;
     if (opts.invertY) dy = -dy;
-    const s = BASE_SENS * (touch ? opts.touchSens : opts.sens) * (this.camera.fov / opts.fov) * (this.ads ? opts.adsSens : 1);
+    const s = BASE_SENS * (touch ? opts.touchSens : opts.sens) * (this.camera.fov / (opts.fov * this.fovK)) * (this.ads ? opts.adsSens : 1);
     this.me.yaw -= dx * s;
     this.me.pitch = clamp(this.me.pitch - dy * s, -1.5, 1.5);
     this.vm.look(dx, dy);
@@ -350,7 +357,7 @@ export class Game {
     this.hud.scoreboard(false);
     this.net = null;
     if (document.pointerLockElement) document.exitPointerLock();
-    this.camera.fov = opts.fov;
+    this.camera.fov = opts.fov * this.fovK;
     this.camera.updateProjectionMatrix();
   }
 
@@ -645,6 +652,7 @@ export class Game {
     // ADS zoom keeps the same ratio to the chosen FOV; sniper scopes use their own fixed zoom.
     let fovTarget = opts.fov;
     if (this.ads) fovTarget = w.scope ? (this.vm.adsT > 0.85 ? w.zoom : 50) : (w.adsFov || (w.type === 'proj' ? 62 : 55)) * (opts.fov / 75);
+    fovTarget *= this.fovK;
     if (Math.abs(cam.fov - fovTarget) > 0.05) {
       cam.fov += (fovTarget - cam.fov) * Math.min(1, dt * (w.scope ? 20 : 14));
       cam.updateProjectionMatrix();

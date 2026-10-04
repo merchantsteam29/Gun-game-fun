@@ -414,8 +414,49 @@ body.mobile .lo-stat { margin-top: 3px; }
 input[type=number] { background: rgba(255,255,255,0.05); border: 1px solid var(--line); color: var(--text); font: inherit;
   border-radius: 6px; outline: none; }
 input[type=number]:focus { border-color: var(--accent); }
+/* ---------- Tablet: touch controls, but room for a fuller HUD and menus ---------- */
+body.tablet #health { left: calc(20px + env(safe-area-inset-left)); bottom: 16px; padding: 8px 12px; gap: 10px; }
+body.tablet #health .bar { width: 170px; height: 9px; }
+body.tablet #health .label { display: block; }
+body.tablet #hp-num { font-size: 26px; min-width: 44px; }
+body.tablet #weapon-info { right: calc(20px + env(safe-area-inset-right)); bottom: 16px; }
+body.tablet #ammo-cur { font-size: 34px; }
+body.tablet #ammo-mag { font-size: 16px; }
+body.tablet #wname { font-size: 13px; }
+body.tablet #ammo-bar { display: block; }
+body.tablet #timer { font-size: 24px; }
+body.tablet #mode-bar { font-size: 13px; }
+body.tablet #killfeed div { font-size: 13px; padding: 3px 8px; }
+body.tablet #lobby-tag { font-size: 13px; top: 12px; }
+body.tablet #notice { font-size: 20px; top: 34%; }
+body.tablet #death .big, body.tablet #endscreen .big { font-size: 38px; }
+body.tablet .panel { padding: 22px 24px; }
+body.tablet h1 { font-size: 32px; }
+body.tablet .brand p { display: block; }
+body.tablet .b-score, body.tablet .b-pause { top: 52px; width: 46px; height: 46px; }
+/* Weapon slot bar (tablet only) */
+.slotbar { display: none; }
+body.tablet #touch:not(.editing) .slotbar { display: flex; position: absolute; left: 50%; transform: translateX(-50%);
+  bottom: calc(14px + env(safe-area-inset-bottom)); gap: 8px; }
+.sbtn { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; min-width: 84px; height: 52px; padding: 4px 12px;
+  background: rgba(20,24,30,0.55); border: 2px solid rgba(255,255,255,0.3); border-radius: 10px; color: #fff; text-shadow: 0 1px 2px #000; }
+.sbtn b { font-size: 10px; color: var(--muted); letter-spacing: 1px; }
+.sbtn span { font-size: 13px; font-weight: 700; white-space: nowrap; }
+.sbtn em { font-style: normal; font-size: 11px; color: var(--muted); min-height: 13px; font-variant-numeric: tabular-nums; }
+.sbtn.sel { border-color: var(--accent); background: rgba(255,176,32,0.3); }
+.sbtn.sel b { color: var(--accent); }
+.sbtn.off { opacity: 0.45; }
+/* Tablets in portrait: lift the action buttons a little and keep the slot bar clear of the HUD */
+@media (orientation: portrait) {
+  body.tablet #touch:not(.editing) .slotbar { left: calc(16px + env(safe-area-inset-left)); transform: none; bottom: calc(72px + env(safe-area-inset-bottom)); gap: 6px; }
+  body.tablet .sbtn { min-width: 76px; padding: 4px 10px; }
+  body.tablet .menu-grid { grid-template-columns: 1fr; }
+  body.tablet .menu-grid > section + section { border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: 18px; }
+}
+.set-row .pick { flex-wrap: wrap; }
+
 #rotate-hint { display: none; }
 @media (orientation: portrait) {
-  body.mobile #rotate-hint { display: flex; position: fixed; inset: 0; z-index: 50; align-items: center; justify-content: center;
+  body.mobile:not(.tablet) #rotate-hint { display: flex; position: fixed; inset: 0; z-index: 50; align-items: center; justify-content: center;
     background: rgba(10,12,16,0.92); color: var(--accent); font-size: 20px; font-weight: 700; text-align: center; padding: 24px; }
 }

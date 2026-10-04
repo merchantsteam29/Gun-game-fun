@@ -32,6 +32,7 @@ const TABS = [
     { key: 'crossDot', label: 'Crosshair center dot', type: 'check' },
   ] },
   { name: 'Mobile', rows: [
+    { special: 'uimode' },
     { special: 'layout' },
     { key: 'btnScale', label: 'Button size', type: 'range', min: 0.7, max: 1.5, step: 0.05, fmt: mul },
     { key: 'btnOpacity', label: 'Button opacity', type: 'range', min: 0.25, max: 1, step: 0.05, fmt: pct },
@@ -43,9 +44,11 @@ const TABS = [
 export class SettingsUI {
   // game: for graphics changes; editLayout(done): opens the touch layout editor.
   // onCos(cos): called when the player equips a cosmetic (to tell the lobby).
-  constructor({ game, mobile, editLayout, getColor, onCos }) {
+  constructor({ game, mobile, uiMode, uiFromUrl, editLayout, getColor, onCos }) {
     this.game = game;
     this.mobile = mobile;
+    this.uiMode = uiMode; // the mode actually in use right now
+    this.uiFromUrl = uiFromUrl;
     this.editLayout = editLayout;
     this.getColor = getColor;
     this.onCos = onCos;
@@ -112,6 +115,22 @@ export class SettingsUI {
           store.set('lowgfx', this.game.lowGfx);
           this.game.applyGfx();
           this.render();
+        };
+      });
+    } else if (kind === 'uimode') {
+      const names = { auto: 'Auto', phone: 'Phone', tablet: 'Tablet', desktop: 'Desktop' };
+      el.innerHTML = `<div class="set-label">Interface mode<small>Now using: ${names[this.uiMode]}${this.uiFromUrl ? ' (set by the link)' : opts.uiMode === 'auto' ? ' (auto-detected)' : ''}. Tablet = bigger HUD, weapon slot bar, portrait allowed. Desktop = keyboard & mouse.</small></div>
+        <div class="pick">${Object.keys(names).map((m) => `<button data-m="${m}" class="${opts.uiMode === m ? 'sel' : ''}">${names[m]}</button>`).join('')}</div>`;
+      el.querySelectorAll('[data-m]').forEach((b) => {
+        b.onclick = () => {
+          if (opts.uiMode === b.dataset.m) return;
+          setOpt('uiMode', b.dataset.m);
+          this.render();
+          if (confirm('Reload now to switch the interface? (You will leave any lobby you are in.)')) {
+            const url = new URL(location.href);
+            for (const k of ['mobile', 'tablet', 'desktop', 'lobby']) url.searchParams.delete(k);
+            location.href = url.toString();
+          }
         };
       });
     } else if (kind === 'missions') {

@@ -10,6 +10,7 @@ import { HostPanel } from './hostpanel.js';
 import { modelQuality } from './models.js';
 import { SettingsUI } from './settingsui.js';
 import { getCos } from './missions.js';
+import { opts } from './settings.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -23,19 +24,27 @@ const settings = {
 if (!MAPS[settings.map]) settings.map = 'warehouse';
 if (!MODES[settings.mode]) settings.mode = 'ffa';
 
-// Phones/tablets get touch controls and lighter graphics (?mobile / ?desktop to force).
+// Interface mode: phones and tablets get touch controls and lighter graphics; tablets also get
+// a roomier layout, a weapon slot bar and portrait support. Settings → Mobile → Interface mode
+// (or ?mobile / ?tablet / ?desktop) overrides the auto-detection.
 const params = new URLSearchParams(location.search);
-const mobile = params.has('mobile') || (!params.has('desktop') &&
-  (matchMedia('(pointer: coarse)').matches || (navigator.maxTouchPoints > 0 && matchMedia('(hover: none)').matches)));
+const touchDevice = matchMedia('(pointer: coarse)').matches || (navigator.maxTouchPoints > 0 && matchMedia('(hover: none)').matches);
+const bigScreen = Math.min(screen.width, screen.height) >= 600;
+const uiFromUrl = params.has('desktop') ? 'desktop' : params.has('tablet') ? 'tablet' : params.has('mobile') ? 'phone' : null;
+let uiMode = uiFromUrl || opts.uiMode;
+if (!['phone', 'tablet', 'desktop'].includes(uiMode)) uiMode = touchDevice ? (bigScreen ? 'tablet' : 'phone') : 'desktop';
+const mobile = uiMode !== 'desktop';
+const tablet = uiMode === 'tablet';
 if (mobile) {
   quality.shadowSize = 1024;
   quality.pointLights = false; // each colored light makes every material's shader heavier
   modelQuality.rounded = false;
   document.body.classList.add('mobile');
+  if (tablet) document.body.classList.add('tablet');
   document.querySelector('#death .small').innerHTML = 'Tap <kbd>II</kbd> to change your loadout';
 }
 
-const game = new Game($('game'), { mobile });
+const game = new Game($('game'), { mobile, tablet });
 window.game = game; // handy for debugging from the console
 let net = null;
 let busy = false;
@@ -235,8 +244,9 @@ $('btn-resume').onclick = () => {
   if (mobile) {
     touch.show(true);
     const el = document.documentElement;
+    // Phones are locked to landscape; tablets can play either way.
     if (!document.fullscreenElement && el.requestFullscreen) {
-      el.requestFullscreen().then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape').catch(() => {})).catch(() => {});
+      el.requestFullscreen().then(() => !tablet && screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape').catch(() => {})).catch(() => {});
     }
   }
 };
@@ -244,7 +254,7 @@ $('btn-leave').onclick = () => leave();
 
 // Settings: from the main menu or the pause menu; returns to whichever opened it.
 const settingsUI = new SettingsUI({
-  game, mobile,
+  game, mobile, uiMode, uiFromUrl: !!uiFromUrl,
   editLayout: (done) => touch.edit(done),
   getColor: () => settings.color,
   onCos: (c) => { if (net) net.send({ t: 'cos', c }); },

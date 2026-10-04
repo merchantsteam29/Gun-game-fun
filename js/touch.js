@@ -1,6 +1,7 @@
 // On-screen controls for phones/tablets: floating joystick (left), drag-to-look (right),
 // and action buttons. Drives the same Game inputs as keyboard/mouse.
 import { opts, onOpts, setOpt } from './settings.js';
+import { WEAPONS, SHORT } from './weapons.js';
 const BUTTONS = [
   { a: 'fire', label: 'FIRE', hold: true },
   { a: 'aim', label: 'AIM', toggle: true },
@@ -24,6 +25,7 @@ export class TouchControls {
     this.el.className = 'hidden';
     this.el.innerHTML = `<div class="joy hidden"><div class="knob"></div></div>` +
       BUTTONS.map((b) => `<div class="tbtn b-${b.a}" data-a="${b.a}">${b.label}</div>`).join('') +
+      `<div class="slotbar">${[0, 1, 2, 3].map((i) => `<div class="sbtn" data-slot="${i}"><b>${i + 1}</b><span></span><em></em></div>`).join('')}</div>` +
       `<div class="touch-edit">
         <b>Drag buttons to move them</b>
         <label>Selected size <input type="range" min="0.6" max="1.8" step="0.05" class="te-size" disabled></label>
@@ -53,6 +55,26 @@ export class TouchControls {
   show(v) {
     this.el.classList.toggle('hidden', !v);
     if (!v) this.releaseAll();
+    // Tablets get a tappable weapon slot bar; keep its labels in sync while playing.
+    clearInterval(this.slotTimer);
+    if (v && this.game.tablet) { this.updateSlots(); this.slotTimer = setInterval(() => this.updateSlots(), 150); }
+  }
+
+  updateSlots() {
+    const g = this.game;
+    this.el.querySelectorAll('.sbtn').forEach((b) => {
+      const i = Number(b.dataset.slot), id = g.loadout[i], w = id && WEAPONS[id];
+      b.classList.toggle('hidden', !w);
+      if (!w) return;
+      const count = w.type === 'throw' ? '×' + g.util : w.mag ? (g.ammo[id] ?? w.mag) : '';
+      const key = id + count + (i === g.slot);
+      if (b.dataset.key === key) return;
+      b.dataset.key = key;
+      b.querySelector('span').textContent = SHORT[id] || w.name;
+      b.querySelector('em').textContent = count;
+      b.classList.toggle('sel', i === g.slot);
+      b.classList.toggle('off', (i === 3 && g.util === 0) || (!!w.mag && g.ammo[id] === 0));
+    });
   }
 
   btn(a) { return this.el.querySelector(`.b-${a}`); }
@@ -62,7 +84,7 @@ export class TouchControls {
   applyLayout() {
     for (const b of BUTTONS) {
       const el = this.btn(b.a), l = opts.layout[b.a];
-      const s = (l && l.s ? l.s : 1) * opts.btnScale;
+      const s = (l && l.s ? l.s : 1) * opts.btnScale * (this.game.tablet ? 1.15 : 1); // a touch bigger on tablets
       if (l) {
         Object.assign(el.style, { left: l.x + '%', top: l.y + '%', right: 'auto', bottom: 'auto', transform: `translate(-50%, -50%) scale(${s})` });
       } else {
@@ -142,6 +164,12 @@ export class TouchControls {
     e.preventDefault();
     const g = this.game;
     for (const t of e.changedTouches) {
+      const slotBtn = t.target.closest && t.target.closest('[data-slot]');
+      if (slotBtn) {
+        if (g.me.alive && !g.matchOver) g.switchSlot(Number(slotBtn.dataset.slot));
+        this.updateSlots();
+        continue;
+      }
       const b = t.target.closest && t.target.closest('[data-a]');
       if (b) {
         const a = b.dataset.a;

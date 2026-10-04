@@ -99,8 +99,11 @@ Open **Settings** from the main menu or the pause menu. Everything is saved in y
 Phones and tablets get touch controls automatically (play in landscape):
 floating joystick on the left, drag on the right to look, and buttons for fire (drag it to aim while shooting),
 aim, jump, crouch, reload, weapon swap (toggles primary/secondary), grenade, melee, scoreboard and pause.
-Rearrange or resize the buttons in **Settings → Mobile → Edit layout**.
-Add `?mobile` or `?desktop` to the URL to force a mode, and `?lowgfx` to force low graphics.
+Tablets get **tablet mode** automatically: a fuller HUD, a tappable weapon slot bar, slightly larger buttons,
+sharper graphics, and portrait play (with a wider view so the gun stays on screen).
+Rearrange or resize the buttons in **Settings → Mobile → Edit layout**, and pick Auto / Phone / Tablet / Desktop
+under **Settings → Mobile → Interface mode**.
+Add `?mobile`, `?tablet` or `?desktop` to the URL to force a mode, and `?lowgfx` to force low graphics.
 
 ## Run locally
 
