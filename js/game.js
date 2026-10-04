@@ -15,6 +15,10 @@ import { opts, onOpts } from './settings.js';
 import { setVolume } from './audio.js';
 
 const JUMP = 8, WALK = 5.6, SPRINT = 1.35, CROUCH_SPD = 0.55, PAD_JUMP = 14;
+// Jump forgiveness: jump shortly after walking off a ledge (coyote) or pressed just before landing (buffer).
+const COYOTE = 0.11, JUMP_BUFFER = 0.14;
+// Sprint + crouch = slide: a burst of speed that bleeds off, then you're crouched.
+const SLIDE_TIME = 0.85, SLIDE_BOOST = 1.25, SLIDE_FRICTION = 1.1, SLIDE_COOLDOWN = 0.9;
 const STAND_H = 1.8, CROUCH_H = 1.2, EYE_STAND = 1.62, EYE_CROUCH = 1.05;
 const SEND_INTERVAL = 1 / 30;
 const BASE_SENS = 0.0022;
@@ -135,6 +139,8 @@ export class Game {
     this.pendingMelee = null; this.pendingThrow = null; this.cycleSfxT = 0;
     this.recoil = 0; this.shake = 0; this.flinch = 0; this.landDip = 0;
     this.bobPhase = 0; this.stepAcc = 0; this.roll = 0;
+    this.coyote = 0; this.jumpBuf = 0; this.jumpHeld = false; this.stepSmooth = 0;
+    this.slideT = 0; this.slideCd = 0; this.crouchHeld = false;
     this.spread = 0; this.ads = false; this.scoped = false; this.sprinting = false;
     this.keys = new Set();
     this.mouse = { left: false, right: false };
@@ -463,7 +469,7 @@ export class Game {
       case 'spawn': this.respawn(m); break;
       case 'dmg': this.onDamaged(m); break;
       case 'hitc':
-        this.hud.hit(m.kill ? 'kill' : m.head ? 'head' : null);
+        this.hud.hit(m.kill ? 'kill' : m.head ? 'head' : null, !!m.head);
         break;
       case 'kill': this.onKill(m); break;
       case 'shot': this.remoteShot(m); break;
@@ -511,6 +517,7 @@ export class Game {
     me.crouch = false;
     me.h = STAND_H;
     me.eye = EYE_STAND;
+    this.slideT = 0; this.stepSmooth = 0; this.coyote = 0; this.jumpBuf = 0;
     me.hp = this.maxHp = m.hp || 100;
     const pl = this.players.get(this.myId);
     if (pl && m.team !== undefined) pl.team = m.team;
@@ -564,8 +571,15 @@ export class Game {
     if (v) this.hud.feed(k, v, m.w, m.head, m.k === this.myId || m.v === this.myId);
     if (m.k === this.myId && m.v !== this.myId && v) {
       this.hud.say(`ELIMINATED ${v.name}`);
-      this.hud.hit('kill');
-      sfx.kill(0.8);
+      this.hud.hit('kill', !!m.head);
+      if (m.head) {
+        this.headStreak = (this.headStreak || 0) + 1;
+        this.hud.headshot(this.headStreak);
+        sfx.headKill(0.9);
+      } else {
+        this.headStreak = 0;
+        sfx.kill(0.8);
+      }
       if (!this.teams || (pk && pv && pk.team !== pv.team)) {
         const W = WEAPONS[m.w];
         track.kill({
@@ -580,8 +594,9 @@ export class Game {
     const killerPos = m.k === this.myId ? this.me.pos : this.remotes.get(m.k)?.pos;
     if (m.v === this.myId) {
       this.me.alive = false;
+      this.headStreak = 0;
       this.deathInfo = {
-        killer: m.k !== this.myId ? m.k : null, w: m.w, at: performance.now(),
+        killer: m.k !== this.myId ? m.k : null, w: m.w, at: performance.now(), head: !!m.head && m.k !== this.myId,
         pos: this.me.pos.clone(), eye: this.me.eye, roll: Math.random() > 0.5 ? 1 : -1,
       };
       this.vm.setVisible(false);
@@ -593,8 +608,9 @@ export class Game {
     } else {
       const r = this.remotes.get(m.v);
       if (r) {
-        this.fx.blood(r.center(_c));
-        r.die(killerPos && killerPos !== r.pos ? killerPos : null);
+        if (m.head) { r.headPos(_c); this.fx.blood(_c); this.fx.blood(_c); } else this.fx.blood(r.center(_c));
+        r.die(killerPos && killerPos !== r.pos ? killerPos : null, !!m.head);
+        if (m.head) r.popHat(); // in case a snapshot already started the death
       }
     }
   }
@@ -700,8 +716,9 @@ export class Game {
       const adsK = this.ads ? 0.3 : 1;
       if (me.onGround) this.bobPhase += dt * hs * 1.9;
       const bob = me.onGround ? Math.min(1, hs / 6) * adsK * opts.bobbing : 0;
-      this.roll += (-strafe * 0.018 * adsK - this.roll) * Math.min(1, dt * 8);
-      cam.position.set(me.pos.x, me.pos.y + me.eye - this.landDip + Math.sin(this.bobPhase * 2) * 0.022 * bob, me.pos.z);
+      const slideRoll = this.slideT > 0 ? 0.045 : 0;
+      this.roll += (-strafe * 0.018 * adsK + slideRoll - this.roll) * Math.min(1, dt * 8);
+      cam.position.set(me.pos.x, me.pos.y + this.stepSmooth + me.eye - this.landDip + Math.sin(this.bobPhase * 2) * 0.022 * bob, me.pos.z);
       cam.rotation.set(
         me.pitch + this.recoil + this.flinch * 0.035 + (Math.random() - 0.5) * this.shake * 0.1,
         me.yaw + (Math.random() - 0.5) * this.shake * 0.1,
@@ -781,9 +798,27 @@ export class Game {
     }
 
     const wantCrouch = k.has('ControlLeft') || k.has('KeyC');
-    if (wantCrouch && !me.crouch) { me.crouch = true; me.h = CROUCH_H; }
-    else if (!wantCrouch && me.crouch && !overlap(me.pos.x, me.pos.y, me.pos.z, PLAYER_R, STAND_H)) { me.crouch = false; me.h = STAND_H; }
-    me.eye += ((me.crouch ? EYE_CROUCH : EYE_STAND) - me.eye) * Math.min(1, dt * 14);
+    const crouchPressed = wantCrouch && !this.crouchHeld;
+    this.crouchHeld = wantCrouch;
+    this.slideCd = Math.max(0, this.slideCd - dt);
+    const hs0 = Math.hypot(me.vel.x, me.vel.z);
+    // Slide: tap crouch while sprinting on the ground.
+    if (crouchPressed && this.sprinting && me.onGround && this.slideCd <= 0 && hs0 > WALK * 1.05) {
+      this.slideT = SLIDE_TIME;
+      this.slideCd = SLIDE_TIME + SLIDE_COOLDOWN;
+      const boost = Math.max(hs0, WALK * this.rules.moveSpeed * w.speedMul * SPRINT * SLIDE_BOOST) / hs0;
+      me.vel.x *= boost; me.vel.z *= boost;
+      sfx.slide(0.5);
+    }
+    if (this.slideT > 0) {
+      this.slideT -= dt;
+      // Ends early when you stand up, slow down or jump out of it (jumping keeps the momentum).
+      if (!wantCrouch || hs0 < WALK * 0.75) this.slideT = 0;
+    }
+    const sliding = this.slideT > 0;
+    if ((wantCrouch || sliding) && !me.crouch) { me.crouch = true; me.h = CROUCH_H; }
+    else if (!wantCrouch && !sliding && me.crouch && !overlap(me.pos.x, me.pos.y, me.pos.z, PLAYER_R, STAND_H)) { me.crouch = false; me.h = STAND_H; }
+    me.eye += ((me.crouch ? (sliding ? EYE_CROUCH - 0.12 : EYE_CROUCH) : EYE_STAND) - me.eye) * Math.min(1, dt * 14);
 
     const touchSprint = this.touch && f > 0.9 && Math.abs(s) < 0.45;
     this.sprinting = (k.has('ShiftLeft') || touchSprint) && f > 0 && !me.crouch && !this.ads && !this.mouse.left && this.reloadT <= 0;
@@ -792,17 +827,45 @@ export class Game {
     let wx = -sy * f + cy * s, wz = -cy * f - sy * s;
     const len = Math.hypot(wx, wz);
     if (len > 0) { wx /= len; wz /= len; }
-    const a = me.onGround ? 1 - Math.exp(-dt * 14) : 1 - Math.exp(-dt * (len > 0 ? 2.5 : 0.4));
-    me.vel.x += (wx * speed * analog - me.vel.x) * a;
-    me.vel.z += (wz * speed * analog - me.vel.z) * a;
+    if (sliding && me.onGround) {
+      // Momentum bleeds off; input only steers a little.
+      const fr = Math.exp(-dt * SLIDE_FRICTION);
+      me.vel.x *= fr; me.vel.z *= fr;
+      const steer = 1 - Math.exp(-dt * 2);
+      const hs = Math.hypot(me.vel.x, me.vel.z);
+      if (len > 0) { me.vel.x += (wx * hs - me.vel.x) * steer * 0.5; me.vel.z += (wz * hs - me.vel.z) * steer * 0.5; }
+    } else {
+      // Snappier when stopping or turning than when speeding up.
+      const along = len > 0 ? (me.vel.x * wx + me.vel.z * wz) : 0;
+      const groundK = len > 0 && along > -0.5 ? 13 : 18;
+      const a = me.onGround ? 1 - Math.exp(-dt * groundK) : 1 - Math.exp(-dt * (len > 0 ? 2.5 : 0.4));
+      me.vel.x += (wx * speed * analog - me.vel.x) * a;
+      me.vel.z += (wz * speed * analog - me.vel.z) * a;
+    }
 
-    if (k.has('Space') && me.onGround) {
+    // Jumping: held Space keeps hopping; a tap just before landing or just after leaving a
+    // ledge still counts.
+    const jumpDown = k.has('Space');
+    if (jumpDown && !this.jumpHeld) this.jumpBuf = JUMP_BUFFER;
+    this.jumpHeld = jumpDown;
+    this.coyote = me.onGround ? COYOTE : Math.max(0, this.coyote - dt);
+    this.jumpBuf = Math.max(0, this.jumpBuf - dt);
+    if ((this.jumpBuf > 0 || jumpDown) && this.coyote > 0 && me.vel.y <= 0.5) {
       me.vel.y = JUMP * this.rules.jump;
       me.onGround = false;
+      this.coyote = 0;
+      this.jumpBuf = 0;
+      this.slideT = 0;
       sfx.jump(0.4);
     }
-    const wasGround = me.onGround, vyBefore = me.vel.y;
+    const wasGround = me.onGround, vyBefore = me.vel.y, yBefore = me.pos.y;
     moveBody(me, dt, me.h);
+    // Stairs: the body steps instantly, the camera glides.
+    const dy = me.pos.y - yBefore;
+    if (wasGround && me.onGround && vyBefore <= 0.01 && Math.abs(dy) > 0.02 && Math.abs(dy) < 0.65) {
+      this.stepSmooth = clamp(this.stepSmooth - dy, -0.6, 0.6);
+    }
+    this.stepSmooth *= Math.exp(-dt * 13);
     if (!wasGround && me.onGround && vyBefore < -3) {
       const kk = clamp((-vyBefore - 3) / 12, 0, 1);
       this.landDip = Math.max(this.landDip, 0.06 + kk * 0.16);
@@ -1564,7 +1627,7 @@ export class Game {
       const killer = this.deathInfo.killer && this.players.get(this.deathInfo.killer);
       const mine = this.players.get(this.myId);
       const out = this.rules.mode === 'lms' && mine && mine.sc <= 0;
-      hud.death(true, killer ? killer.name : null, this.deathInfo.w, secs, out ? 'Out of lives · spectating until the next round' : null);
+      hud.death(true, killer ? killer.name : null, this.deathInfo.w, secs, out ? 'Out of lives · spectating until the next round' : null, this.deathInfo.head);
     }
     if (this.matchOver && this.endInfo) {
       const next = MAPS[this.endInfo.nextMap];

@@ -76,7 +76,6 @@ export const sfx = {
   throw: play((o) => { nz(o, { dur: 0.25, f0: 500, f1: 2000, type: 'bandpass', q: 1.5, gain: 0.4, attack: 0.08 }); }),
   bounce: play((o) => { tone(o, { dur: 0.06, f0: 900, f1: 500, type: 'triangle', gain: 0.4 }); }),
   hit: play((o) => { tone(o, { dur: 0.05, f0: 1900, gain: 0.35, type: 'triangle' }); }),
-  head: play((o) => { tone(o, { dur: 0.07, f0: 2600, gain: 0.4, type: 'triangle' }); tone(o, { dur: 0.05, f0: 3400, gain: 0.25, delay: 0.03 }); }),
   kill: play((o) => { tone(o, { dur: 0.12, f0: 880, gain: 0.35, type: 'triangle' }); tone(o, { dur: 0.2, f0: 1320, gain: 0.35, type: 'triangle', delay: 0.08 }); }),
   hurt: play((o) => { nz(o, { dur: 0.15, f0: 400, f1: 120, gain: 0.7 }); }),
   empty: play((o) => { tone(o, { dur: 0.03, f0: 1500, gain: 0.3, type: 'square' }); }),
@@ -112,6 +111,20 @@ export const sfx = {
   vortex: play((o) => { tone(o, { dur: 0.6, f0: 900, f1: 60, type: 'sawtooth', gain: 0.3 }); nz(o, { dur: 0.5, f0: 3000, f1: 200, type: 'bandpass', q: 3, gain: 0.6 }); }),
   cycle: play((o) => { nz(o, { dur: 0.05, f0: 2500, type: 'highpass', gain: 0.4 }); nz(o, { dur: 0.05, f0: 1800, type: 'highpass', gain: 0.4 }); }),
 };
+sfx.slide = play((o) => { nz(o, { dur: 0.55, f0: 900, f1: 300, type: 'bandpass', q: 0.8, gain: 0.5, attack: 0.03 }); });
+// Headshot: a bright metallic "tink" on top of the hit tick.
+sfx.head = play((o) => {
+  tone(o, { dur: 0.09, f0: 2900, f1: 2700, gain: 0.45, type: 'triangle' });
+  tone(o, { dur: 0.22, f0: 4300, f1: 4100, gain: 0.18 });
+  tone(o, { dur: 0.18, f0: 6100, gain: 0.08, delay: 0.01 });
+});
+// Headshot kill: the tink plus a low thump.
+sfx.headKill = play((o) => {
+  tone(o, { dur: 0.12, f0: 3000, f1: 2600, gain: 0.45, type: 'triangle' });
+  tone(o, { dur: 0.3, f0: 4500, f1: 4200, gain: 0.2 });
+  tone(o, { dur: 0.18, f0: 140, f1: 60, gain: 0.5, delay: 0.02 });
+  nz(o, { dur: 0.12, f0: 2500, f1: 600, gain: 0.25 });
+});
 sfx.dmr = play((o) => { nz(o, { dur: 0.3, f0: 3200, f1: 250, gain: 1.15 }); tone(o, { dur: 0.15, f0: 110, f1: 40, gain: 0.8 }); });
 sfx.minigun = play((o) => { nz(o, { dur: 0.06, f0: 3500, f1: 900, gain: 0.55 }); tone(o, { dur: 0.04, f0: 180, f1: 90, gain: 0.3 }); });
 sfx.doublebarrel = play((o) => { nz(o, { dur: 0.4, f0: 2000, f1: 150, gain: 1.4 }); tone(o, { dur: 0.2, f0: 90, f1: 30, gain: 1.1 }); });

@@ -5,6 +5,8 @@ export const GRAVITY = 20;
 // Runtime-tunable physics (host panel).
 export const phys = { gravity: 1 };
 const STEP = 0.55;
+const AIR_STEP = 0.32; // ledge forgiveness: mid-air bodies hop onto edges this close below their feet
+const SNAP = 0.6; // grounded bodies stick to floors up to this far below (walking down stairs)
 const EPS = 1e-4;
 
 export function overlap(px, py, pz, r, h) {
@@ -14,12 +16,31 @@ export function overlap(px, py, pz, r, h) {
   return null;
 }
 
-// Moves a body {pos, vel, onGround} with AABB collision, auto step-up, and gravity.
+// Moves a body {pos, vel, onGround} with AABB collision, auto step-up, ground snapping and gravity.
 export function moveBody(body, dt, h) {
+  const wasGrounded = body.onGround;
   const speed = Math.hypot(body.vel.x, body.vel.y, body.vel.z);
   const n = Math.max(1, Math.ceil((speed * dt) / 0.25));
   const sdt = dt / n;
   for (let i = 0; i < n; i++) step(body, sdt, h);
+  if (wasGrounded && !body.onGround && body.vel.y <= 0) snapDown(body, h);
+}
+
+// Keeps a walking body on the floor when it steps down (stairs, curbs) instead of
+// briefly going airborne every step.
+function snapDown(body, h) {
+  const p = body.pos, r = PLAYER_R;
+  let best = null;
+  for (const b of boxes) {
+    if (p.x + r <= b.x0 || p.x - r >= b.x1 || p.z + r <= b.z0 || p.z - r >= b.z1) continue;
+    if (b.y1 > p.y + EPS || b.y1 < p.y - SNAP) continue;
+    if (!best || b.y1 > best.y1) best = b;
+  }
+  if (!best || overlap(p.x, best.y1, p.z, r, h)) return;
+  p.y = best.y1;
+  body.vel.y = 0;
+  body.onGround = true;
+  body.ground = best;
 }
 
 function step(body, dt, h) {
@@ -34,7 +55,7 @@ function step(body, dt, h) {
     const b = overlap(p.x, p.y, p.z, r, h);
     if (!b) continue;
     const rise = b.y1 - p.y;
-    if (grounded && rise <= STEP && !overlap(p.x, b.y1 + EPS, p.z, r, h)) {
+    if (rise <= (grounded ? STEP : AIR_STEP) && !overlap(p.x, b.y1 + EPS, p.z, r, h)) {
       p.y = b.y1 + EPS;
       continue;
     }

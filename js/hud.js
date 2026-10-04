@@ -109,7 +109,9 @@ export class Hud {
   reloading(v) { $('reload-hint').classList.toggle('show', v); }
 
   scope(v) {
-    $('scope').classList.toggle('hidden', !v);
+    if (v === this.scoped) return;
+    this.scoped = v;
+    $('scope').classList.toggle('on', v); // fades in (see #scope in style.css)
     this.crosshair.classList.toggle('hidden', v);
   }
 
@@ -118,13 +120,27 @@ export class Hud {
     this.crosshair.classList.toggle('ads', ads);
   }
 
-  hit(kind) {
+  // kind: null (body), 'head' or 'kill'; `head` marks a headshot kill too.
+  hit(kind, head = kind === 'head') {
     const h = this.hitmarker;
-    h.classList.remove('kill', 'head');
+    h.classList.remove('kill', 'head', 'show');
+    void h.offsetWidth; // restart the pop animation
     if (kind) h.classList.add(kind);
+    if (head) h.classList.add('head');
     h.classList.add('show');
     clearTimeout(this.timers.hit);
-    this.timers.hit = setTimeout(() => h.classList.remove('show'), kind === 'kill' ? 220 : 90);
+    this.timers.hit = setTimeout(() => h.classList.remove('show'), kind === 'kill' ? 260 : head ? 160 : 90);
+  }
+
+  // Big "HEADSHOT" pop under the crosshair on headshot kills (with a streak count).
+  headshot(streak) {
+    const el = $('headshot');
+    el.innerHTML = `HEADSHOT${streak > 1 ? ` <b>×${streak}</b>` : ''}`;
+    el.classList.remove('show');
+    void el.offsetWidth;
+    el.classList.add('show');
+    clearTimeout(this.timers.hs);
+    this.timers.hs = setTimeout(() => el.classList.remove('show'), 1100);
   }
 
   damage(angle) {
@@ -152,7 +168,7 @@ export class Hud {
     const d = document.createElement('div');
     if (mine) d.className = 'me';
     const kname = killer && killer !== victim
-      ? `<span style="color:${esc(killer.color)}">${esc(killer.name)}</span><span class="w">${W_LABEL[weapon] || weapon}${head ? ' ⌖' : ''}</span>`
+      ? `<span style="color:${esc(killer.color)}">${esc(killer.name)}</span><span class="w">${W_LABEL[weapon] || esc(weapon)}${head ? '<i class="hs" title="Headshot">⌖</i>' : ''}</span>`
       : `<span class="w">${W_LABEL[weapon] || weapon} (self)</span>`;
     d.innerHTML = `${kname}<span style="color:${esc(victim.color)}">${esc(victim.name)}</span>`;
     this.killfeed.prepend(d);
@@ -179,10 +195,10 @@ export class Hud {
     }).join('');
   }
 
-  death(show, killerName, weapon, secs, status = null) {
+  death(show, killerName, weapon, secs, status = null, head = false) {
     $('death').classList.toggle('hidden', !show);
     if (!show) return;
-    $('death-by').innerHTML = killerName ? `by <b>${esc(killerName)}</b> · ${W_LABEL[weapon] || ''}` : '';
+    $('death-by').innerHTML = killerName ? `by <b>${esc(killerName)}</b> · ${W_LABEL[weapon] || ''}${head ? ' · <span class="hs">HEADSHOT</span>' : ''}` : '';
     $('death-timer').textContent = status || (secs > 0 ? `Respawning in ${secs}` : 'Respawning…');
   }
 

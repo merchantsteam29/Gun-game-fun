@@ -113,6 +113,14 @@ The Grenade Launcher one-shots on a direct hit but slows you down while it's out
 WASD move · Mouse aim · LMB fire · RMB aim/scope · Space jump · Shift sprint · Ctrl/C crouch ·
 R reload · 1–4 / wheel switch · Q last weapon · G quick grenade · F quick melee · T inspect · Tab scoreboard · Esc pause/loadout
 
+**Movement:** crouch while sprinting to **slide** (a burst of speed you can jump out of). You stay on the ground
+walking down stairs, can still jump for a moment after running off a ledge, a jump pressed just before landing
+still counts, and you hop onto edges you only just clip when jumping.
+
+**Headshots:** the head hitbox follows the player model (crouching, leaning, looking up/down). Headshots get a gold
+hitmarker and a "tink"; headshot kills show **HEADSHOT** (with a streak count), knock the victim's hat off, and are
+marked in the kill feed and on the victim's death screen.
+
 Switching holsters your current weapon before drawing the next (heavier weapons take longer). Quick melee (F) swings
 immediately and then puts your previous weapon back in your hands. When you throw your last grenade you go back to
 the weapon you had out before.

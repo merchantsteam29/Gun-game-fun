@@ -126,7 +126,8 @@ export class Viewmodel {
     holder.visible = false;
     this.root.add(holder);
     const sight = gun.userData.sight || 0.1;
-    return { id, holder, gun, parts: gun.userData.parts, ads: [0, -sight * S, -0.3] };
+    // Magnified optics sit closer to the eye so you look into the scope.
+    return { id, holder, gun, parts: gun.userData.parts, ads: [0, -sight * S, gun.userData.adsZ ?? -0.3] };
   }
 
   get model() { return this.models[this.quick || this.cur]; }

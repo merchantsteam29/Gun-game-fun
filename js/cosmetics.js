@@ -237,13 +237,16 @@ const BACK = {
   },
 };
 
-// Returns { head, back } groups for the given cosmetics. `body` is the player's color material.
+// Returns { head, back, hat } groups for the given cosmetics. `body` is the player's color material.
+// The hat is its own group inside `head` so a headshot can knock it off.
 export function buildCosmetics(cos, body) {
-  const head = new THREE.Group(), back = new THREE.Group();
+  const head = new THREE.Group(), back = new THREE.Group(), hat = new THREE.Group();
+  hat.name = 'hat';
+  head.add(hat);
   const covered = COVERING.includes(cos.hat);
   if (HAIR[cos.hair]) HAIR[cos.hair](head, hairMat(cos.hairColor), covered);
   if (FACE[cos.face]) FACE[cos.face](head);
-  if (HATS[cos.hat]) HATS[cos.hat](head, body);
+  if (HATS[cos.hat]) HATS[cos.hat](hat, body);
   if (BACK[cos.back]) BACK[cos.back](back, body);
-  return { head, back };
+  return { head, back, hat };
 }

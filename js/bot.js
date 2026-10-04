@@ -208,7 +208,8 @@ export class Bot {
       }
       const t = this.target;
       const headshot = Math.random() < d.head;
-      const tx = t.st[0] - eye.x, ty = t.st[1] + (headshot ? 1.6 : 1.15) - eye.y, tz = t.st[2] - eye.z;
+      const aimY = headshot ? headY(t.st, this.logic.mode.bigHead) : t.st[6] ? 0.9 : 1.15;
+      const tx = t.st[0] - eye.x, ty = t.st[1] + aimY - eye.y, tz = t.st[2] - eye.z;
       wantYaw = Math.atan2(-tx, -tz) + this.aimErr.x;
       wantPitch = Math.atan2(ty, Math.hypot(tx, tz)) + this.aimErr.y;
     } else if (ml > 0.01) {
@@ -291,12 +292,16 @@ export class Bot {
   }
 }
 
+// Head center height above the feet, matching the player model (see RemotePlayer.hitboxes).
+export function headY(st, big = false) {
+  return (big ? 1.91 : 1.73) - (st[6] ? 0.32 : 0);
+}
+
 // Same boxes as the client-side RemotePlayer.hitboxes (standing/crouch from st[6]; big = Big Heads mode).
 export function hitboxes(st, big = false) {
-  const s = st[6] ? 0.8 : 1;
   const x = st[0], y = st[1], z = st[2];
-  const head = big
-    ? [x - 0.42, y + 1.85 * s - 0.34, z - 0.42, x + 0.42, y + 1.85 * s + 0.42, z + 0.42, true]
-    : [x - 0.21, y + 1.63 * s - 0.2, z - 0.21, x + 0.21, y + 1.63 * s + 0.24, z + 0.21, true];
-  return [head, [x - 0.36, y, z - 0.36, x + 0.36, y + 1.42 * s, z + 0.36, false]];
+  const hc = y + headY(st, big);
+  const hw = big ? 0.42 : 0.19, lo = big ? 0.36 : 0.17, hi = big ? 0.44 : 0.21;
+  const head = [x - hw, hc - lo, z - hw, x + hw, hc + hi, z + hw, true];
+  return [head, [x - 0.36, y, z - 0.36, x + 0.36, hc - lo, z + 0.36, false]];
 }

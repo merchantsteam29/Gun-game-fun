@@ -25,7 +25,7 @@ const THIGH = 0.46, SHIN = 0.46, UPPER = 0.3, FORE = 0.3;
 const HIP_Y = 0.94;
 
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _m = new THREE.Vector3(), _e = new THREE.Vector3();
-const _pole = new THREE.Vector3(), _q = new THREE.Quaternion(), _axis = new THREE.Vector3();
+const _pole = new THREE.Vector3(), _q = new THREE.Quaternion(), _axis = new THREE.Vector3(), _hb = new THREE.Vector3();
 const YAXIS = new THREE.Vector3(0, 1, 0);
 
 function mesh(geo, mat, x, y, z, parent) {
@@ -168,12 +168,14 @@ export class RemotePlayer {
     const cos = c || DEFAULT_COS;
     if (this.cos && JSON.stringify(this.cos) === JSON.stringify(cos)) return;
     this.cos = cos;
-    for (const g of [this.cosHead, this.cosBack]) {
+    for (const g of [this.cosHead, this.cosBack, this.hatFly && this.hat]) {
       if (!g) continue;
-      g.parent.remove(g);
+      if (g.parent) g.parent.remove(g);
       g.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
     }
-    const { head, back } = buildCosmetics(cos, this.bodyMat);
+    this.hatFly = null;
+    const { head, back, hat } = buildCosmetics(cos, this.bodyMat);
+    this.hat = hat;
     mergeStatic(head);
     mergeStatic(back);
     if (!modelQuality.remoteShadows) for (const g of [head, back]) g.traverse((o) => { o.castShadow = false; });
@@ -213,6 +215,7 @@ export class RemotePlayer {
       this.yaw = this.tyaw;
       this.deathT = 0;
       this.root.quaternion.identity();
+      this.restoreHat();
     }
     if (!alive && this.alive && this.deathT === 0) this.die(null);
     this.alive = alive;
@@ -223,14 +226,52 @@ export class RemotePlayer {
   melee(style) { this.swingT = 1; this.swingStyle = style || 'slash'; }
   throwAnim() { this.throwT = 1; }
 
-  // Fall away from `from` (a world position) if known.
-  die(from) {
+  // Fall away from `from` (a world position) if known. A headshot also knocks the hat off.
+  die(from, head = false) {
     if (this.deathT > 0) return;
     this.deathT = 0.001;
     if (from) this.fallDir.set(this.pos.x - from.x, 0, this.pos.z - from.z);
     else this.fallDir.set(Math.sin(this.yaw), 0, Math.cos(this.yaw));
     if (this.fallDir.lengthSq() < 1e-4) this.fallDir.set(0, 0, 1);
     this.fallDir.normalize();
+    if (head) this.popHat();
+  }
+
+  popHat() {
+    const hat = this.hat;
+    if (!hat || this.hatFly || !hat.children.length || !hat.parent) return;
+    this.scene.attach(hat); // keeps its world transform
+    this.hatFly = {
+      vel: new THREE.Vector3(this.fallDir.x * 3.2 + (Math.random() - 0.5), 4.2 + Math.random() * 1.5, this.fallDir.z * 3.2 + (Math.random() - 0.5)),
+      spin: new THREE.Vector3((Math.random() - 0.5) * 14, (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 14),
+      floor: this.pos.y - 0.2, // the hat's origin sits at the base of the head
+      t: 0,
+    };
+  }
+
+  restoreHat() {
+    if (!this.hatFly || !this.hat || !this.cosHead) return;
+    this.hatFly = null;
+    this.cosHead.add(this.hat);
+    this.hat.position.set(0, 0, 0);
+    this.hat.rotation.set(0, 0, 0);
+    this.hat.scale.set(1, 1, 1);
+    this.hat.visible = true;
+  }
+
+  updateHat(dt) {
+    const f = this.hatFly;
+    if (!f || f.t < 0) return;
+    f.t += dt;
+    const h = this.hat;
+    if (h.position.y > f.floor || f.vel.y > 0) {
+      f.vel.y -= 16 * dt;
+      h.position.addScaledVector(f.vel, dt);
+      h.rotation.x += f.spin.x * dt; h.rotation.y += f.spin.y * dt; h.rotation.z += f.spin.z * dt;
+      if (h.position.y < f.floor) { h.position.y = f.floor; f.vel.set(0, 0, 0); }
+    }
+    if (f.t > 4) h.visible = false; // gone with the body
+    else h.visible = true;
   }
 
   update(dt) {
@@ -366,6 +407,8 @@ export class RemotePlayer {
     const vis = this.deathT > 0 ? this.deathT < 4 : this.alive;
     this.root.visible = this.limbs.visible = vis;
     this.tag.visible = this.alive && this.deathT === 0;
+    this.posed = this.alive && this.deathT === 0;
+    this.updateHat(dt);
   }
 
   placeArm(arm, hand, side) {
@@ -386,22 +429,27 @@ export class RemotePlayer {
     this.tag.position.y = v ? 2.75 : 2.15;
   }
 
-  // Head box is checked first so headshots win on overlap.
+  // Head box follows the model's actual head (crouching, leaning while sprinting, looking up or
+  // down), so what you see is what you hit. It's checked first so headshots win on overlap.
   hitboxes() {
-    const p = this.pos, s = 1 - this.crouch * 0.2;
-    const top = 1.42 * s;
-    const hc = p.y + (this.bigHead ? 1.85 : 1.63) * s;
-    const hw = this.bigHead ? 0.42 : 0.21;
+    const p = this.pos, c = this.headPos(_hb);
+    const big = this.bigHead;
+    const hw = big ? 0.42 : 0.19, lo = big ? 0.36 : 0.17, hi = big ? 0.44 : 0.21;
     return [
-      { head: true, x0: p.x - hw, y0: hc - (this.bigHead ? 0.34 : 0.2), z0: p.z - hw, x1: p.x + hw, y1: hc + (this.bigHead ? 0.42 : 0.24), z1: p.z + hw },
-      { head: false, x0: p.x - 0.36, y0: p.y, z0: p.z - 0.36, x1: p.x + 0.36, y1: p.y + top, z1: p.z + 0.36 },
+      { head: true, x0: c.x - hw, y0: c.y - lo, z0: c.z - hw, x1: c.x + hw, y1: c.y + hi, z1: c.z + hw },
+      { head: false, x0: p.x - 0.36, y0: p.y, z0: p.z - 0.36, x1: p.x + 0.36, y1: Math.max(p.y + 0.6, c.y - lo), z1: p.z + 0.36 },
     ];
   }
 
   center(out) { return out.set(this.pos.x, this.pos.y + 0.9 * (1 - this.crouch * 0.2), this.pos.z); }
-  headPos(out) { return out.set(this.pos.x, this.pos.y + (this.bigHead ? 1.85 : 1.63) * (1 - this.crouch * 0.2), this.pos.z); }
+  // Center of the head: from the posed skeleton when we have one (head mesh sits 0.15 above the neck joint).
+  headPos(out) {
+    if (this.posed) return this.neck.localToWorld(out.set(0, 0.15, 0));
+    return out.set(this.pos.x, this.pos.y + (this.bigHead ? 1.91 : 1.73) - this.crouch * 0.32, this.pos.z);
+  }
 
   dispose() {
     this.scene.remove(this.root, this.limbs);
+    if (this.hatFly && this.hat) this.scene.remove(this.hat);
   }
 }
