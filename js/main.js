@@ -12,6 +12,7 @@ import { SettingsUI } from './settingsui.js';
 import { getCos, MISSIONS, missionDone, getTokens } from './missions.js';
 import { opts } from './settings.js';
 import { ServerBrowser, ServerAnnouncer, REGIONS, guessRegion } from './servers.js';
+import { Updater } from './updater.js';
 import { esc } from './util.js';
 import { Chat } from './chat.js';
 
@@ -146,6 +147,7 @@ const MAP_BLURB = {
   arena: 'Arena · stands', compound: 'Rooms · yard', rooftops: 'Night · bridges',
   station: 'Sci-fi · reactor', canyon: 'Mesas · bridge', construction: 'Floors · crane',
   ship: 'Deck · containers', trains: 'Cars · footbridge', lake: 'Ice · huts',
+  castle: 'Keep · ramparts', hangar: 'Plane · catwalks', mall: 'Shops · 2 floors',
 };
 function renderModes() {
   $('mode-tiles').innerHTML = MODE_ORDER.map((id) =>
@@ -387,6 +389,7 @@ function leave(reason) {
   showPane(reason ? 'play' : menuPane); // refreshes missions / unlocks earned in that match
   updateMissionCount();
   status(reason || '', !!reason);
+  updater.leftLobby(); // an update postponed until "after this server"
 }
 
 $('btn-host').onclick = hostLobby;
@@ -482,3 +485,7 @@ game.onUnlock = () => {
 };
 
 window.addEventListener('beforeunload', () => { if (hosting) announcer.stop(); if (net) net.destroy(); });
+
+// New releases: pop-up + self-refresh (never mid-match without asking).
+const updater = new Updater({ inLobby: () => !!net });
+updater.start();

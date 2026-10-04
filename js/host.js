@@ -30,9 +30,14 @@ export const MODES = {
   rotation: { name: 'Weapon Rotation', short: 'ROTATION', teams: false, score: 25, time: 10, desc: 'Everyone gets the same random weapon, and it changes every 40 seconds.' },
   hardcore: { name: 'Hardcore', short: 'HARDCORE', teams: false, score: 25, time: 10, noRegen: true, preset: { health: 35 }, desc: '35 health and no regeneration. Every shot counts.' },
   sidearms: { name: 'Sidearms', short: 'SIDEARMS', teams: false, score: 25, time: 8, loadout: ['handcannon', 'revolver', 'knife', 'flash'], desc: 'Pistols only: Hand Cannon and Revolver.' },
+  ctf: { name: 'Capture the Flag', short: 'CTF', teams: true, redBlue: true, score: 3, time: 12, desc: 'Red vs Blue. Grab the enemy flag and bring it to your base while your own flag is home. Drop it if you die.' },
+  bounty: { name: 'Bounty Hunter', short: 'BOUNTY', teams: false, score: 30, time: 10, desc: 'Free-for-all. Whoever is in the lead has a bounty (shown in gold): killing them is worth 3 points.' },
+  headshots: { name: 'Headshots Only', short: 'HEADSHOTS', teams: false, score: 20, time: 10, preset: { headshotsOnly: true }, desc: 'Guns only hurt on headshots. Melee and explosives still work.' },
+  bighead: { name: 'Big Heads', short: 'BIG HEADS', teams: false, score: 25, time: 10, bigHead: true, desc: 'Everyone has a giant head, with a giant headshot hitbox to match.' },
 };
-export const MODE_ORDER = ['ffa', 'tdm', 'gungame', 'koth', 'infection', 'hardpoint', 'killconfirmed', 'juggernaut', 'lms', 'oitc',
-  'instagib', 'hardcore', 'rotation', 'snipers', 'shotguns', 'sidearms', 'blades', 'boom', 'roulette', 'vampire', 'moon'];
+export const MODE_ORDER = ['ffa', 'tdm', 'gungame', 'koth', 'infection', 'ctf', 'hardpoint', 'killconfirmed', 'juggernaut', 'bounty', 'lms', 'oitc',
+  'instagib', 'headshots', 'hardcore', 'bighead', 'rotation', 'snipers', 'shotguns', 'sidearms', 'blades', 'boom', 'roulette', 'vampire', 'moon'];
+const FLAG_RETURN_MS = 20000;
 const ROTATION_SECONDS = 40;
 // Weapon Rotation picks from every primary/secondary gun and launcher.
 const ROTATION_POOL = [...SLOTS[0], ...SLOTS[1]];
@@ -110,7 +115,83 @@ export class HostLogic {
     this.jugg = null;
     this.tags = []; // Kill Confirmed dog tags
     this.tagId = 0;
+    this.bountyId = null;
+    this.flags = this.s.mode === 'ctf' ? this.makeFlags() : null;
     if (this.s.mode === 'rotation') { this.rotW = this.pickRotation(); this.rotUntil = Date.now() + ROTATION_SECONDS * 1000; }
+  }
+
+  // CTF bases: the ground-level spawns furthest toward each team's side (red = -x, blue = +x,
+  // matching pickSpawn), so every mirrored map gets fair, symmetric bases.
+  makeFlags() {
+    const ground = spawns.filter((s) => s.y < 1);
+    const pool = ground.length >= 2 ? ground : spawns;
+    const red = pool.reduce((a, b) => (b.x < a.x ? b : a));
+    const blue = pool.reduce((a, b) => (b.x > a.x ? b : a));
+    const flag = (s) => ({ home: { x: s.x, y: s.y, z: s.z }, pos: { x: s.x, y: s.y, z: s.z }, carrier: null, dropped: false, returnAt: 0 });
+    return { 1: flag(red), 2: flag(blue) };
+  }
+
+  resetFlag(t) {
+    const f = this.flags[t];
+    Object.assign(f, { pos: { ...f.home }, carrier: null, dropped: false, returnAt: 0 });
+  }
+
+  dropFlagsOf(p) {
+    if (!this.flags) return;
+    for (const t of [1, 2]) {
+      const f = this.flags[t];
+      if (f.carrier !== p.id) continue;
+      Object.assign(f, { carrier: null, dropped: true, returnAt: Date.now() + FLAG_RETURN_MS, pos: { x: p.st[0], y: p.st[1], z: p.st[2] } });
+      this.broadcast({ t: 'notice', text: `${t === 1 ? 'RED' : 'BLUE'} FLAG DROPPED` });
+    }
+  }
+
+  tickFlags(now) {
+    const teamName = (t) => (t === 1 ? 'RED' : 'BLUE');
+    for (const t of [1, 2]) {
+      const f = this.flags[t];
+      if (f.carrier) {
+        const c = this.players.get(f.carrier);
+        if (!c || !c.alive) { if (c) this.dropFlagsOf(c); else this.resetFlag(t); continue; }
+        f.pos = { x: c.st[0], y: c.st[1], z: c.st[2] };
+        // Capture: carrier reaches their own base while their own flag is at home.
+        const own = this.flags[c.team], base = own.home;
+        if (!own.carrier && !own.dropped && Math.hypot(c.st[0] - base.x, c.st[2] - base.z) < 2.5 && Math.abs(c.st[1] - base.y) < 2.5) {
+          this.teamScore[c.team]++;
+          c.score += 5;
+          this.resetFlag(t);
+          this.broadcast({ t: 'notice', text: `${c.name.toUpperCase()} CAPTURED THE ${teamName(t)} FLAG!` });
+          if (this.teamScore[c.team] >= this.s.scoreLimit) { this.endMatch(); return; }
+        }
+        continue;
+      }
+      if (f.dropped && now >= f.returnAt) { this.resetFlag(t); this.broadcast({ t: 'notice', text: `${teamName(t)} FLAG RETURNED` }); continue; }
+      for (const p of this.players.values()) {
+        if (!p.alive || Math.hypot(p.st[0] - f.pos.x, p.st[2] - f.pos.z) > 1.6 || Math.abs(p.st[1] - f.pos.y) > 2.2) continue;
+        if (p.team !== t) {
+          f.carrier = p.id;
+          f.dropped = false;
+          this.broadcast({ t: 'notice', text: `${p.name.toUpperCase()} HAS THE ${teamName(t)} FLAG` });
+          break;
+        } else if (f.dropped) {
+          this.resetFlag(t);
+          p.score += 1;
+          this.broadcast({ t: 'notice', text: `${teamName(t)} FLAG RETURNED` });
+          break;
+        }
+      }
+    }
+  }
+
+  // Bounty Hunter: the leader (score > 0) carries the bounty.
+  updateBounty() {
+    let top = null;
+    for (const p of this.players.values()) if (p.score > 0 && (!top || p.score > top.score)) top = p;
+    const id = top ? top.id : null;
+    if (id === this.bountyId) return;
+    for (const p of this.players.values()) p.team = p.id === id ? JUGG_TEAM : 0;
+    this.bountyId = id;
+    if (top) this.broadcast({ t: 'notice', text: `BOUNTY ON ${top.name.toUpperCase()}` });
   }
 
   pickRotation() {
@@ -179,9 +260,11 @@ export class HostLogic {
   removePlayer(id) {
     const p = this.players.get(id);
     if (!p) return;
+    this.dropFlagsOf(p);
     this.players.delete(id);
     this.broadcast({ t: 'pleave', id, name: p.name });
     if (this.jugg === id) this.jugg = null;
+    if (this.bountyId === id) { this.bountyId = null; this.updateBounty(); }
     this.checkInfectionEnd();
     this.checkLmsEnd();
     if (!p.bot) this.balanceBots(); // a real player left: a bot takes the slot
@@ -345,6 +428,20 @@ export class HostLogic {
       case 'hardpoint': // personal score is kills; the team score comes from the zone
         attacker.score = attacker.kills;
         break;
+      case 'ctf': // captures win; kills still count for personal score
+        this.dropFlagsOf(v);
+        if (enemyKill) attacker.score += 1;
+        break;
+      case 'bounty': {
+        if (enemyKill) {
+          const worth = v.id === this.bountyId ? 3 : 1;
+          attacker.score += worth;
+          if (worth > 1) this.broadcast({ t: 'notice', text: `${attacker.name.toUpperCase()} CLAIMED THE BOUNTY (+3)` });
+          if (attacker.score >= this.s.scoreLimit) { this.endMatch(); break; }
+        }
+        this.updateBounty();
+        break;
+      }
       case 'killconfirmed': // the point comes from picking up the tag (see tickTags)
         if (enemyKill) this.tags.push({ id: ++this.tagId, x: v.st[0], y: v.st[1], z: v.st[2], team: v.team, until: Date.now() + 30000 });
         break;
@@ -527,7 +624,7 @@ export class HostLogic {
       this.s.mode = mode;
       this.s.scoreLimit = MODES[mode].score;
       this.s.timeLimit = MODES[mode].time;
-      Object.assign(this.s, PHYS_DEFAULTS, { health: 100 }, MODES[mode].preset);
+      Object.assign(this.s, PHYS_DEFAULTS, { health: 100, headshotsOnly: false }, MODES[mode].preset);
     }
     this.s.map = map && MAPS[map] ? map : manual ? this.s.map : this.nextMap();
     this.loadMap(this.s.map);
@@ -572,6 +669,7 @@ export class HostLogic {
       if (this.mode.hill) this.tickHill(rdt, now);
       if (this.s.mode === 'killconfirmed') this.tickTags(now);
       if (this.s.mode === 'rotation') this.tickRotation(now);
+      if (this.flags) this.tickFlags(now);
       for (const p of this.players.values()) if (p.bot) p.bot.update(dt);
     } else if (now >= this.restartAt) {
       this.startMatch();
@@ -588,6 +686,8 @@ export class HostLogic {
     if (this.s.mode === 'infection') msg.inf = this.infected ? 0 : Math.max(0, Math.ceil((this.infectAt - now) / 1000));
     if (this.s.mode === 'killconfirmed') msg.tg = this.tags.map((t) => [t.id, r2(t.x), r2(t.y), r2(t.z), t.team]);
     if (this.s.mode === 'rotation') msg.rot = [this.rotW, Math.max(0, Math.ceil((this.rotUntil - now) / 1000))];
+    // CTF: [team, x, y, z, carrierId, state (0 home / 1 carried / 2 dropped), homeX, homeY, homeZ]
+    if (this.flags) msg.fl = [1, 2].map((t) => { const f = this.flags[t]; return [t, r2(f.pos.x), r2(f.pos.y), r2(f.pos.z), f.carrier, f.carrier ? 1 : f.dropped ? 2 : 0, r2(f.home.x), r2(f.home.y), r2(f.home.z)]; });
     const hill = this.currentHill();
     if (hill) msg.z = [...hill, this.hillState, this.hillHolder, Math.max(0, Math.ceil((this.hillUntil - now) / 1000))];
     this.broadcast(msg);

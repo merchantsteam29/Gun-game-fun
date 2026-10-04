@@ -44,6 +44,10 @@ If the relay is down you can still create servers and join with codes.
 | Weapon Rotation | Everyone has the same random weapon, changing every 40 seconds. First to 25 |
 | Hardcore | 35 health and no regeneration. First to 25 |
 | Sidearms | Hand Cannon and Revolver only. First to 25 |
+| Capture the Flag | Red vs Blue. Grab the enemy flag and bring it to your base while your own flag is home. Dropped flags return after 20s, or touch your own to return it. First to 3 captures |
+| Bounty Hunter | The leader carries a bounty (gold). Killing them is worth 3 points, anyone else 1. First to 30 |
+| Headshots Only | Guns only hurt on headshots; melee and explosives still work. First to 20 |
+| Big Heads | Everyone's head is huge — and so is the head hitbox. First to 25 |
 
 ## Host panel
 
@@ -76,6 +80,9 @@ The lobby creator gets a **Host panel** button in the pause menu (Esc):
 | Cargo Ship | Deck of a container ship at sea: cargo stacks, hatches, a mast and bridge houses with roof access at both ends |
 | Train Yard | Parked train cars across four tracks, platforms on both sides and a footbridge over everything |
 | Frozen Lake | Open ice with fishing huts and ice blocks, snowy shore banks with ramps and pine trees |
+| Castle | Walled courtyard with four gates, a central keep with a rooftop, rampart walkways and corner towers |
+| Airplane Hangar | A parked plane inside a big open hangar, side catwalks, and tarmac with fuel trucks out both doors |
+| Shopping Mall | Two floors of shops around an atrium with a fountain, escalators and a skylight |
 
 ## Loadout
 
@@ -133,6 +140,15 @@ sharper graphics, and portrait play (with a wider view so the gun stays on scree
 Rearrange or resize the buttons in **Settings → Mobile → Edit layout**, and pick Auto / Phone / Tablet / Desktop
 under **Settings → Mobile → Interface mode**.
 Add `?mobile`, `?tablet` or `?desktop` to the URL to force a mode, and `?lowgfx` to force low graphics.
+
+## Updates
+
+The game checks `version.json` every minute. When a new version is out, a pop-up lists what's new and
+re-downloads every file (a hard refresh) — automatically after 5 seconds in the menu, or when you choose
+(**Update now** / **After this server**) while playing.
+
+**Releasing:** bump the version in both `js/version.js` and `version.json` (same string), update the notes,
+and add any new files to the `files` list in `version.json`.
 
 ## Run locally
 

@@ -155,7 +155,7 @@ export class RemotePlayer {
     this.bodyMat.color.set(color);
     const old = this.tag;
     this.tag = nameTag(this.name, color);
-    this.tag.position.copy(old.position);
+    this.tag.position.copy(old.position); // keeps Big Heads height
     this.tag.material.depthTest = !ally;
     this.tag.renderOrder = ally ? 10 : 0;
     this.root.remove(old);
@@ -378,19 +378,28 @@ export class RemotePlayer {
     arm.hand.quaternion.copy(this.root.quaternion);
   }
 
+  // Big Heads mode: a giant head (and matching hitbox), name tag lifted above it.
+  setBigHead(v) {
+    if (this.bigHead === v) return;
+    this.bigHead = v;
+    this.neck.scale.setScalar(v ? 2.2 : 1);
+    this.tag.position.y = v ? 2.75 : 2.15;
+  }
+
   // Head box is checked first so headshots win on overlap.
   hitboxes() {
     const p = this.pos, s = 1 - this.crouch * 0.2;
     const top = 1.42 * s;
-    const hc = p.y + 1.63 * s;
+    const hc = p.y + (this.bigHead ? 1.85 : 1.63) * s;
+    const hw = this.bigHead ? 0.42 : 0.21;
     return [
-      { head: true, x0: p.x - 0.21, y0: hc - 0.2, z0: p.z - 0.21, x1: p.x + 0.21, y1: hc + 0.24, z1: p.z + 0.21 },
+      { head: true, x0: p.x - hw, y0: hc - (this.bigHead ? 0.34 : 0.2), z0: p.z - hw, x1: p.x + hw, y1: hc + (this.bigHead ? 0.42 : 0.24), z1: p.z + hw },
       { head: false, x0: p.x - 0.36, y0: p.y, z0: p.z - 0.36, x1: p.x + 0.36, y1: p.y + top, z1: p.z + 0.36 },
     ];
   }
 
   center(out) { return out.set(this.pos.x, this.pos.y + 0.9 * (1 - this.crouch * 0.2), this.pos.z); }
-  headPos(out) { return out.set(this.pos.x, this.pos.y + 1.63 * (1 - this.crouch * 0.2), this.pos.z); }
+  headPos(out) { return out.set(this.pos.x, this.pos.y + (this.bigHead ? 1.85 : 1.63) * (1 - this.crouch * 0.2), this.pos.z); }
 
   dispose() {
     this.scene.remove(this.root, this.limbs);

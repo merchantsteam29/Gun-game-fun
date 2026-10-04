@@ -183,7 +183,7 @@ export class Game {
 
   colorFor(p) {
     if (this.rules.mode === 'infection') return p.team === 2 ? ZOMBIE_COLOR : p.color;
-    if (this.rules.mode === 'juggernaut') return p.team === JUGG_TEAM ? JUGG_COLOR : p.color;
+    if (this.rules.mode === 'juggernaut' || this.rules.mode === 'bounty') return p.team === JUGG_TEAM ? JUGG_COLOR : p.color;
     if (this.teams && TEAM_COLORS[p.team]) return TEAM_COLORS[p.team];
     return p.color;
   }
@@ -196,9 +196,11 @@ export class Game {
   }
 
   refreshColors() {
+    const big = !!MODES[this.rules.mode].bigHead;
     for (const r of this.remotes.values()) {
       const p = this.players.get(r.id);
       if (p) r.setLook(this.colorFor(p), this.teams && p.team === this.myTeam && this.rules.mode !== 'infection');
+      r.setBigHead(big);
     }
     const me = this.players.get(this.myId);
     if (me) this.vm.setColor(this.colorFor(me));
@@ -357,7 +359,9 @@ export class Game {
     this.zoneMesh.visible = false;
     this.tagData = null;
     this.rot = null;
+    this.flagData = null;
     this.updateTags(0); // removes any dog tags left in the scene
+    this.updateFlags(0); // and CTF flags
     this.hud.show(false);
     this.hud.death(false);
     this.hud.end(false);
@@ -442,6 +446,7 @@ export class Game {
         this.infection = m.inf ?? 0;
         this.tagData = m.tg || null;
         this.rot = m.rot || null;
+        this.flagData = m.fl || null;
         let teamsChanged = false;
         for (const id in m.s) {
           const a = m.s[id];
@@ -737,6 +742,7 @@ export class Game {
     this.updateProjectiles(dt);
     this.updateZone(now);
     this.updateTags(now);
+    this.updateFlags(now);
 
     this.vm.update(dt, {
       speed: hs, strafe, vy: me.vel.y, ads: this.ads, sprint: this.sprinting, onGround: me.onGround,
@@ -1426,12 +1432,61 @@ export class Game {
     }
   }
 
+  // Capture the Flag: a flag per team (on its stand, dropped, or above the carrier's head)
+  // plus a glowing ring at each base.
+  updateFlags(now) {
+    const data = this.flagData;
+    if (!data) {
+      if (this.flagObjs) { for (const o of Object.values(this.flagObjs)) { this.scene.remove(o.flag, o.base); } this.flagObjs = null; }
+      return;
+    }
+    if (!this.flagObjs) {
+      this.flagObjs = {};
+      for (const t of [1, 2]) {
+        const color = TEAM_COLORS[t];
+        const flag = new THREE.Group();
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 2, 6), new THREE.MeshStandardMaterial({ color: '#d0d4d8', metalness: 0.6, roughness: 0.3 }));
+        pole.position.y = 1;
+        const cloth = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.45, 0.03), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.5 }));
+        cloth.position.set(0.37, 1.7, 0);
+        flag.add(pole, cloth);
+        flag.userData.cloth = cloth;
+        const base = new THREE.Mesh(new THREE.RingGeometry(2.1, 2.5, 40),
+          new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false }));
+        base.rotation.x = -Math.PI / 2;
+        this.scene.add(flag, base);
+        this.flagObjs[t] = { flag, base };
+      }
+    }
+    for (const [t, x, y, z, carrier, state, hx, hy, hz] of data) {
+      const o = this.flagObjs[t];
+      if (!o) continue;
+      o.base.position.set(hx, hy + 0.03, hz);
+      let px = x, py = y, pz = z, scale = 1;
+      if (state === 1) {
+        // Carried: small flag floating over the carrier (us or a remote player).
+        const holder = carrier === this.myId ? this.me.pos : this.remotes.get(carrier)?.pos;
+        if (holder) { px = holder.x; py = holder.y + 1.7; pz = holder.z; }
+        scale = 0.55;
+        o.flag.visible = carrier !== this.myId; // don't block our own view
+      } else o.flag.visible = true;
+      o.flag.position.set(px, py, pz);
+      o.flag.scale.setScalar(scale);
+      o.flag.rotation.y = now * 0.0015;
+      o.flag.userData.cloth.rotation.y = Math.sin(now * 0.006 + t) * 0.3;
+    }
+  }
+
   modeBar() {
     const mode = this.rules.mode, me = this.players.get(this.myId);
     if (MODES[mode].redBlue && this.teamScore) {
       const [r, b] = this.teamScore;
       const mine = me && me.team === 1 ? 'red' : 'blue';
       let bar = `<span class="team red ${mine === 'red' ? 'mine' : ''}">RED ${r}</span><span class="lim">/ ${this.rules.scoreLimit}</span><span class="team blue ${mine === 'blue' ? 'mine' : ''}">BLUE ${b}</span>`;
+      if (mode === 'ctf' && this.flagData) {
+        const st = (t) => { const f = this.flagData.find((d) => d[0] === t); return !f ? '' : f[5] === 1 ? (f[4] === this.myId ? 'YOU HAVE IT' : 'TAKEN') : f[5] === 2 ? 'DROPPED' : 'HOME'; };
+        bar += `<span class="lim"> · <span class="red">RED FLAG ${st(1)}</span> · <span class="blue">BLUE FLAG ${st(2)}</span></span>`;
+      }
       if (mode === 'hardpoint' && this.zone) {
         const [, , , , state, holder, secs] = this.zone;
         const st = state === 2 ? 'CONTESTED' : state === 1 ? `<span class="${holder === 1 ? 'red' : 'blue'}">${holder === 1 ? 'RED' : 'BLUE'} HOLDS</span>` : 'NEUTRAL';
@@ -1443,6 +1498,12 @@ export class Game {
       let j = null;
       for (const p of this.players.values()) if (p.team === JUGG_TEAM) j = p;
       const who = !j ? 'FIRST KILL BECOMES THE JUGGERNAUT' : j.id === this.myId ? '<span class="jugg">YOU ARE THE JUGGERNAUT</span>' : `JUGGERNAUT: <span class="jugg">${esc(j.name)}</span>`;
+      return `${who} · FIRST TO ${this.rules.scoreLimit}`;
+    }
+    if (mode === 'bounty') {
+      let b = null;
+      for (const p of this.players.values()) if (p.team === JUGG_TEAM) b = p;
+      const who = !b ? 'NO BOUNTY YET' : b.id === this.myId ? '<span class="jugg">YOU HAVE THE BOUNTY</span>' : `BOUNTY: <span class="jugg">${esc(b.name)}</span> (+3)`;
       return `${who} · FIRST TO ${this.rules.scoreLimit}`;
     }
     if (mode === 'rotation' && this.rot) {

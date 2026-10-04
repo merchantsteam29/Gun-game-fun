@@ -1,0 +1,15 @@
+{
+  "version": "2026.10.04.1",
+  "notes": [
+    "New modes: Capture the Flag, Bounty Hunter, Headshots Only, Big Heads",
+    "New maps: Castle, Airplane Hangar, Shopping Mall",
+    "The game now tells you when an update is out and refreshes itself"
+  ],
+  "files": [
+    "./", "index.html", "style.css", "version.json",
+    "js/audio.js", "js/bot.js", "js/chat.js", "js/cosmetics.js", "js/effects.js", "js/game.js", "js/host.js",
+    "js/hostpanel.js", "js/hud.js", "js/main.js", "js/maps.js", "js/missions.js", "js/models.js", "js/nav.js",
+    "js/net.js", "js/physics.js", "js/remote.js", "js/rig.js", "js/servers.js", "js/settings.js", "js/settingsui.js",
+    "js/touch.js", "js/updater.js", "js/util.js", "js/version.js", "js/viewmodel.js", "js/weapons.js"
+  ]
+}

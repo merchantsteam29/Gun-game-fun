@@ -123,7 +123,16 @@ export class Bot {
       let bestT = 25;
       for (const t of L.tags) { const dd = Math.hypot(t.x - b.pos.x, t.z - b.pos.z); if (dd < bestT) { bestT = dd; tag = t; } }
     }
-    if (this.target && melee) goal = this.lastSeen;
+    // Capture the Flag: carry it home, recover our dropped flag, chase our thief, or go steal theirs.
+    let flagGoal = null;
+    if (L.flags && (p.team === 1 || p.team === 2)) {
+      const mine = L.flags[p.team], theirs = L.flags[p.team === 1 ? 2 : 1];
+      if (theirs.carrier === p.id) flagGoal = mine.home;
+      else if (mine.dropped || mine.carrier) flagGoal = mine.pos;
+      else flagGoal = theirs.pos;
+    }
+    if (flagGoal && (!this.target || L.flags[p.team === 1 ? 2 : 1].carrier === p.id)) goal = flagGoal;
+    else if (this.target && melee) goal = this.lastSeen;
     else if (tag) goal = { x: tag.x, y: tag.y, z: tag.z };
     else if (!this.target && this.lastSeen && this.lastSeenT > 0) goal = this.lastSeen;
     else if (!this.target && hill && Math.random() < 0.995) goal = { x: hill[0] + (Math.random() - 0.5) * hill[3], y: hill[1], z: hill[2] + (Math.random() - 0.5) * hill[3] };
@@ -259,7 +268,7 @@ export class Bot {
       let maxT = wh ? wh.t : range, hit = null;
       for (const e of L.players.values()) {
         if (e === this.p || !e.alive || !L.hostile(this.p, e)) continue;
-        for (const hb of hitboxes(e.st)) {
+        for (const hb of hitboxes(e.st, L.mode.bigHead)) {
           const t = rayAABB(eye.x, eye.y, eye.z, dx, dy, dz, hb[0], hb[1], hb[2], hb[3], hb[4], hb[5], maxT);
           if (t >= 0 && t < maxT) { maxT = t; hit = { e, head: hb[6] }; }
         }
@@ -282,13 +291,12 @@ export class Bot {
   }
 }
 
-// Same boxes as the client-side RemotePlayer.hitboxes (standing/crouch from st[6]).
-export function hitboxes(st) {
+// Same boxes as the client-side RemotePlayer.hitboxes (standing/crouch from st[6]; big = Big Heads mode).
+export function hitboxes(st, big = false) {
   const s = st[6] ? 0.8 : 1;
   const x = st[0], y = st[1], z = st[2];
-  const hc = y + 1.63 * s;
-  return [
-    [x - 0.21, hc - 0.2, z - 0.21, x + 0.21, hc + 0.24, z + 0.21, true],
-    [x - 0.36, y, z - 0.36, x + 0.36, y + 1.42 * s, z + 0.36, false],
-  ];
+  const head = big
+    ? [x - 0.42, y + 1.85 * s - 0.34, z - 0.42, x + 0.42, y + 1.85 * s + 0.42, z + 0.42, true]
+    : [x - 0.21, y + 1.63 * s - 0.2, z - 0.21, x + 0.21, y + 1.63 * s + 0.24, z + 0.21, true];
+  return [head, [x - 0.36, y, z - 0.36, x + 0.36, y + 1.42 * s, z + 0.36, false]];
 }
