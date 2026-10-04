@@ -9,7 +9,7 @@ import { MODES, MODE_ORDER } from './host.js';
 import { HostPanel } from './hostpanel.js';
 import { modelQuality } from './models.js';
 import { SettingsUI } from './settingsui.js';
-import { getCos } from './missions.js';
+import { getCos, MISSIONS, missionDone } from './missions.js';
 import { opts } from './settings.js';
 
 const $ = (id) => document.getElementById(id);
@@ -48,6 +48,21 @@ const game = new Game($('game'), { mobile, tablet });
 window.game = game; // handy for debugging from the console
 let net = null;
 let busy = false;
+let settingsUI = null; // created further down; the Character / Missions sections reuse its views
+
+function renderCharacter() {
+  if (!settingsUI) return;
+  const el = $('menu-customize');
+  el.replaceChildren(settingsUI.special('customize', { rerender: renderCharacter }));
+}
+function renderMissions() {
+  if (!settingsUI) return;
+  $('menu-missions').replaceChildren(settingsUI.special('missions', { goCustomize: () => showPane('character') }));
+  updateMissionCount();
+}
+function updateMissionCount() {
+  $('nav-missions-count').textContent = `${MISSIONS.filter(missionDone).length}/${MISSIONS.length}`;
+}
 
 // ---------- Menu widgets ----------
 
@@ -58,9 +73,16 @@ function renderColors() {
     b.style.background = c;
     b.className = c === settings.color ? 'sel' : '';
     b.title = c;
-    b.onclick = () => { settings.color = c; store.set('color', c); renderColors(); };
+    b.onclick = () => { settings.color = c; store.set('color', c); renderColors(); renderCharacter(); };
     $('colors').appendChild(b);
   }
+  renderChip();
+}
+
+// Header chip: your name and color; tap to edit your character.
+function renderChip() {
+  $('chip-name').textContent = settings.name || 'Player';
+  $('chip-dot').style.background = settings.color;
 }
 
 // Loadout picker: one tab per slot, a grid of weapons for the open slot, and a stat card
@@ -96,6 +118,7 @@ function renderLoadout(el) {
       renderLoadout($('pause-loadout'));
     };
   });
+  $('pause-lo-sum').textContent = settings.loadout.map((id) => SHORT[id]).join(' · ');
 }
 
 function status(msg, err = false) {
@@ -109,34 +132,52 @@ function setBusy(v) {
 }
 
 $('name').value = settings.name;
-$('name').addEventListener('input', () => { settings.name = $('name').value.trim(); store.set('name', settings.name); });
-for (const id of MAP_ORDER) {
-  const o = document.createElement('option');
-  o.value = id;
-  o.textContent = MAPS[id].name;
-  $('map-pick').appendChild(o);
+$('name').addEventListener('input', () => { settings.name = $('name').value.trim(); store.set('name', settings.name); renderChip(); });
+
+// Mode and map pickers are tap targets rather than dropdowns (much easier on touch screens).
+const MAP_BLURB = {
+  warehouse: 'Indoor · mezzanines', yard: 'Outdoor · containers', town: 'Rooftops · houses', pit: 'Small · jump pads',
+  outpost: 'Snow · towers', office: 'Two floors', ruins: 'Temple · open', docks: 'Water · cranes',
+  arena: 'Arena · stands', compound: 'Rooms · yard', rooftops: 'Night · bridges',
+};
+function renderModes() {
+  $('mode-tiles').innerHTML = MODE_ORDER.map((id) =>
+    `<button class="tile ${id === settings.mode ? 'sel' : ''}" data-mode="${id}">${MODES[id].name}${MODES[id].teams ? '<small>teams</small>' : ''}</button>`).join('');
+  $('mode-tiles').querySelectorAll('[data-mode]').forEach((b) => {
+    b.onclick = () => { settings.mode = b.dataset.mode; store.set('mode', settings.mode); renderModes(); };
+  });
+  $('mode-desc').textContent = MODES[settings.mode].desc;
 }
-$('map-pick').value = settings.map;
-for (const id of MODE_ORDER) {
-  const o = document.createElement('option');
-  o.value = id;
-  o.textContent = MODES[id].name;
-  $('mode-pick').appendChild(o);
+function renderMaps() {
+  $('map-tiles').innerHTML = MAP_ORDER.map((id) =>
+    `<button class="tile ${id === settings.map ? 'sel' : ''}" data-map="${id}">${MAPS[id].name}<small>${MAP_BLURB[id] || ''}</small></button>`).join('');
+  $('map-tiles').querySelectorAll('[data-map]').forEach((b) => {
+    b.onclick = () => {
+      settings.map = b.dataset.map;
+      store.set('map', settings.map);
+      game.loadMap(settings.map); // preview behind the menu
+      renderMaps();
+    };
+  });
 }
-$('mode-pick').value = settings.mode;
-const showModeDesc = () => { $('mode-desc').textContent = MODES[settings.mode].desc; };
-showModeDesc();
-$('mode-pick').addEventListener('change', () => {
-  settings.mode = $('mode-pick').value;
-  store.set('mode', settings.mode);
-  showModeDesc();
-});
-$('map-pick').addEventListener('change', () => {
-  settings.map = $('map-pick').value;
-  store.set('map', settings.map);
-  game.loadMap(settings.map); // preview behind the menu
-});
+
+// Menu sections. Phones show the section buttons as a bottom bar.
+let menuPane = store.get('menuPane', 'play');
+function showPane(name) {
+  menuPane = name;
+  store.set('menuPane', name);
+  document.querySelectorAll('#menu-nav [data-pane]').forEach((b) => b.classList.toggle('sel', b.dataset.pane === name));
+  document.querySelectorAll('.menu-pane').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== name));
+  if (name === 'character') renderCharacter();
+  if (name === 'missions') renderMissions();
+  document.querySelector('.menu-body').scrollTop = 0;
+}
+document.querySelectorAll('#menu-nav [data-pane]').forEach((b) => { b.onclick = () => showPane(b.dataset.pane); });
+$('player-chip').onclick = () => showPane('character');
+
 game.loadMap(settings.map);
+renderModes();
+renderMaps();
 renderColors();
 renderLoadout($('menu-loadout'));
 
@@ -227,6 +268,8 @@ function leave(reason) {
   $('host-panel').classList.add('hidden');
   $('menu').classList.remove('hidden');
   history.replaceState(null, '', location.pathname);
+  showPane(reason ? 'play' : menuPane); // refreshes missions / unlocks earned in that match
+  updateMissionCount();
   status(reason || '', !!reason);
 }
 
@@ -253,19 +296,29 @@ $('btn-resume').onclick = () => {
 $('btn-leave').onclick = () => leave();
 
 // Settings: from the main menu or the pause menu; returns to whichever opened it.
-const settingsUI = new SettingsUI({
+settingsUI = new SettingsUI({
   game, mobile, uiMode, uiFromUrl: !!uiFromUrl,
   editLayout: (done) => touch.edit(done),
   getColor: () => settings.color,
   onCos: (c) => { if (net) net.send({ t: 'cos', c }); },
 });
-const openFromMenu = (tab) => {
+$('btn-settings-menu').onclick = () => {
   $('menu').classList.add('hidden');
-  settingsUI.onClose = () => $('menu').classList.remove('hidden');
-  settingsUI.open(tab);
+  settingsUI.onClose = () => { $('menu').classList.remove('hidden'); showPane(menuPane); };
+  settingsUI.open(null);
 };
-$('btn-settings-menu').onclick = () => openFromMenu(null);
-$('btn-missions-menu').onclick = () => openFromMenu('Missions');
+// An invite link always lands on Play with the code filled in.
+showPane(urlCode ? 'play' : menuPane);
+updateMissionCount();
+// Loadout starts open where there's room; on phones it's one tap away so the buttons stay on screen.
+$('pause-lo').open = !mobile || tablet;
+
+// Esc backs out of Settings and the Host panel.
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if (!$('settings').classList.contains('hidden')) { e.preventDefault(); settingsUI.close(); }
+  else if (!$('host-panel').classList.contains('hidden')) { e.preventDefault(); hostPanel.close(); }
+});
 $('btn-settings-pause').onclick = () => {
   $('pause').classList.add('hidden');
   settingsUI.onClose = () => $('pause').classList.remove('hidden');
@@ -287,7 +340,7 @@ $('btn-copy').onclick = async () => {
   } catch {
     $('btn-copy').textContent = link;
   }
-  setTimeout(() => { $('btn-copy').textContent = 'Copy invite link'; }, 1500);
+  setTimeout(() => { $('btn-copy').textContent = 'Copy invite'; }, 1500);
 };
 $('game').addEventListener('click', () => {
   if (!mobile && game.active && !game.locked && $('pause').classList.contains('hidden')) game.lock();

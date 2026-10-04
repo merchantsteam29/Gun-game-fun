@@ -102,7 +102,10 @@ export class SettingsUI {
     return el;
   }
 
-  special(kind) {
+  // ctx lets the main menu host these views: rerender() after a change, goCustomize() for the link.
+  special(kind, ctx = {}) {
+    const rerender = ctx.rerender || (() => this.render());
+    const goCustomize = ctx.goCustomize || (() => this.open('Customize'));
     const el = document.createElement('div');
     el.className = 'set-row';
     if (kind === 'graphics') {
@@ -147,14 +150,14 @@ export class SettingsUI {
             <div class="ms-reward">${SLOT_LABELS[m.reward[0]]}: ${esc(item.name)}</div>
           </div>`;
         }).join('');
-      el.querySelector('[data-go]').onclick = (e) => { e.preventDefault(); this.open('Customize'); };
+      el.querySelector('[data-go]').onclick = (e) => { e.preventDefault(); goCustomize(); };
     } else if (kind === 'customize') {
       el.className = 'customize';
       const cos = getCos();
-      el.innerHTML = `<div class="cz-preview"><canvas width="160" height="210"></canvas></div><div class="cz-slots"></div>`;
+      el.innerHTML = `<div class="cz-preview"><canvas width="160" height="210"></canvas></div><div class="cz-slots"><div class="cz-flash"></div></div>`;
       drawAvatar(el.querySelector('canvas'), cos, this.getColor());
       const slots = el.querySelector('.cz-slots');
-      const equip = (next) => { setCos(next); if (this.onCos) this.onCos(next); this.render(); };
+      const equip = (next) => { setCos(next); if (this.onCos) this.onCos(next); rerender(); };
       for (const slot of Object.keys(COSMETICS)) {
         const row = document.createElement('div');
         row.className = 'cz-row';
@@ -166,7 +169,11 @@ export class SettingsUI {
           b.onclick = () => {
             if (!isUnlocked(slot, b.dataset.id)) {
               const m = missionFor(slot, b.dataset.id);
-              this.flash(`Locked: complete “${m.name}” (${m.desc})`);
+              const f = el.querySelector('.cz-flash');
+              f.textContent = `🔒 Complete “${m.name}”: ${m.desc}`;
+              f.classList.add('show');
+              clearTimeout(this.flashT);
+              this.flashT = setTimeout(() => f.classList.remove('show'), 2600);
               return;
             }
             equip({ ...cos, [slot]: b.dataset.id });
@@ -201,14 +208,6 @@ export class SettingsUI {
     return el;
   }
 
-  flash(text) {
-    let el = $('set-flash');
-    if (!el) { el = document.createElement('div'); el.id = 'set-flash'; $('set-body').before(el); }
-    el.textContent = text;
-    el.classList.add('show');
-    clearTimeout(this.flashT);
-    this.flashT = setTimeout(() => el.classList.remove('show'), 2600);
-  }
 }
 
 // Front-view sketch of the character with its cosmetics, for the Customize tab.

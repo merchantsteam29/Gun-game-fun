@@ -92,48 +92,61 @@
   <div class="panel menu-panel">
     <header class="brand">
       <h1>WAREHOUSE <span>FFA</span></h1>
-      <p>Browser arena shooter · up to 12 players with bots</p>
-      <div class="brand-btns">
-        <button id="btn-missions-menu" class="ghost">Missions</button>
-        <button id="btn-settings-menu" class="gear">⚙ Settings</button>
-      </div>
+      <button id="player-chip" class="player-chip" title="Edit your character"><i id="chip-dot"></i><span id="chip-name"></span></button>
     </header>
-    <div class="menu-grid">
-      <section>
-        <h3>Profile</h3>
-        <div class="field">
-          <label for="name">Callsign</label>
-          <input id="name" maxlength="16" autocomplete="off" spellcheck="false">
-        </div>
-        <div class="field">
-          <label>Color</label>
-          <div id="colors" class="swatches"></div>
-        </div>
-        <h3>Play</h3>
-        <div class="field two">
-          <div>
-            <label for="mode-pick">Game mode</label>
-            <select id="mode-pick"></select>
+    <nav class="menu-nav" id="menu-nav">
+      <button data-pane="play" class="sel"><span class="ic">▶</span>Play</button>
+      <button data-pane="loadout"><span class="ic">⌖</span>Loadout</button>
+      <button data-pane="character"><span class="ic">☺</span>Character</button>
+      <button data-pane="missions"><span class="ic">★</span>Missions<b id="nav-missions-count"></b></button>
+      <button id="btn-settings-menu"><span class="ic">⚙</span>Settings</button>
+    </nav>
+    <div class="menu-body">
+      <!-- Play -->
+      <section class="menu-pane" data-pane="play">
+        <div class="play-grid">
+          <div class="card join-card">
+            <h3>Join a friend</h3>
+            <p class="note">Enter the 5-letter code from their pause menu or invite link.</p>
+            <div class="join">
+              <input id="join-code" maxlength="5" placeholder="CODE" autocomplete="off" spellcheck="false" inputmode="text" autocapitalize="characters">
+              <button id="btn-join" class="primary">Join</button>
+            </div>
           </div>
-          <div>
-            <label for="map-pick">Starting map</label>
-            <select id="map-pick"></select>
-          </div>
-        </div>
-        <div id="mode-desc" class="note"></div>
-        <div class="actions">
-          <button id="btn-host" class="primary">Create Lobby</button>
-          <div class="divider"><span>or join a friend</span></div>
-          <div class="join">
-            <input id="join-code" maxlength="5" placeholder="CODE" autocomplete="off" spellcheck="false">
-            <button id="btn-join">Join</button>
+          <div class="card host-card">
+            <h3>Host a game</h3>
+            <label class="sub">Game mode</label>
+            <div id="mode-tiles" class="tiles"></div>
+            <div id="mode-desc" class="note"></div>
+            <label class="sub">Starting map</label>
+            <div id="map-tiles" class="tiles maps"></div>
+            <button id="btn-host" class="primary big">Create Lobby</button>
           </div>
         </div>
         <p id="menu-status"></p>
       </section>
-      <section>
-        <h3>Loadout</h3>
+      <!-- Loadout -->
+      <section class="menu-pane hidden" data-pane="loadout">
+        <p class="note">Pick one weapon per slot. Changes apply the next time you spawn.</p>
         <div id="menu-loadout" class="loadout"></div>
+      </section>
+      <!-- Character -->
+      <section class="menu-pane hidden" data-pane="character">
+        <div class="field two">
+          <div class="field">
+            <label for="name">Callsign</label>
+            <input id="name" maxlength="16" autocomplete="off" spellcheck="false">
+          </div>
+          <div class="field">
+            <label>Color</label>
+            <div id="colors" class="swatches"></div>
+          </div>
+        </div>
+        <div id="menu-customize"></div>
+      </section>
+      <!-- Missions -->
+      <section class="menu-pane hidden" data-pane="missions">
+        <div id="menu-missions"></div>
       </section>
     </div>
     <details class="controls">
@@ -157,24 +170,22 @@
   <div class="panel pause-panel">
     <div class="pause-head">
       <h2 id="pause-title">PAUSED</h2>
-      <button id="btn-settings-pause" class="gear">⚙ Settings</button>
-      <div class="code-box">
-        <div>
-          <div class="label">Lobby code</div>
-          <div id="pause-code">-----</div>
-        </div>
-        <button id="btn-copy">Copy invite link</button>
+      <div class="code-chip">
+        <span class="label">Lobby</span>
+        <b id="pause-code">-----</b>
+        <button id="btn-copy">Copy invite</button>
       </div>
     </div>
-    <div class="field">
-      <label>Loadout <span class="muted">· applies on next spawn</span></label>
+    <button id="btn-resume" class="primary big resume">Click to play</button>
+    <div class="pause-actions">
+      <button id="btn-settings-pause"><span class="ic">⚙</span>Settings</button>
+      <button id="btn-hostpanel" class="hidden"><span class="ic">♛</span>Host panel</button>
+      <button id="btn-leave" class="danger"><span class="ic">⎋</span>Leave</button>
+    </div>
+    <details id="pause-lo" class="pause-lo">
+      <summary><span>Loadout</span> <em id="pause-lo-sum"></em><small>applies on next spawn</small></summary>
       <div id="pause-loadout" class="loadout"></div>
-    </div>
-    <div class="actions row">
-      <button id="btn-resume" class="primary">Click to play</button>
-      <button id="btn-hostpanel" class="hidden">Host panel</button>
-      <button id="btn-leave" class="danger">Leave lobby</button>
-    </div>
+    </details>
   </div>
 </div>
 
