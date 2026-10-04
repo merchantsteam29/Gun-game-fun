@@ -5,7 +5,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 // These arrays are mutated in place when the map changes so importers keep valid references.
 export const boxes = [];
 export const spawns = [];
-export const MAP_ORDER = ['warehouse', 'yard', 'town', 'pit', 'outpost', 'office', 'ruins'];
+export const MAP_ORDER = ['warehouse', 'yard', 'town', 'pit', 'outpost', 'office', 'ruins', 'docks', 'arena', 'compound', 'rooftops'];
 // Render quality (lowered on mobile before any map is built).
 export const quality = { shadowSize: 2048 };
 
@@ -486,6 +486,222 @@ export const MAPS = {
       addMerged(g, leaves, M.jungle, true);
     },
   },
+
+  docks: {
+    name: 'Harbor Docks',
+    theme: { sky: '#b9cbd8', fog: [45, 140], hemi: ['#eef4fa', '#5d6a72', 2.0], sun: ['#fff3e0', 2.6, [-25, 40, 18]] },
+    bounds: 34,
+    hills: [[0, 0, 0, 3], [-20, 0, 17, 3.5], [20, 0, -17, 3.5], [3, 0, 14, 3.5], [-3, 0, -14, 3.5]],
+    build({ add, add2, crate2, spawn2, stairs, building }) {
+      // Two quays split by a water channel you can wade through.
+      add(-34, -1, 4, 34, 0, 24, 'dock');
+      add(-34, -1, -24, 34, 0, -4, 'dock');
+      add(-34, -1.5, -4, 34, -0.5, 4, 'water');
+      add(-34, 0, 23, 34, 4, 24, 'concreteWall');
+      add(-34, 0, -24, 34, 4, -23, 'concreteWall');
+      add(33, -1.5, -23, 34, 4, 23, 'concreteWall');
+      add(-34, -1.5, -23, -33, 4, 23, 'concreteWall');
+      // Bridges
+      add(-2, -0.4, -4, 2, 0, 4, 'wood');
+      add2(-17, -0.4, -4, -13, 0, 4, 'wood');
+      add2(-17, 0, -4, -16.85, 1, 4, 'rail');
+      add(-2, 0, -4, -1.85, 1, 4, 'rail');
+      add(1.85, 0, -4, 2, 1, 4, 'rail');
+      // Moored boats as cover in the channel
+      add2(-30, -0.5, 0.6, -22, 0.9, 3.4, 'hull');
+      add2(-28, 0.9, 1.2, -25, 2.2, 2.8, 'cabin');
+      add2(6, -0.5, -3.4, 11, 0.7, -1.2, 'hull');
+      // Brick shed with roof access (mirrored)
+      building(-26, 12, -14, 22, 4,
+        [{ side: 's', at: -20, w: 3 }, { side: 'w', at: 17, w: 1.8 }, { side: 's', at: -24, w: 1.2, y0: 1.1, h: 0.9 }, { side: 'n', at: -18, w: 1.2, y0: 1.1, h: 0.9 }],
+        { mat: 'brick', parapet: ['s'] });
+      stairs(-13.9, 12.5, -12, 21.5, 0, 4.3, '-z', 'wood'); // long flight along the east wall, top lands at the roof edge
+      // Containers and cargo
+      add2(-6, 0, 8, 0, 2.6, 10.6, 'containerRed', 'containerBlue');
+      add2(4, 0, 14, 6.6, 2.6, 20, 'containerGreen', 'containerOrange');
+      add2(4, 2.6, 14.4, 6.6, 5.2, 19.6, 'containerBlue', 'containerRed');
+      add2(-31, 0, 6, -28.4, 2.6, 12, 'containerOrange', 'containerGreen');
+      crate2(-10, 6.5); crate2(-10, 6.5, 1.2); crate2(-8.8, 6.5);
+      crate2(10, 9); crate2(11.2, 9);
+      crate2(-27, 19); crate2(-3, 20);
+      for (const [x, z] of [[-22, 6], [-10, 14.5], [12, 6]]) add2(x - 0.45, 0, z - 0.45, x + 0.45, 1.1, z + 0.45, 'barrel');
+      for (const x of [-24, -8, 8, 24]) add2(x - 0.25, 0, 4.2, x + 0.25, 0.6, 4.7, 'bollard');
+      for (const [x, y, z] of [[-30, 0, 18], [-26, 0, 9], [-20, 0, 15], [-8, 0, 20], [-20, 4.3, 17], [8, 0, 8], [-2, 0, 16], [14, 0, 20]]) spawn2(x, y, z);
+    },
+    decor(g, M) {
+      const poles = [], heads = [];
+      for (const [x, z] of [[-20, 5], [0, 5], [20, 5], [-20, -5], [0, -5], [20, -5]]) {
+        poles.push(new THREE.CylinderGeometry(0.1, 0.14, 6, 8).translate(x, 3, z));
+        heads.push(new THREE.BoxGeometry(0.9, 0.2, 0.4).translate(x, 6, z));
+      }
+      addMerged(g, poles, M.steel, true);
+      addMerged(g, heads, M.lamp);
+      const crane = [
+        new THREE.BoxGeometry(0.8, 15, 0.8).translate(-8, 7.5, 26), new THREE.BoxGeometry(0.8, 15, 0.8).translate(8, 7.5, 26),
+        new THREE.BoxGeometry(0.8, 1, 30).translate(0, 15, 14), new THREE.BoxGeometry(17, 1, 1).translate(0, 15, 26),
+        new THREE.BoxGeometry(2.5, 2, 2.5).translate(0, 13.5, 6),
+      ];
+      addMerged(g, crane, M.craneYellow, true);
+      addMerged(g, [new THREE.CylinderGeometry(0.03, 0.03, 8, 4).translate(0, 9.5, 6)], M.steel);
+    },
+  },
+
+  arena: {
+    name: 'Colosseum',
+    theme: { sky: '#f0d9b0', fog: [40, 110], hemi: ['#fff4dc', '#8a6c4a', 1.9], sun: ['#ffe2b0', 3.0, [28, 34, -16]] },
+    bounds: 26,
+    hills: [[0, 1, 0, 3.5], [-15, 0, -15, 3], [15, 0, 15, 3], [15, 0, -15, 3], [-15, 0, 15, 3]],
+    build({ add, add4, spawn, spawn4, stairs }) {
+      add(-26, -1, -26, 26, 0, 26, 'sand');
+      add4(-26, 0, -26, 26, 7, -25, 'sandstone');
+      // Raised stands around the arena floor, reached by central stairs on each side
+      add4(-25, 0, -25, 25, 2.5, -22, 'sandstone');
+      stairs(-1.5, -22, 1.5, -17, 0, 2.5, '-z', 'sandstone', add4);
+      for (const x of [-20, -10, 10, 20]) add4(x - 0.5, 2.5, -24.6, x + 0.5, 7, -23.6, 'sandstoneDark');
+      add4(-25, 2.5, -22.15, -4, 3.3, -22, 'sandstoneDark');
+      add4(4, 2.5, -22.15, 25, 3.3, -22, 'sandstoneDark');
+      // Central dais
+      add(-5, 0, -5, 5, 1, 5, 'stone');
+      stairs(-1.5, -7, 1.5, -5, 0, 1, '+z', 'stone', add4);
+      add4(-5, 1, -5, -4.4, 2.2, -2, 'stone');
+      // Obelisks, broken walls, chariots of crates
+      add4(-12, 0, -12, -10.8, 5, -10.8, 'sandstoneDark');
+      add4(-14, 0, -4, -13.4, 1.6, 4, 'sandstone');
+      add4(-8, 0, -17, -3, 1.2, -16.4, 'sandstone');
+      add4(-19, 0, -9, -18, 3, -8, 'sandstoneDark');
+      add4(-20, 0, -15.5, -18.8, 1.2, -14.3, 'crate');
+      add4(-7.6, 0, -11, -6.4, 1.2, -9.8, 'crate');
+      spawn4(-18, 0, -4);
+      spawn4(-6, 0, -20);
+      spawn4(-14, 2.5, -23.5);
+      spawn(0, 1, 0);
+    },
+    decor(g, M) {
+      const banners = [], poles = [];
+      for (let i = 0; i < 4; i++) {
+        const a = (i * Math.PI) / 2;
+        for (const off of [-15, 15]) {
+          const x = Math.cos(a) * 25.4 - Math.sin(a) * off, z = Math.sin(a) * 25.4 + Math.cos(a) * off;
+          poles.push(new THREE.CylinderGeometry(0.08, 0.08, 4, 6).translate(x, 9, z));
+          banners.push(new THREE.BoxGeometry(i % 2 ? 0.05 : 1.6, 2.4, i % 2 ? 1.6 : 0.05).translate(x, 8.6, z));
+        }
+      }
+      addMerged(g, poles, M.steel);
+      addMerged(g, banners, M.banner);
+    },
+  },
+
+  compound: {
+    name: 'Military Compound',
+    theme: { sky: '#aab5ad', fog: [35, 110], hemi: ['#eef2ec', '#5a5e52', 2.1], sun: ['#fff4e0', 2.3, [20, 42, 22]] },
+    bounds: 26,
+    hills: [[0, 0, 0, 3.5], [-17, 0, 12, 3], [17, 0, -12, 3], [-17, 0, -12, 3], [17, 0, 12, 3]],
+    build({ add, add2, crate2, spawn2, stairs, wallX, wallZ }) {
+      add(-26, -1, -18, 26, 0, 18, 'metalFloor');
+      add(-26, 0, 17, 26, 5, 18, 'bunkerWall');
+      add(-26, 0, -18, 26, 5, -17, 'bunkerWall');
+      add(25, 0, -17, 26, 5, 17, 'bunkerWall');
+      add(-26, 0, -17, -25, 5, 17, 'bunkerWall');
+      // Wings on each side of a central yard, split into rooms with doorways
+      wallZ(-8, -17, 17, [[-12, 2.5], [0, 3], [12, 2.5]], 0, 5, 'bunkerWall', add2, 0.4);
+      wallX(6, -25, -8, [[-17, 2.5]], 0, 5, 'bunkerWall', add2, 0.4);
+      wallX(-6, -25, -8, [[-20, 2.5], [-12, 2]], 0, 5, 'bunkerWall', add2, 0.4);
+      // Catwalk in the middle room
+      add2(-25, 2.6, -6, -22, 3, 6, 'grate');
+      add2(-22, 3, -2.5, -21.9, 4, 6, 'rail'); // leaves the stair landing open
+      stairs(-22, -6, -19.5, -3, 0, 3, '-x', 'stairs');
+      // Yard cover
+      add2(-4, 0, -4, -3, 5, -3, 'bunkerWall');
+      add2(-4, 0, 3, -3, 5, 4, 'bunkerWall');
+      add2(-6, 0, 9, -1, 2.6, 11.6, 'containerGreen', 'containerOrange');
+      add2(2, 0, 13, 6, 1, 13.6, 'sandbag');
+      add2(-6, 0, -1, -5.4, 1, 1, 'sandbag');
+      crate2(1, 8); crate2(1, 8, 1.2); crate2(2.2, 8);
+      // Room furniture
+      crate2(-22, 14); crate2(-22, 12.8); crate2(-12, 9);
+      crate2(-14, -14); crate2(-14, -14, 1.2); crate2(-20, -9);
+      add2(-24, 0, -16.5, -20, 1, -15.5, 'desk');
+      for (const [x, z] of [[-11, 15], [-23.5, -8.5], [-10, -9]]) add2(x - 0.45, 0, z - 0.45, x + 0.45, 1.1, z + 0.45, 'barrel');
+      for (const [x, y, z] of [[-23, 0, 14], [-23, 0, -14], [-14, 0, 0], [-24, 3, 0], [-4, 0, 14], [-3, 0, -10], [-13, 0, 12], [-17, 0, -11]]) spawn2(x, y, z);
+    },
+    decor(g, M) {
+      const lights = [];
+      for (const [x, z] of [[-16, 12], [-16, 0], [-16, -12], [16, 12], [16, 0], [16, -12], [0, 12], [0, -12]]) lights.push(new THREE.BoxGeometry(1.2, 0.08, 0.4).translate(x, 4.95, z));
+      addMerged(g, lights, M.lightPanel);
+      const wire = [];
+      for (let x = -24; x <= 24; x += 4) for (const z of [-17.5, 17.5]) wire.push(new THREE.CylinderGeometry(0.03, 0.03, 1.2, 4).translate(x, 5.6, z));
+      for (const z of [-17.5, 17.5]) wire.push(new THREE.BoxGeometry(50, 0.03, 0.03).translate(0, 6.0, z), new THREE.BoxGeometry(50, 0.03, 0.03).translate(0, 5.6, z));
+      addMerged(g, wire, M.steel);
+    },
+  },
+
+  rooftops: {
+    name: 'Rooftops',
+    theme: { sky: '#141a2e', fog: [30, 95], hemi: ['#8090c8', '#2a2430', 1.7], sun: ['#c8d2ff', 1.2, [-18, 40, 14]], night: true },
+    bounds: 30,
+    hills: [[0, 8, 0, 3], [-22, 6, -14, 3], [22, 6, 14, 3], [-10, 0, 7, 3], [10, 0, -7, 3]],
+    build({ add, add2, spawn, spawn2, stairs, crate2 }) {
+      add(-30, -1, -22, 30, 0, 22, 'asphalt');
+      add(-30, 0, 21, 30, 10, 22, 'brickDark');
+      add(-30, 0, -22, 30, 10, -21, 'brickDark');
+      add(29, 0, -21, 30, 10, 21, 'brickDark');
+      add(-30, 0, -21, -29, 10, 21, 'brickDark');
+      // Solid blocks with playable roofs
+      add2(-28, 0, -20, -16, 6, -8, 'brick');
+      add2(-12, 0, -20, -2, 7.5, -10, 'brickDark');
+      add2(-28, 0, -4, -18, 5, 6, 'brick');
+      add2(-28, 0, 10, -14, 6.5, 20, 'brickDark');
+      add(-4, 0, -4, 4, 8, 4, 'brick');
+      // Parapets and rooftop clutter (cover)
+      add2(-21, 6, -8.3, -16, 6.8, -8, 'brickDark');
+      add2(-12, 7.5, -10.3, -6, 8.3, -10, 'brick');
+      add2(-26, 6, -18, -23, 7.4, -15, 'ac');
+      add2(-9, 7.5, -18, -7, 8.7, -16, 'ac');
+      add2(-25, 5, 1, -23, 6, 4, 'ac');
+      add2(-22, 6.5, 12, -19, 7.5, 13, 'ac');
+      add2(-2.5, 8, -2.5, -1.5, 9.2, -1.5, 'ac');
+      // Plank bridges between roofs
+      stairs(-24, -8, -22, -4, 5, 6, '-z', 'wood');
+      stairs(-16, -16, -12, -14, 6, 7.5, '+x', 'wood');
+      stairs(-3.8, -10, -2.3, -4, 7.5, 8, '+z', 'wood');
+      stairs(-26, 6, -24, 10, 5, 6.5, '+z', 'wood');
+      // Fire escapes up from the street
+      stairs(-17.8, -4, -16, 6, 0, 5, '+z', 'wood');
+      stairs(-16, -7.8, -6, -6, 0, 6, '-x', 'wood');
+      // Street cover
+      add2(-12, 0, 5, -9.6, 1.4, 6.4, 'containerGreen');
+      add2(-6, 0, 14, -4.8, 1.2, 15.2, 'crate');
+      crate2(-14, -3); crate2(-14, -1.8);
+      add2(-10, 0, -4.6, -9, 1, -4, 'barrier');
+      spawn(0, 8, 0);
+      for (const [x, y, z] of [[-22, 6, -14], [-24, 5, -1], [-20, 6.5, 15], [-6, 7.5, -15], [-10, 0, 9], [-14, 0, 2], [-8, 0, 18]]) spawn2(x, y, z);
+    },
+    decor(g, M) {
+      // Lit windows on the block faces, street lamps and neon signs
+      const lit = [], dark = [];
+      const blocks = [[-28, -20, -16, -8, 6], [-12, -20, -2, -10, 7.5], [-28, -4, -18, 6, 5], [-28, 10, -14, 20, 6.5]];
+      for (const s of [1, -1]) {
+        for (const [x0, z0, x1, z1, h] of blocks) {
+          const X0 = s > 0 ? x0 : -x1, X1 = s > 0 ? x1 : -x0, Z0 = s > 0 ? z0 : -z1, Z1 = s > 0 ? z1 : -z0;
+          for (let y = 1.6; y < h - 0.8; y += 2) {
+            for (let x = X0 + 1.2; x < X1 - 0.6; x += 2) for (const z of [Z0 - 0.02, Z1 + 0.02]) (Math.random() < 0.45 ? lit : dark).push(new THREE.BoxGeometry(0.9, 1.1, 0.05).translate(x, y, z));
+            for (let z = Z0 + 1.2; z < Z1 - 0.6; z += 2) for (const x of [X0 - 0.02, X1 + 0.02]) (Math.random() < 0.45 ? lit : dark).push(new THREE.BoxGeometry(0.05, 1.1, 0.9).translate(x, y, z));
+          }
+        }
+      }
+      for (let y = 1.6; y < 7.5; y += 2) for (const [x, z] of [[-4.02, 0], [4.02, 0]]) lit.push(new THREE.BoxGeometry(0.05, 1.1, 6).translate(x, y, z));
+      addMerged(g, lit, M.windowLit);
+      addMerged(g, dark, M.windowDark);
+      addMerged(g, [new THREE.BoxGeometry(4, 0.6, 0.08).translate(-22, 4, -7.95), new THREE.BoxGeometry(4, 0.6, 0.08).translate(22, 4, 7.95)], M.neonPink);
+      addMerged(g, [new THREE.BoxGeometry(0.08, 0.6, 4).translate(-17.95, 3.6, 1), new THREE.BoxGeometry(0.08, 0.6, 4).translate(17.95, 3.6, -1)], M.neonCyan);
+      const lights = [['#ff3ec8', -12, 0], ['#36e0ff', 12, 0], ['#ffb347', 0, 12], ['#ffb347', 0, -12]];
+      for (const [c, x, z] of lights) {
+        const l = new THREE.PointLight(c, 22, 20, 1.6);
+        l.position.set(x, 4, z);
+        g.add(l);
+      }
+    },
+  },
 };
 
 export function setMapData(id) {
@@ -662,6 +878,45 @@ const TEX = {
     stains(g, s, 10, 'rgba(70,110,40,0.4)');
     speckle(g, s, 2500, ['rgba(90,140,50,0.2)', 'rgba(0,0,0,0.1)']);
   }),
+  brick: (base) => makeTex((g, s) => {
+    g.fillStyle = '#5a5550'; g.fillRect(0, 0, s, s);
+    const bh = 16, bw = 42;
+    for (let y = 0; y < s; y += bh) {
+      for (let x = (y / bh) % 2 ? -bw / 2 : 0; x < s; x += bw) {
+        g.fillStyle = base;
+        g.globalAlpha = 0.8 + Math.random() * 0.2;
+        g.fillRect(x + 1.5, y + 1.5, bw - 3, bh - 3);
+      }
+    }
+    g.globalAlpha = 1;
+    speckle(g, s, 2500, ['rgba(0,0,0,0.12)', 'rgba(255,255,255,0.05)'], 2);
+    stains(g, s, 5, 'rgba(20,15,10,0.2)');
+  }),
+  water: () => makeTex((g, s) => {
+    g.fillStyle = '#1f4a5e'; g.fillRect(0, 0, s, s);
+    for (let i = 0; i < 70; i++) {
+      g.strokeStyle = `rgba(180,230,255,${0.08 + Math.random() * 0.12})`; g.lineWidth = 1 + Math.random() * 2;
+      const x = Math.random() * s, y = Math.random() * s, w = 10 + Math.random() * 30;
+      g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + w / 2, y - 4, x + w, y); g.stroke();
+    }
+  }),
+  plank: () => makeTex((g, s) => {
+    g.fillStyle = '#7a6045'; g.fillRect(0, 0, s, s);
+    for (let x = 0; x < s; x += 32) {
+      g.fillStyle = `rgba(${Math.random() > 0.5 ? '255,230,190' : '30,15,5'},${0.05 + Math.random() * 0.1})`; g.fillRect(x, 0, 32, s);
+      g.fillStyle = 'rgba(0,0,0,0.4)'; g.fillRect(x, 0, 2, s);
+    }
+    speckle(g, s, 1200, ['rgba(40,20,5,0.2)', 'rgba(255,255,255,0.04)'], 2);
+    stains(g, s, 4, 'rgba(30,40,40,0.25)');
+  }),
+  metal: () => makeTex((g, s) => {
+    g.fillStyle = '#5c6268'; g.fillRect(0, 0, s, s);
+    for (let y = 0; y < s; y += 12) for (let x = (y / 12) % 2 ? 6 : 0; x < s; x += 12) {
+      g.fillStyle = 'rgba(255,255,255,0.12)'; g.fillRect(x, y, 6, 2);
+    }
+    stains(g, s, 6, 'rgba(20,20,20,0.25)');
+    g.strokeStyle = 'rgba(0,0,0,0.45)'; g.lineWidth = 2; g.strokeRect(1, 1, s - 2, s - 2);
+  }),
   pad: () => makeTex((g, s) => {
     g.fillStyle = '#0d2a1a'; g.fillRect(0, 0, s, s);
     g.strokeStyle = '#4dff9a'; g.lineWidth = 10;
@@ -720,6 +975,18 @@ function mats() {
     moss: { map: TEX.moss(), tile: 2, roughness: 0.95 },
     mossDark: { map: TEX.moss(), tile: 2, roughness: 0.95, color: '#9a9a8a' },
     pad: { map: TEX.pad(), fit: true, roughness: 0.4, emissive: '#2dff7a', emissiveIntensity: 0.8, emissiveMap: true },
+    dock: { map: TEX.plank(), tile: 3, roughness: 0.9 },
+    water: { map: TEX.water(), tile: 4, roughness: 0.1, metalness: 0.4, emissive: '#0a2230', emissiveIntensity: 0.6 },
+    hull: { color: '#e8ecef', roughness: 0.5 },
+    cabin: { color: '#2f6fa0', roughness: 0.5 },
+    bollard: { color: '#2a2d31', roughness: 0.5, metalness: 0.4 },
+    brick: { map: TEX.brick('#8a4a36'), tile: 2.5, roughness: 0.95 },
+    brickDark: { map: TEX.brick('#5c3b30'), tile: 2.5, roughness: 0.95 },
+    sandstone: { map: TEX.stone(), tile: 2, roughness: 0.95, color: '#e8cc98' },
+    sandstoneDark: { map: TEX.stone(), tile: 2, roughness: 0.95, color: '#c7a272' },
+    metalFloor: { map: TEX.metal(), tile: 2, roughness: 0.6, metalness: 0.3 },
+    bunkerWall: { map: concrete, tile: 3, roughness: 0.9, color: '#9ba38f' },
+    ac: { map: TEX.metal(), tile: 1, roughness: 0.5, metalness: 0.4, color: '#c9ced3' },
   };
   return MATS;
 }
@@ -736,6 +1003,9 @@ const DECOR_MATS = {
   jungle: new THREE.MeshStandardMaterial({ color: '#3f7a2a', roughness: 0.9 }),
   lightPanel: new THREE.MeshStandardMaterial({ color: '#fff', emissive: '#fff6e0', emissiveIntensity: 1.2 }),
   glass: new THREE.MeshStandardMaterial({ color: '#9cc4e4', transparent: true, opacity: 0.35, roughness: 0.1, metalness: 0.3 }),
+  banner: new THREE.MeshStandardMaterial({ color: '#a8261e', roughness: 1 }),
+  windowLit: new THREE.MeshStandardMaterial({ color: '#ffe2a0', emissive: '#ffcf70', emissiveIntensity: 1.4 }),
+  windowDark: new THREE.MeshStandardMaterial({ color: '#1c2232', roughness: 0.2, metalness: 0.5 }),
 };
 
 function addMerged(g, geos, mat, shadow = false) {
@@ -781,7 +1051,7 @@ export function buildMapScene(scene, id) {
       emissiveMap: def.emissiveMap ? def.map : null,
     });
     const mesh = new THREE.Mesh(mergeGeometries(list.map((b) => boxGeo(b, def))), mat);
-    mesh.castShadow = !['floor', 'asphalt', 'sand', 'neonFloor'].includes(name);
+    mesh.castShadow = !['floor', 'asphalt', 'sand', 'neonFloor', 'water', 'metalFloor'].includes(name);
     mesh.receiveShadow = true;
     group.add(mesh);
   }

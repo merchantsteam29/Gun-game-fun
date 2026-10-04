@@ -54,6 +54,10 @@ The lobby creator gets a **Host panel** button in the pause menu (Esc):
 | Snow Outpost | Snowy base with a climbable bunker, watchtowers, huts and sandbags |
 | Office Tower | Two floors around a central atrium, offices, cubicles and staircases |
 | Jungle Ruins | Four-sided temple pyramid, broken columns and ruined walls |
+| Harbor Docks | Two quays split by a wadeable water channel, bridges, boats, brick sheds with roof access, a gantry crane |
+| Colosseum | Sand arena with raised stands all round, a central dais, obelisks and broken walls |
+| Military Compound | Walled base: rooms off a central yard, doorways, a catwalk, sandbags and crates |
+| Rooftops | Night city: climb fire escapes and cross plank bridges between rooftops around a central tower |
 
 ## Loadout
 
@@ -61,10 +65,10 @@ Pick one per slot in the menu or pause menu (applies on next spawn). Hover a wea
 
 | Slot | Options |
 |---|---|
-| Primary | Assault Rifle, SMG, Burst Rifle, LMG, DMR, Minigun (spins up), Sniper Rifle (scoped), Shotgun, Double Barrel, Grenade Launcher, Rocket Launcher, Crossbow |
-| Secondary | Pistol, Revolver, Machine Pistol, Hand Cannon, Sawed-Off |
-| Melee | Combat Knife, Fire Axe, Katana, Baseball Bat (knockback) — backstabs one-shot |
-| Utility | Frag, Sticky, Smoke, Flashbang, Throwing Knives |
+| Primary | Assault Rifle, Battle Rifle, SMG, PDW, Burst Rifle, LMG, DMR, Minigun (spins up), Sniper Rifle (scoped), Anti-Materiel Rifle (scoped, one-shots), Railgun, Shotgun, Auto Shotgun, Double Barrel, Grenade Launcher, Rocket Launcher, Crossbow |
+| Secondary | Pistol, Burst Pistol, Revolver, Machine Pistol, Hand Cannon, Sawed-Off, Flare Gun |
+| Melee | Combat Knife, Machete, Fire Axe, Katana, Baseball Bat (knockback), Sledgehammer (big knockback) — backstabs one-shot |
+| Utility | Frag, Sticky, Impact (explodes on contact), Smoke, Flashbang, Throwing Knives |
 
 The Grenade Launcher one-shots on a direct hit but slows you down while it's out.
 

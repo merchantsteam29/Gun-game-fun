@@ -987,7 +987,7 @@ export class Game {
       }
       if (!p.rest && !p.attach) {
         // impact: explodes or embeds on contact (launchers, bolts, knives); otherwise it bounces.
-        const impact = W.type === 'proj' || W.bolt;
+        const impact = W.type === 'proj' || W.bolt || W.impact;
         p.vel.y -= (W.projGravity ?? BOUNCE_GRAVITY) * dt;
         const step = p.vel.length() * dt;
         const dir = _d.copy(p.vel).normalize();

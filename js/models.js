@@ -545,6 +545,190 @@ const builders = {
     anchor(g, 'muzzle', 0, 0.05, -0.34);
     g.userData.sight = 0.09;
   },
+  br(g) {
+    // Heavy battle rifle: long receiver, wood furniture, big mag, scope-less with a tall rear peep.
+    rbox(g, M.gunmetal, 0.072, 0.065, 0.4, 0, 0.068, -0.07);
+    rbox(g, M.dark, 0.068, 0.05, 0.28, 0, 0.022, -0.03);
+    box(g, M.steel, 0.004, 0.024, 0.08, 0.037, 0.07, -0.04);
+    rbox(g, M.woodDark, 0.078, 0.07, 0.3, 0, 0.045, -0.36);
+    for (let i = 0; i < 4; i++) box(g, M.black, 0.08, 0.008, 0.012, 0, 0.065, -0.26 - i * 0.06);
+    cyl(g, M.gunmetal, 0.018, 0.26, 0, 0.065, -0.6);
+    brake(g, 0.018, 0.065, -0.75, 0.07);
+    box(g, M.black, 0.012, 0.05, 0.012, 0, 0.11, -0.66);
+    box(g, M.black, 0.006, 0.014, 0.004, 0, 0.13, -0.66);
+    for (const s of [-1, 1]) box(g, M.black, 0.008, 0.05, 0.03, s * 0.014, 0.115, 0.06);
+    const mag = grp(g, 'mag', 0, -0.02, -0.15);
+    box(mag, M.black, 0.052, 0.13, 0.08, 0, -0.06, 0, 0.1);
+    box(mag, M.dark, 0.054, 0.012, 0.084, 0, -0.125, 0.008, 0.1);
+    grip(g, M.woodDark, 0, -0.05, 0.06);
+    trigger(g, 0.0, 0.0);
+    rbox(g, M.woodDark, 0.064, 0.115, 0.3, 0, 0.025, 0.27);
+    box(g, M.black, 0.066, 0.125, 0.02, 0, 0.022, 0.42);
+    const bolt = grp(g, 'bolt', 0.046, 0.075, -0.02);
+    box(bolt, M.steel, 0.022, 0.02, 0.05, 0, 0, 0);
+    anchor(g, 'fore', 0, 0.0, -0.36);
+    anchor(g, 'muzzle', 0, 0.065, -0.79);
+    g.userData.sight = 0.13;
+  },
+  pdw(g) {
+    // Compact bullpup-style PDW with a top-mounted horizontal mag and a red dot.
+    rbox(g, M.poly, 0.07, 0.11, 0.36, 0, 0.035, -0.06);
+    box(g, M.dark, 0.072, 0.03, 0.1, 0, -0.02, -0.2);
+    const mag = grp(g, 'mag', 0, 0.096, -0.08);
+    box(mag, M.glass, 0.05, 0.025, 0.28, 0, 0, 0);
+    box(mag, M.brass, 0.03, 0.012, 0.24, 0, -0.002, 0);
+    cyl(g, M.black, 0.016, 0.07, 0, 0.055, -0.27);
+    can(g, 0.022, 0.055, -0.33, 0.08);
+    grip(g, M.poly, 0, -0.06, -0.02, 0.11, -0.15);
+    trigger(g, -0.08, -0.015, 0.06);
+    rbox(g, M.poly, 0.06, 0.09, 0.04, 0, -0.04, -0.2);
+    box(g, M.black, 0.072, 0.12, 0.02, 0, 0.03, 0.13);
+    redDot(g, 0.15, -0.02, 0.11);
+    const bolt = grp(g, 'bolt', 0.04, 0.05, 0.04);
+    box(bolt, M.steel, 0.018, 0.016, 0.04, 0, 0, 0);
+    anchor(g, 'fore', 0, -0.08, -0.2);
+    anchor(g, 'muzzle', 0, 0.055, -0.38);
+    g.userData.sight = 0.15;
+  },
+  autoshot(g) {
+    // Mag-fed combat shotgun with a drum and a heat shield.
+    rbox(g, M.dark, 0.08, 0.1, 0.38, 0, 0.05, -0.06);
+    rail(g, 0.11, 0.06, -0.18, 0.026);
+    cyl(g, M.gunmetal, 0.024, 0.34, 0, 0.07, -0.42);
+    cyl(g, M.black, 0.03, 0.04, 0, 0.07, -0.6, 10);
+    for (let i = 0; i < 5; i++) box(g, M.black, 0.056, 0.008, 0.03, 0, 0.098, -0.3 - i * 0.05);
+    rbox(g, M.poly, 0.08, 0.06, 0.2, 0, 0.02, -0.32);
+    const mag = grp(g, 'mag', 0, -0.02, -0.12);
+    cyl(mag, M.black, 0.08, 0.07, 0, -0.08, 0, 14).rotation.set(0, 0, Math.PI / 2); // drum, axis across the gun
+    box(mag, M.dark, 0.05, 0.05, 0.06, 0, -0.01, 0);
+    grip(g, M.poly, 0, -0.05, 0.07);
+    trigger(g, 0.01, 0.0);
+    rbox(g, M.poly, 0.066, 0.11, 0.24, 0, 0.025, 0.26);
+    box(g, M.black, 0.068, 0.12, 0.02, 0, 0.022, 0.38);
+    irons(g, 0.13, -0.2, 0.04, 0.11);
+    const bolt = grp(g, 'bolt', 0.045, 0.07, -0.02);
+    box(bolt, M.steel, 0.024, 0.02, 0.05, 0, 0, 0);
+    anchor(g, 'fore', 0, -0.01, -0.32);
+    anchor(g, 'muzzle', 0, 0.07, -0.63);
+    g.userData.sight = 0.13;
+  },
+  amr(g) {
+    // Huge bolt-action anti-materiel rifle with a big brake and bipod.
+    rbox(g, M.dark, 0.085, 0.1, 0.4, 0, 0.05, -0.04);
+    cyl(g, M.gunmetal, 0.026, 0.72, 0, 0.068, -0.6);
+    for (let i = 0; i < 6; i++) box(g, M.black, 0.058, 0.006, 0.03, 0, 0.096, -0.32 - i * 0.07);
+    cyl(g, M.black, 0.045, 0.12, 0, 0.068, -1.0, 10);
+    for (const s of [-1, 1]) box(g, M.dark, 0.02, 0.07, 0.06, s * 0.05, 0.068, -1.0);
+    rbox(g, M.olive, 0.09, 0.08, 0.34, 0, 0.02, -0.36);
+    rbox(g, M.olive, 0.08, 0.14, 0.34, 0, -0.005, 0.26);
+    box(g, M.olive, 0.06, 0.04, 0.14, 0, 0.09, 0.24);
+    box(g, M.black, 0.082, 0.15, 0.03, 0, -0.005, 0.44);
+    grip(g, M.olive, 0, -0.065, 0.06, 0.13);
+    trigger(g, 0.0, -0.01);
+    scope(g, 0.16, -0.08, 0.42, 0.038);
+    for (const z of [-0.18, 0.04]) { box(g, M.black, 0.034, 0.06, 0.024, 0, 0.115, z); cyl(g, M.black, 0.035, 0.026, 0, 0.16, z, 12); }
+    const mag = grp(g, 'mag', 0, 0.0, -0.12);
+    box(mag, M.black, 0.055, 0.12, 0.1, 0, -0.05, 0);
+    const bolt = grp(g, 'bolt', 0.045, 0.08, 0.06);
+    box(bolt, M.steel, 0.08, 0.016, 0.016, 0.04, 0, 0);
+    const knob = new THREE.Mesh(new THREE.SphereGeometry(0.02, 10, 8), M.black);
+    knob.position.set(0.08, 0, 0);
+    bolt.add(knob);
+    for (const s of [-1, 1]) box(g, M.dark, 0.014, 0.014, 0.3, s * 0.035, -0.03, -0.66);
+    anchor(g, 'fore', 0, -0.02, -0.38);
+    anchor(g, 'muzzle', 0, 0.068, -1.07);
+    g.userData.sight = 0.16;
+  },
+  railgun(g) {
+    // Sci-fi coil gun: twin rails with glowing coils.
+    rbox(g, M.black, 0.08, 0.1, 0.42, 0, 0.05, -0.05);
+    for (const s of [-1, 1]) box(g, M.gunmetal, 0.014, 0.04, 0.56, s * 0.026, 0.07, -0.5);
+    for (let i = 0; i < 6; i++) {
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.008, 6, 16), M.glow);
+      ring.position.set(0, 0.07, -0.3 - i * 0.07);
+      g.add(ring);
+    }
+    box(g, M.glow, 0.004, 0.01, 0.5, 0, 0.07, -0.5);
+    rbox(g, M.mid, 0.07, 0.07, 0.2, 0, -0.02, -0.2);
+    const mag = grp(g, 'mag', 0, -0.03, -0.12);
+    rbox(mag, M.dark, 0.06, 0.1, 0.07, 0, -0.04, 0);
+    box(mag, M.glow, 0.062, 0.01, 0.02, 0, -0.02, -0.02);
+    grip(g, M.poly, 0, -0.06, 0.07);
+    trigger(g, 0.01, -0.005);
+    rbox(g, M.black, 0.066, 0.12, 0.26, 0, 0.03, 0.27);
+    box(g, M.glow, 0.068, 0.012, 0.1, 0, 0.05, 0.27);
+    redDot(g, 0.16, -0.06, 0.1);
+    anchor(g, 'fore', 0, -0.02, -0.24);
+    anchor(g, 'muzzle', 0, 0.07, -0.79);
+    g.userData.sight = 0.16;
+  },
+  bpistol(g) {
+    const slide = grp(g, 'slide', 0, 0, 0);
+    rbox(slide, M.tan, 0.046, 0.056, 0.22, 0, 0.05, -0.065);
+    for (let i = 0; i < 5; i++) for (const s of [-1, 1]) box(slide, M.black, 0.002, 0.04, 0.005, s * 0.023, 0.05, 0.02 + i * 0.01);
+    box(slide, M.black, 0.01, 0.015, 0.012, 0, 0.084, -0.16);
+    box(slide, M.black, 0.03, 0.012, 0.01, 0, 0.083, 0.035);
+    rbox(g, M.dark, 0.04, 0.035, 0.19, 0, 0.015, -0.055);
+    brake(g, 0.01, 0.05, -0.19, 0.03);
+    trigger(g, -0.02, 0.025, 0.055);
+    grip(g, M.tan, 0, -0.04, 0.02);
+    box(g, M.orange, 0.004, 0.012, 0.012, 0.024, 0.02, 0.005); // fire selector
+    const mag = grp(g, 'mag', 0, -0.02, 0.02);
+    box(mag, M.dark, 0.034, 0.1, 0.045, 0, -0.08, 0.02, -0.25);
+    anchor(g, 'fore', -0.04, -0.05, 0.0);
+    anchor(g, 'muzzle', 0, 0.05, -0.21);
+    g.userData.sight = 0.092;
+  },
+  flare(g) {
+    // Chunky orange break-action flare pistol.
+    rbox(g, M.orange, 0.05, 0.06, 0.12, 0, 0.04, -0.02);
+    cyl(g, M.orange, 0.03, 0.2, 0, 0.055, -0.17, 14);
+    cyl(g, M.black, 0.022, 0.004, 0, 0.055, -0.272, 12);
+    box(g, M.black, 0.014, 0.04, 0.03, 0, 0.08, 0.04, 0.5);
+    const mag = grp(g, 'mag', 0, 0.055, -0.08);
+    cyl(mag, M.red, 0.018, 0.08, 0, 0, 0, 10);
+    trigger(g, 0.0, 0.015, 0.05);
+    rbox(g, M.orange, 0.044, 0.12, 0.056, 0, -0.05, 0.045, -0.35);
+    box(g, M.black, 0.046, 0.08, 0.01, 0, -0.05, 0.045, -0.35);
+    anchor(g, 'fore', -0.04, -0.05, 0.02);
+    anchor(g, 'muzzle', 0, 0.055, -0.28);
+    g.userData.sight = 0.095;
+  },
+  machete(g) {
+    rbox(g, M.poly, 0.034, 0.038, 0.13, 0, 0, 0.02);
+    box(g, M.black, 0.05, 0.012, 0.014, 0, -0.012, -0.05);
+    box(g, M.steel, 0.006, 0.05, 0.4, 0, 0.008, -0.25);
+    box(g, M.gunmetal, 0.007, 0.012, 0.4, 0, 0.03, -0.25);
+    box(g, M.steel, 0.006, 0.06, 0.08, 0, 0.012, -0.47, -0.25);
+    anchor(g, 'muzzle', 0, 0, -0.5);
+  },
+  sledge(g) {
+    rbox(g, M.wood, 0.034, 0.04, 0.75, 0, 0, -0.26);
+    cyl(g, M.tape, 0.023, 0.18, 0, 0, 0.02, 8);
+    rbox(g, M.gunmetal, 0.09, 0.09, 0.2, 0, 0.0, -0.64, 0, Math.PI / 2, 0);
+    for (const s of [-1, 1]) box(g, M.steel, 0.095, 0.095, 0.012, s * 0.1, 0.0, -0.64, 0, Math.PI / 2, 0);
+    anchor(g, 'fore', 0, 0, -0.25);
+    anchor(g, 'muzzle', 0, 0, -0.64);
+  },
+  impact(g) {
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.05, 14, 12), M.dark);
+    g.add(s);
+    const band = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.008, 6, 16), M.orange);
+    band.rotation.x = Math.PI / 2;
+    g.add(band);
+    for (let i = 0; i < 6; i++) {
+      const n = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.025, 6), M.orange);
+      const a = (i / 6) * Math.PI * 2;
+      n.position.set(Math.cos(a) * 0.05, 0.02, Math.sin(a) * 0.05);
+      g.add(n);
+    }
+    cyl(g, M.mid, 0.014, 0.03, 0, 0.06, 0, 10).rotation.x = 0;
+    const pin = grp(g, 'pin', -0.02, 0.075, 0);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.016, 0.004, 6, 12), M.steel);
+    ring.rotation.y = Math.PI / 2;
+    pin.add(ring);
+    anchor(g, 'muzzle', 0, 0, 0);
+  },
   katana(g) {
     rbox(g, M.black, 0.035, 0.04, 0.22, 0, 0, 0.04);
     for (let i = 0; i < 6; i++) box(g, M.bone, 0.037, 0.03, 0.006, 0, 0, -0.04 + i * 0.03, 0, 0, i % 2 ? 0.5 : -0.5);
@@ -721,6 +905,12 @@ export function buildProjectile(kind) {
     flame.rotation.x = -Math.PI / 2;
     flame.position.z = 0.33;
     g.add(flame);
+  } else if (kind === 'flare') {
+    const core = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), new THREE.MeshBasicMaterial({ color: '#ff5a2a' }));
+    g.add(core);
+    const halo = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8),
+      new THREE.MeshBasicMaterial({ color: '#ff8a3a', transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }));
+    g.add(halo);
   } else if (kind === 'crossbow') {
     box(g, M.steel, 0.012, 0.012, 0.5, 0, 0, 0);
     const tip = new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.04, 4), M.steel);

@@ -89,6 +89,13 @@ export const sfx = {
   step: play((o) => { nz(o, { dur: 0.07, f0: 500, f1: 150, gain: 0.35 }); }),
   land: play((o) => { nz(o, { dur: 0.12, f0: 400, f1: 80, gain: 0.6 }); tone(o, { dur: 0.08, f0: 90, f1: 40, gain: 0.4 }); }),
   pad: play((o) => { tone(o, { dur: 0.35, f0: 180, f1: 900, type: 'sawtooth', gain: 0.2 }); nz(o, { dur: 0.3, f0: 800, f1: 3000, type: 'bandpass', gain: 0.4 }); }),
+  br: play((o) => { nz(o, { dur: 0.16, f0: 2800, f1: 380, gain: 1.0 }); tone(o, { dur: 0.1, f0: 140, f1: 45, gain: 0.7 }); }),
+  pdw: play((o) => { nz(o, { dur: 0.07, f0: 4400, f1: 900, gain: 0.55 }); tone(o, { dur: 0.04, f0: 260, f1: 90, gain: 0.3 }); }),
+  autoshot: play((o) => { nz(o, { dur: 0.24, f0: 2400, f1: 220, gain: 1.1 }); tone(o, { dur: 0.12, f0: 120, f1: 40, gain: 0.8 }); }),
+  amr: play((o) => { nz(o, { dur: 0.6, f0: 3000, f1: 100, gain: 1.6 }); tone(o, { dur: 0.35, f0: 70, f1: 22, gain: 1.2 }); }),
+  railgun: play((o) => { tone(o, { dur: 0.35, f0: 2200, f1: 180, type: 'sawtooth', gain: 0.35 }); nz(o, { dur: 0.2, f0: 6000, f1: 1500, type: 'highpass', gain: 0.6 }); }),
+  bpistol: play((o) => { nz(o, { dur: 0.09, f0: 4100, f1: 750, gain: 0.6 }); tone(o, { dur: 0.05, f0: 230, f1: 75, gain: 0.35 }); }),
+  flare: play((o) => { nz(o, { dur: 0.3, f0: 1200, f1: 3000, type: 'bandpass', q: 1.2, gain: 0.6 }); tone(o, { dur: 0.1, f0: 300, f1: 120, gain: 0.3 }); }),
   cycle: play((o) => { nz(o, { dur: 0.05, f0: 2500, type: 'highpass', gain: 0.4 }); nz(o, { dur: 0.05, f0: 1800, type: 'highpass', gain: 0.4 }); }),
 };
 sfx.dmr = play((o) => { nz(o, { dur: 0.3, f0: 3200, f1: 250, gain: 1.15 }); tone(o, { dur: 0.15, f0: 110, f1: 40, gain: 0.8 }); });

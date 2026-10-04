@@ -262,7 +262,7 @@ export class RemotePlayer {
     // Gun pose
     const w = WEAPONS[this.weapon] || WEAPONS.ar;
     const melee = w.type === 'melee', thrown = w.type === 'throw';
-    const pistol = ['pistol', 'revolver', 'mpistol', 'handcannon', 'sawedoff'].includes(this.weapon);
+    const pistol = ['pistol', 'revolver', 'mpistol', 'handcannon', 'sawedoff', 'bpistol', 'flare'].includes(this.weapon);
     const gh = this.gunHolder;
     if (melee) gh.position.set(0.24, -0.32, -0.32);
     else if (thrown) gh.position.set(0.24, -0.2, -0.3);

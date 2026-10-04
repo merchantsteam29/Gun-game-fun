@@ -85,7 +85,53 @@ export const WEAPONS = {
     recoil: 0.04, speedMul: 0.95, switch: 0.4, reloadStyle: 'mag',
   },
 
+  br: {
+    id: 'br', name: 'Battle Rifle', type: 'gun', auto: true,
+    rate: 0.13, dmg: 31, head: 1.7, pellets: 1, mag: 20, reload: 2.3,
+    spread: 0.01, moveSpread: 0.04, adsMul: 0.25, range: 280,
+    recoil: 0.024, speedMul: 0.92, switch: 0.42, reloadStyle: 'mag',
+  },
+  pdw: {
+    id: 'pdw', name: 'PDW', type: 'gun', auto: true,
+    rate: 0.055, dmg: 12, head: 1.5, pellets: 1, mag: 50, reload: 2.0,
+    spread: 0.022, moveSpread: 0.015, adsMul: 0.5, range: 100, falloff: [12, 35, 0.55],
+    recoil: 0.007, speedMul: 1.12, switch: 0.26, reloadStyle: 'mag',
+  },
+  autoshot: {
+    id: 'autoshot', name: 'Auto Shotgun', type: 'gun', auto: true,
+    rate: 0.24, dmg: 9, head: 1.25, pellets: 8, mag: 10, reload: 2.6,
+    spread: 0.085, moveSpread: 0.02, adsMul: 0.8, range: 45, falloff: [7, 24, 0.3],
+    recoil: 0.04, speedMul: 0.93, switch: 0.45, reloadStyle: 'mag',
+  },
+  amr: {
+    id: 'amr', name: 'Anti-Materiel Rifle', type: 'gun', auto: false,
+    rate: 1.7, dmg: 130, head: 1.5, pellets: 1, mag: 4, reload: 3.6,
+    spread: 0.12, moveSpread: 0.06, adsMul: 0, range: 450,
+    recoil: 0.12, speedMul: 0.78, switch: 0.8, reloadStyle: 'mag',
+    scope: true, zoom: 18, cycle: 'bolt',
+  },
+  railgun: {
+    id: 'railgun', name: 'Railgun', type: 'gun', auto: false,
+    rate: 1.3, dmg: 95, head: 1.6, pellets: 1, mag: 4, reload: 2.8,
+    spread: 0.004, moveSpread: 0.02, adsMul: 0, range: 400, adsFov: 38,
+    recoil: 0.07, speedMul: 0.9, switch: 0.55, reloadStyle: 'mag',
+  },
+
   // ---------- Secondaries ----------
+  bpistol: {
+    id: 'bpistol', name: 'Burst Pistol', type: 'gun', auto: false, burst: 3, burstGap: 0.06,
+    rate: 0.38, dmg: 19, head: 1.8, pellets: 1, mag: 18, reload: 1.5,
+    spread: 0.012, moveSpread: 0.025, adsMul: 0.4, range: 140,
+    recoil: 0.02, speedMul: 1.05, switch: 0.25, reloadStyle: 'mag',
+  },
+  flare: {
+    id: 'flare', name: 'Flare Gun', type: 'proj', auto: false,
+    rate: 0.6, mag: 1, reload: 1.4,
+    projSpeed: 40, projGravity: 6, trail: true, glow: true,
+    directDmg: 75, splash: 40, radius: 2.5,
+    spread: 0, moveSpread: 0, adsMul: 1,
+    recoil: 0.05, speedMul: 1.05, switch: 0.3, reloadStyle: 'mag',
+  },
   pistol: {
     id: 'pistol', name: 'Pistol', type: 'gun', auto: false,
     rate: 0.15, dmg: 27, head: 2.0, pellets: 1, mag: 12, reload: 1.4,
@@ -140,6 +186,16 @@ export const WEAPONS = {
     rate: 0.7, dmg: 45, backstab: 100, range: 2.7, hitDelay: 0.28, knockback: 13,
     spread: 0, moveSpread: 0, speedMul: 1.05, switch: 0.3,
   },
+  machete: {
+    id: 'machete', name: 'Machete', type: 'melee', style: 'slash',
+    rate: 0.55, dmg: 65, backstab: 150, range: 2.7, hitDelay: 0.1,
+    spread: 0, moveSpread: 0, speedMul: 1.1, switch: 0.25,
+  },
+  sledge: {
+    id: 'sledge', name: 'Sledgehammer', type: 'melee', style: 'chop',
+    rate: 1.2, dmg: 100, backstab: 150, range: 3.0, hitDelay: 0.4, knockback: 17,
+    spread: 0, moveSpread: 0, speedMul: 0.95, switch: 0.45,
+  },
   claws: {
     id: 'claws', name: 'Zombie Claws', type: 'melee', style: 'slash',
     rate: 0.45, dmg: 50, backstab: 150, range: 2.5, hitDelay: 0.08,
@@ -175,13 +231,19 @@ export const WEAPONS = {
     smokeTime: 11, radius: 5.5,
     spread: 0, moveSpread: 0, speedMul: 1.05, switch: 0.25,
   },
+  impact: {
+    id: 'impact', name: 'Impact Grenade', type: 'throw', impact: true,
+    rate: 0.9, count: 2, fuse: 5, throwSpeed: 20, projGravity: 14,
+    directDmg: 60, splash: 90, radius: 4,
+    spread: 0, moveSpread: 0, speedMul: 1.05, switch: 0.25,
+  },
 };
 
 export const SLOTS = [
-  ['ar', 'smg', 'burst', 'lmg', 'dmr', 'minigun', 'sniper', 'shotgun', 'doublebarrel', 'gl', 'rocket', 'crossbow'],
-  ['pistol', 'revolver', 'mpistol', 'handcannon', 'sawedoff'],
-  ['knife', 'axe', 'katana', 'bat'],
-  ['frag', 'sticky', 'smoke', 'flash', 'tknife'],
+  ['ar', 'br', 'smg', 'pdw', 'burst', 'lmg', 'dmr', 'minigun', 'sniper', 'amr', 'railgun', 'shotgun', 'autoshot', 'doublebarrel', 'gl', 'rocket', 'crossbow'],
+  ['pistol', 'bpistol', 'revolver', 'mpistol', 'handcannon', 'sawedoff', 'flare'],
+  ['knife', 'machete', 'axe', 'katana', 'bat', 'sledge'],
+  ['frag', 'sticky', 'impact', 'smoke', 'flash', 'tknife'],
 ];
 export const SLOT_NAMES = ['Primary', 'Secondary', 'Melee', 'Utility'];
 export const DEFAULT_LOADOUT = ['ar', 'pistol', 'knife', 'frag'];
@@ -196,6 +258,8 @@ export const SHORT = {
   frag: 'Frag', sticky: 'Sticky', smoke: 'Smoke', claws: 'Claws',
   dmr: 'DMR', minigun: 'Minigun', doublebarrel: 'Dbl Barrel', rocket: 'Rocket', crossbow: 'Crossbow',
   handcannon: 'H-Cannon', sawedoff: 'Sawed-Off', katana: 'Katana', bat: 'Bat', flash: 'Flash', tknife: 'T-Knives',
+  br: 'Battle', pdw: 'PDW', autoshot: 'Auto-SG', amr: 'AMR', railgun: 'Railgun', bpistol: 'B-Pistol', flare: 'Flare',
+  machete: 'Machete', sledge: 'Sledge', impact: 'Impact',
 };
 
 // Menu summary: a one-line description plus 0..1 stat bars.
@@ -225,7 +289,7 @@ export function weaponInfo(id) {
     rate = 0.3 / w.rate;
     range = w.range / 3.2;
   } else {
-    tags.push(w.smoke ? 'Blocks vision' : w.flash ? 'Blinds' : w.sticky ? 'Sticks to targets' : w.bolt ? 'Thrown blade' : `${w.fuse}s fuse`, `×${w.count}`);
+    tags.push(w.smoke ? 'Blocks vision' : w.flash ? 'Blinds' : w.sticky ? 'Sticks to targets' : w.bolt ? 'Thrown blade' : w.impact ? 'Explodes on impact' : `${w.fuse}s fuse`, `×${w.count}`);
     dmg = (w.splash || w.directDmg || 0) / 110;
     rate = 0.3 / w.rate;
     range = w.throwSpeed / 30;
