@@ -105,7 +105,7 @@
       <button id="player-chip" class="player-chip" title="Edit your character"><i id="chip-dot"></i><span id="chip-name"></span><em id="chip-tokens"></em></button>
     </header>
     <nav class="menu-nav" id="menu-nav">
-      <button data-pane="play" class="sel"><span class="ic">▶</span>Play</button>
+      <button data-pane="play" class="sel"><span class="ic">▶</span>Servers</button>
       <button data-pane="loadout"><span class="ic">⌖</span>Loadout</button>
       <button data-pane="character"><span class="ic">☺</span>Character</button>
       <button data-pane="missions"><span class="ic">★</span>Missions<b id="nav-missions-count"></b></button>
@@ -114,26 +114,72 @@
     <div class="menu-body">
       <!-- Play -->
       <section class="menu-pane" data-pane="play">
-        <div class="play-grid">
-          <div class="card join-card">
-            <h3>Join a friend</h3>
-            <p class="note">Enter the 5-letter code from their pause menu or invite link.</p>
+        <!-- Join by code -->
+        <div class="card join-card">
+          <div class="join-row">
+            <div>
+              <h3>Join with code</h3>
+              <p class="note">The 5-letter code from a friend's pause menu or invite link. Works for private servers too.</p>
+            </div>
             <div class="join">
               <input id="join-code" maxlength="5" placeholder="CODE" autocomplete="off" spellcheck="false" inputmode="text" autocapitalize="characters">
               <button id="btn-join" class="primary">Join</button>
             </div>
           </div>
-          <div class="card host-card">
-            <h3>Host a game</h3>
-            <label class="sub">Game mode</label>
-            <div id="mode-tiles" class="tiles"></div>
-            <div id="mode-desc" class="note"></div>
-            <label class="sub">Starting map</label>
-            <div id="map-tiles" class="tiles maps"></div>
-            <button id="btn-host" class="primary big">Create Lobby</button>
-          </div>
         </div>
         <p id="menu-status"></p>
+        <!-- Find servers -->
+        <div class="card servers-card">
+          <div class="sv-head">
+            <h3>Find servers</h3>
+            <span id="sv-status" class="sv-status"></span>
+            <select id="sv-region" title="Filter by region"><option value="">All regions</option></select>
+            <button id="sv-create-toggle" class="primary">+ Create server</button>
+          </div>
+          <div id="sv-list" class="sv-list"></div>
+        </div>
+        <!-- Create server -->
+        <div id="create-card" class="card create-card hidden">
+          <div class="sv-head"><h3>Create server</h3><button id="sv-create-close" class="ghost">Cancel</button></div>
+          <div class="create-grid">
+            <div class="field">
+              <label for="sv-name">Server name</label>
+              <input id="sv-name" maxlength="32" autocomplete="off" spellcheck="false">
+            </div>
+            <div class="field">
+              <label>Visibility</label>
+              <div class="seg" id="sv-vis">
+                <button data-v="public" class="sel">🌐 Public</button><button data-v="private">🔒 Private</button>
+              </div>
+              <small class="hint" id="sv-vis-hint"></small>
+            </div>
+            <div class="field">
+              <label for="sv-max">Max players</label>
+              <select id="sv-max"></select>
+            </div>
+            <div class="field">
+              <label for="sv-bots">Fill with bots</label>
+              <select id="sv-bots">
+                <option value="0">No bots</option><option value="4">Up to 4 players</option>
+                <option value="6">Up to 6 players</option><option value="8">Up to 8 players</option><option value="12">Up to 12 players</option>
+              </select>
+              <small class="hint">Bots leave as real players join.</small>
+            </div>
+            <div class="field">
+              <label for="sv-regionpick">Region tag</label>
+              <select id="sv-regionpick"></select>
+            </div>
+            <div class="field">
+              <label class="check"><input type="checkbox" id="sv-rotate" checked> Rotate maps after each match</label>
+            </div>
+          </div>
+          <label class="sub">Game mode</label>
+          <div id="mode-tiles" class="tiles"></div>
+          <div id="mode-desc" class="note"></div>
+          <label class="sub">Starting map</label>
+          <div id="map-tiles" class="tiles maps"></div>
+          <button id="btn-host" class="primary big">Create server</button>
+        </div>
       </section>
       <!-- Loadout -->
       <section class="menu-pane hidden" data-pane="loadout">
@@ -181,7 +227,7 @@
     <div class="pause-head">
       <h2 id="pause-title">PAUSED</h2>
       <div class="code-chip">
-        <span class="label">Lobby</span>
+        <span class="label" id="pause-vis">Lobby</span>
         <b id="pause-code">-----</b>
         <button id="btn-copy">Copy invite</button>
       </div>
@@ -221,6 +267,7 @@
           <div><label for="hp-map">Map</label><select id="hp-map"></select></div>
         </div>
         <label class="check"><input type="checkbox" id="hp-rotate"> Rotate maps after each match</label>
+        <label class="check"><input type="checkbox" id="hp-public"> Public: listed in Find Servers</label>
         <button id="hp-restart" class="primary">Restart match with these</button>
         <h3>Match rules</h3>
         <div id="hp-rules"></div>

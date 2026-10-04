@@ -29,6 +29,7 @@ export class Net {
         opened = true;
         this.isHost = true;
         this.code = code;
+        this.maxPlayers = Math.max(2, Math.min(MAX_PLAYERS, opts.maxPlayers || MAX_PLAYERS));
         this.logic = new HostLogic((id, m) => this.sendTo(id, m), (m, except) => this.broadcast(m, except), opts);
         this.logic.onKick = (id) => { const c = this.conns.get(id); if (c) setTimeout(() => c.close(), 300); };
         peer.on('connection', (conn) => this.accept(conn));
@@ -56,7 +57,7 @@ export class Net {
       conn.lastSeen = Date.now();
       if (!m || typeof m !== 'object' || m.t === 'ping') return;
       if (m.t === 'hello' && !conn.gid) {
-        if (this.conns.size + 1 >= MAX_PLAYERS) {
+        if (this.conns.size + 1 >= (this.maxPlayers || MAX_PLAYERS)) { // humans only; bots don't take slots
           conn.send({ t: 'full' });
           setTimeout(() => conn.close(), 500);
           return;

@@ -68,6 +68,7 @@ export class HostLogic {
     this.players = new Map();
     this.s = defaultSettings(MODES[opts.mode] ? opts.mode : 'ffa', MAPS[opts.map] ? opts.map : MAP_ORDER[0]);
     this.botCount = 0;
+    this.botFill = Math.max(0, Math.min(12, opts.botFill || 0)); // keep humans + bots at this many
     this.loadMap(this.s.map);
     this.beginMatchState();
     this.last = Date.now();
@@ -146,6 +147,18 @@ export class HostLogic {
     if (this.phase !== 'playing') this.sendTo(id, this.endMsg());
     else if (this.s.mode === 'lms') this.sendTo(id, { t: 'notice', text: 'ROUND IN PROGRESS · SPECTATING' });
     else this.spawn(p);
+    this.balanceBots();
+  }
+
+  // "Fill with bots": add bots up to the fill size, and drop one each time a real player joins.
+  balanceBots() {
+    if (!this.botFill) return;
+    const all = [...this.players.values()];
+    const humans = all.filter((p) => !p.bot).length;
+    const bots = all.filter((p) => p.bot);
+    const want = Math.max(0, this.botFill - humans);
+    for (let i = bots.length; i < want; i++) this.addBot('normal');
+    for (let i = want; i < bots.length; i++) this.removePlayer(bots[bots.length - 1 - (i - want)].id);
   }
 
   addBot(difficulty = 'normal') {
@@ -171,6 +184,7 @@ export class HostLogic {
     if (this.jugg === id) this.jugg = null;
     this.checkInfectionEnd();
     this.checkLmsEnd();
+    if (!p.bot) this.balanceBots(); // a real player left: a bot takes the slot
   }
 
   kick(id) {

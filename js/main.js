@@ -11,6 +11,8 @@ import { modelQuality } from './models.js';
 import { SettingsUI } from './settingsui.js';
 import { getCos, MISSIONS, missionDone, getTokens } from './missions.js';
 import { opts } from './settings.js';
+import { ServerBrowser, ServerAnnouncer, REGIONS, guessRegion } from './servers.js';
+import { esc } from './util.js';
 import { Chat } from './chat.js';
 
 const $ = (id) => document.getElementById(id);
@@ -166,6 +168,92 @@ function renderMaps() {
   });
 }
 
+// ---------- Servers: browse public servers, create your own ----------
+const serverCfg = {
+  name: '', vis: 'public', max: 12, bots: 0, region: guessRegion(), rotate: true,
+  ...store.get('serverCfg', {}),
+};
+const saveCfg = () => store.set('serverCfg', serverCfg);
+const browser = new ServerBrowser();
+const announcer = new ServerAnnouncer();
+let hosting = null; // { public, name, max, region } while hosting
+
+function renderCreateForm() {
+  $('sv-name').value = serverCfg.name || `${settings.name || 'Player'}'s server`;
+  $('sv-max').innerHTML = Array.from({ length: 11 }, (_, i) => i + 2).map((n) => `<option value="${n}" ${n === serverCfg.max ? 'selected' : ''}>${n} players</option>`).join('');
+  $('sv-bots').value = String(serverCfg.bots);
+  $('sv-regionpick').innerHTML = REGIONS.map((r) => `<option ${r === serverCfg.region ? 'selected' : ''}>${r}</option>`).join('');
+  $('sv-rotate').checked = serverCfg.rotate;
+  document.querySelectorAll('#sv-vis button').forEach((b) => b.classList.toggle('sel', b.dataset.v === serverCfg.vis));
+  $('sv-vis-hint').textContent = serverCfg.vis === 'public'
+    ? 'Anyone can find it in Find Servers.'
+    : 'Hidden from the list. Friends join with the code or invite link.';
+}
+$('sv-name').addEventListener('input', () => { serverCfg.name = $('sv-name').value.trim(); saveCfg(); });
+$('sv-max').onchange = () => { serverCfg.max = Number($('sv-max').value); saveCfg(); };
+$('sv-bots').onchange = () => { serverCfg.bots = Number($('sv-bots').value); saveCfg(); };
+$('sv-regionpick').onchange = () => { serverCfg.region = $('sv-regionpick').value; saveCfg(); };
+$('sv-rotate').onchange = () => { serverCfg.rotate = $('sv-rotate').checked; saveCfg(); };
+document.querySelectorAll('#sv-vis button').forEach((b) => { b.onclick = () => { serverCfg.vis = b.dataset.v; saveCfg(); renderCreateForm(); }; });
+const showCreate = (v) => {
+  $('create-card').classList.toggle('hidden', !v);
+  $('sv-create-toggle').classList.toggle('hidden', v);
+  if (v) { renderCreateForm(); $('create-card').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+};
+$('sv-create-toggle').onclick = () => showCreate(true);
+$('sv-create-close').onclick = () => showCreate(false);
+$('sv-region').innerHTML = '<option value="">All regions</option>' + REGIONS.map((r) => `<option>${r}</option>`).join('');
+$('sv-region').onchange = () => renderServers();
+
+function renderServers() {
+  const st = browser.status;
+  $('sv-status').textContent = st === 'online' ? '● Live' : st === 'connecting' ? 'Connecting…' : st === 'offline' ? 'List unavailable' : '';
+  $('sv-status').className = 'sv-status ' + st;
+  const region = $('sv-region').value;
+  const list = browser.list().filter((s) => !region || s.region === region);
+  const el = $('sv-list');
+  if (st === 'offline') {
+    el.innerHTML = '<div class="sv-empty">Couldn\'t reach the server list right now. You can still join with a code or create a server. <button id="sv-retry">Retry</button></div>';
+    $('sv-retry').onclick = () => { browser.client = null; browser.start(); };
+    return;
+  }
+  if (!list.length) {
+    el.innerHTML = `<div class="sv-empty">${st === 'connecting' ? 'Looking for servers…' : 'No public servers right now. Create one and your friends (or anyone) can join!'}</div>`;
+    return;
+  }
+  el.innerHTML = list.map((s) => {
+    const full = s.players >= s.max;
+    const mode = MODES[s.mode] ? MODES[s.mode].name : s.mode;
+    const map = MAPS[s.map] ? MAPS[s.map].name : s.map;
+    return `<div class="sv-row">
+      <div class="sv-main"><b>${esc(s.name)}</b><small>${esc(mode)} · ${esc(map)}</small></div>
+      ${s.region ? `<span class="sv-region">${esc(s.region)}</span>` : '<span></span>'}
+      <div class="sv-players ${full ? 'full' : ''}">${s.players}/${s.max}${s.bots ? `<small>+${s.bots} bots</small>` : ''}</div>
+      <button class="primary" data-join="${esc(s.code)}" ${full ? 'disabled' : ''}>${full ? 'Full' : 'Join'}</button>
+    </div>`;
+  }).join('');
+  el.querySelectorAll('[data-join]').forEach((b) => { b.onclick = () => { $('join-code').value = b.dataset.join; joinLobby(); }; });
+}
+browser.onChange = renderServers;
+
+// What a public server tells the list.
+function listingInfo() {
+  const L = net && net.logic;
+  const all = L ? [...L.players.values()] : [];
+  return {
+    name: hosting.name, max: hosting.max, region: hosting.region,
+    mode: L ? L.s.mode : settings.mode, map: L ? L.s.map : settings.map,
+    players: all.filter((p) => !p.bot).length, bots: all.filter((p) => p.bot).length,
+  };
+}
+function setPublic(v) {
+  if (!hosting || !net) return;
+  hosting.public = v;
+  if (v) announcer.start(net.code, listingInfo).then((ok) => { if (!ok && hosting) chat.system('Could not reach the server list. Friends can still join with the code.'); });
+  else announcer.stop();
+  $('pause-vis').textContent = v ? '🌐 Public' : '🔒 Private';
+}
+
 // Menu sections. Phones show the section buttons as a bottom bar.
 let menuPane = store.get('menuPane', 'play');
 function showPane(name) {
@@ -176,6 +264,7 @@ function showPane(name) {
   if (name === 'character') { if (settingsUI) settingsUI.tryOn = null; renderCharacter(); }
   renderChip();
   if (name === 'missions') renderMissions();
+  if (name === 'play') { browser.start(); renderServers(); }
   document.querySelector('.menu-body').scrollTop = 0;
 }
 document.querySelectorAll('#menu-nav [data-pane]').forEach((b) => { b.onclick = () => showPane(b.dataset.pane); });
@@ -203,6 +292,8 @@ function chatOnNet(m) {
   else if (m.t === 'chat') chat.add(m.name, colorOf(m.id, m.color), m.text, m.id === game.myId);
   else if (m.t === 'pjoin' && !m.bot) chat.system(`${m.name} joined`);
   else if (m.t === 'pleave' && !String(m.name).startsWith('[BOT]')) chat.system(`${m.name} left`);
+  // Keep a public listing's player count / mode / map current.
+  if (hosting && hosting.public && ['pjoin', 'pleave', 'start'].includes(m.t)) announcer.publish();
 }
 
 function newNet() {
@@ -216,7 +307,8 @@ function newNet() {
 function enterGame() {
   $('menu').classList.add('hidden');
   $('pause-code').textContent = net.code;
-  $('pause-title').textContent = net.isHost ? 'LOBBY CREATED' : 'JOINED LOBBY';
+  $('pause-title').textContent = net.isHost ? 'SERVER CREATED' : 'JOINED SERVER';
+  $('pause-vis').textContent = 'Code';
   $('btn-resume').textContent = 'Click to play';
   history.replaceState(null, '', '?lobby=' + net.code);
   showPause();
@@ -235,13 +327,18 @@ async function hostLobby() {
   setBusy(true);
   for (let attempt = 0; attempt < 3; attempt++) {
     const code = randCode();
-    status(`Creating lobby ${code}…`);
+    status(`Creating server ${code}…`);
     net = newNet();
     try {
-      await net.host(code, settings.name || 'Player', settings.color, { map: settings.map, mode: settings.mode }, getCos());
+      await net.host(code, settings.name || 'Player', settings.color,
+        { map: settings.map, mode: settings.mode, maxPlayers: serverCfg.max, botFill: Math.min(serverCfg.bots, serverCfg.max) }, getCos());
+      net.logic.s.rotate = serverCfg.rotate;
+      hosting = { public: false, name: $('sv-name').value.trim() || `${settings.name || 'Player'}'s server`, max: serverCfg.max, region: serverCfg.region };
       setBusy(false);
       status('');
       enterGame();
+      setPublic(serverCfg.vis === 'public');
+      showCreate(false);
       return;
     } catch (e) {
       net.destroy();
@@ -275,6 +372,7 @@ async function joinLobby() {
 }
 
 function leave(reason) {
+  if (hosting) { announcer.stop(); hosting = null; }
   if (net) { net.destroy(); net = null; }
   chat.setLobby(false);
   chat.setPaused(false);
@@ -359,7 +457,9 @@ $('btn-hostpanel').onclick = () => {
   if (!net || !net.isHost) return;
   $('pause').classList.add('hidden');
   hostPanel.open(net.logic);
+  $('hp-public').checked = !!(hosting && hosting.public);
 };
+$('hp-public').onchange = () => setPublic($('hp-public').checked);
 game.onKicked = () => leave('You were kicked by the host.');
 $('btn-copy').onclick = async () => {
   const link = `${location.origin}${location.pathname}?lobby=${net ? net.code : ''}`;
@@ -381,4 +481,4 @@ game.onUnlock = () => {
   showPause();
 };
 
-window.addEventListener('beforeunload', () => { if (net) net.destroy(); });
+window.addEventListener('beforeunload', () => { if (hosting) announcer.stop(); if (net) net.destroy(); });
