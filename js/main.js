@@ -1,7 +1,7 @@
 import { Game } from './game.js';
 import { Net } from './net.js';
 import { initAudio } from './audio.js';
-import { WEAPONS, SLOTS, SLOT_NAMES, SHORT, validLoadout } from './weapons.js';
+import { WEAPONS, SLOTS, SLOT_NAMES, SHORT, validLoadout, weaponInfo } from './weapons.js';
 import { MAPS, MAP_ORDER, quality } from './maps.js';
 import { TouchControls } from './touch.js';
 import { COLORS, randCode, store } from './util.js';
@@ -50,30 +50,38 @@ function renderColors() {
   }
 }
 
+// Loadout picker: one tab per slot, a grid of weapons for the open slot, and a stat card
+// for whichever weapon is hovered (or equipped).
+const loadoutTab = new WeakMap();
+
+function statCard(id) {
+  const info = weaponInfo(id);
+  return `<div class="lo-name">${WEAPONS[id].name}</div><div class="lo-tag">${info.tag}</div>` +
+    info.stats.map(([label, v]) => `<div class="lo-stat"><span>${label}</span><i><b style="width:${Math.round(v * 100)}%"></b></i></div>`).join('');
+}
+
 function renderLoadout(el) {
-  el.innerHTML = '';
-  SLOTS.forEach((options, slot) => {
-    const row = document.createElement('div');
-    row.className = 'row';
-    row.innerHTML = `<span>${SLOT_NAMES[slot]}</span>`;
-    const pick = document.createElement('div');
-    pick.className = 'pick';
-    for (const id of options) {
-      const b = document.createElement('button');
-      b.textContent = SHORT[id];
-      b.title = WEAPONS[id].name;
-      b.className = settings.loadout[slot] === id ? 'sel' : '';
-      b.onclick = () => {
-        settings.loadout[slot] = id;
-        store.set('loadout', settings.loadout);
-        game.nextLoadout = settings.loadout.slice();
-        renderLoadout($('menu-loadout'));
-        renderLoadout($('pause-loadout'));
-      };
-      pick.appendChild(b);
-    }
-    row.appendChild(pick);
-    el.appendChild(row);
+  const open = loadoutTab.get(el) || 0;
+  const tabs = SLOTS.map((_, slot) =>
+    `<button class="lo-tab ${slot === open ? 'sel' : ''}" data-tab="${slot}"><small>${slot + 1} · ${SLOT_NAMES[slot]}</small>${WEAPONS[settings.loadout[slot]].name}</button>`).join('');
+  const chips = SLOTS[open].map((id) =>
+    `<button class="${settings.loadout[open] === id ? 'sel' : ''}" data-w="${id}" title="${WEAPONS[id].name}">${SHORT[id]}</button>`).join('');
+  el.innerHTML = `<div class="lo-tabs">${tabs}</div><div class="lo-body"><div class="lo-grid">${chips}</div><div class="lo-card">${statCard(settings.loadout[open])}</div></div>`;
+  const card = el.querySelector('.lo-card');
+  el.querySelectorAll('[data-tab]').forEach((b) => {
+    b.onclick = () => { loadoutTab.set(el, Number(b.dataset.tab)); renderLoadout(el); };
+  });
+  el.querySelectorAll('[data-w]').forEach((b) => {
+    const id = b.dataset.w;
+    b.onmouseenter = () => { card.innerHTML = statCard(id); };
+    b.onmouseleave = () => { card.innerHTML = statCard(settings.loadout[open]); };
+    b.onclick = () => {
+      settings.loadout[open] = id;
+      store.set('loadout', settings.loadout);
+      game.nextLoadout = settings.loadout.slice();
+      renderLoadout($('menu-loadout'));
+      renderLoadout($('pause-loadout'));
+    };
   });
 }
 

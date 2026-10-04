@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { buildGun } from './models.js';
 import { WEAPONS } from './weapons.js';
 import { angLerp } from './util.js';
@@ -8,6 +9,12 @@ const legMat = new THREE.MeshStandardMaterial({ color: '#2b2f36', roughness: 0.9
 const skinMat = new THREE.MeshStandardMaterial({ color: '#d6a682', roughness: 0.8 });
 const bootMat = new THREE.MeshStandardMaterial({ color: '#1a1a1a', roughness: 0.9 });
 const gloveMat = new THREE.MeshStandardMaterial({ color: '#1e1f22', roughness: 0.9 });
+const vestMat = new THREE.MeshStandardMaterial({ color: '#3b4030', roughness: 0.85 });
+const pouchMat = new THREE.MeshStandardMaterial({ color: '#4a5038', roughness: 0.9 });
+const beltMat = new THREE.MeshStandardMaterial({ color: '#23262b', roughness: 0.8 });
+const metalMat = new THREE.MeshStandardMaterial({ color: '#8d939a', roughness: 0.35, metalness: 0.6 });
+const helmetRimMat = new THREE.MeshStandardMaterial({ color: '#2c3036', roughness: 0.7 });
+const lensMat = new THREE.MeshStandardMaterial({ color: '#1a2a3a', roughness: 0.1, metalness: 0.5, emissive: '#0b2033' });
 
 const THIGH = 0.46, SHIN = 0.46, UPPER = 0.3, FORE = 0.3;
 const HIP_Y = 0.94;
@@ -70,6 +77,7 @@ export class RemotePlayer {
     this.recoil = 0;
     this.swingT = 0; this.swingStyle = 'slash';
     this.throwT = 0;
+    this.swapT = 0;
     this.deathT = 0;
     this.fallDir = new THREE.Vector3(0, 0, 1);
 
@@ -79,20 +87,33 @@ export class RemotePlayer {
     this.hips = new THREE.Group();
     this.hips.position.y = HIP_Y;
     this.root.add(this.hips);
-    mesh(new THREE.BoxGeometry(0.44, 0.2, 0.26), legMat, 0, 0, 0, this.hips);
+    mesh(new RoundedBoxGeometry(0.44, 0.2, 0.26, 2, 0.04), legMat, 0, 0, 0, this.hips);
+    mesh(new THREE.BoxGeometry(0.46, 0.05, 0.28), beltMat, 0, 0.07, 0, this.hips); // belt
+    mesh(new THREE.BoxGeometry(0.08, 0.06, 0.03), metalMat, 0, 0.07, -0.145, this.hips);
 
     this.spine = new THREE.Group();
     this.spine.position.y = 0.08;
     this.hips.add(this.spine);
-    mesh(new THREE.BoxGeometry(0.52, 0.56, 0.3), bodyMat, 0, 0.3, 0, this.spine);
-    mesh(new THREE.BoxGeometry(0.4, 0.3, 0.08), legMat, 0, 0.3, 0.18, this.spine); // backpack
+    // Shirt in the player's color with a plate carrier over it
+    mesh(new RoundedBoxGeometry(0.5, 0.56, 0.28, 2, 0.06), bodyMat, 0, 0.3, 0, this.spine);
+    mesh(new RoundedBoxGeometry(0.46, 0.38, 0.33, 2, 0.04), vestMat, 0, 0.3, 0, this.spine);
+    for (let i = -1; i <= 1; i++) mesh(new THREE.BoxGeometry(0.11, 0.12, 0.05), pouchMat, i * 0.13, 0.2, -0.18, this.spine);
+    mesh(new THREE.BoxGeometry(0.3, 0.06, 0.03), pouchMat, 0, 0.42, -0.175, this.spine);
+    for (const s of [-1, 1]) mesh(new RoundedBoxGeometry(0.16, 0.1, 0.24, 2, 0.03), bodyMat, s * 0.27, 0.53, 0, this.spine); // shoulders
+    mesh(new RoundedBoxGeometry(0.38, 0.34, 0.12, 2, 0.03), legMat, 0, 0.32, 0.21, this.spine); // backpack
+    mesh(new THREE.BoxGeometry(0.3, 0.06, 0.13), pouchMat, 0, 0.17, 0.22, this.spine);
 
     this.neck = new THREE.Group();
     this.neck.position.y = 0.56;
     this.spine.add(this.neck);
-    mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), skinMat, 0, 0.15, 0, this.neck);
-    mesh(new THREE.BoxGeometry(0.34, 0.12, 0.34), bodyMat, 0, 0.3, 0.01, this.neck);
-    mesh(new THREE.BoxGeometry(0.26, 0.07, 0.02), bootMat, 0, 0.19, -0.155, this.neck);
+    mesh(new RoundedBoxGeometry(0.28, 0.3, 0.28, 2, 0.06), skinMat, 0, 0.15, 0, this.neck);
+    // Helmet (team color), goggles and chin strap
+    const helmet = mesh(new THREE.SphereGeometry(0.185, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), bodyMat, 0, 0.22, 0.01, this.neck);
+    helmet.scale.set(1, 0.85, 1.05);
+    mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.035, 16), helmetRimMat, 0, 0.22, 0.01, this.neck);
+    mesh(new RoundedBoxGeometry(0.27, 0.075, 0.05, 2, 0.02), bootMat, 0, 0.19, -0.14, this.neck);
+    for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(0.09, 0.05, 0.01), lensMat, s * 0.06, 0.19, -0.166, this.neck);
+    mesh(new THREE.BoxGeometry(0.29, 0.02, 0.29), beltMat, 0, 0.19, 0, this.neck); // goggle strap
 
     // Aim pivot at shoulder height carries the gun; arms are solved to its anchors.
     this.aim = new THREE.Group();
@@ -151,6 +172,7 @@ export class RemotePlayer {
       this.guns[id] = g;
     }
     this.guns[id].visible = true;
+    if (this.weapon && this.alive) this.swapT = 1;
     this.weapon = id;
   }
 
@@ -206,6 +228,7 @@ export class RemotePlayer {
     this.recoil *= Math.exp(-dt * 14);
     this.swingT = Math.max(0, this.swingT - dt * (this.swingStyle === 'chop' ? 1.4 : 2.6));
     this.throwT = Math.max(0, this.throwT - dt * 1.8);
+    this.swapT = Math.max(0, this.swapT - dt * 3);
 
     this.vel.subVectors(this.pos, this.prev).divideScalar(Math.max(dt, 1e-4));
     const speed = Math.min(9, Math.hypot(this.vel.x, this.vel.z));
@@ -249,6 +272,10 @@ export class RemotePlayer {
     this.aim.rotation.set(this.pitch * (1 - this.sprint * 0.6) - this.sprint * 0.5, this.sprint * 0.5, 0);
     gh.position.z += this.recoil * 0.08;
     gh.rotation.x += this.recoil * 0.25;
+    if (this.swapT > 0) { // newly drawn weapon comes up from the hip
+      const e = this.swapT * this.swapT;
+      gh.position.y -= 0.3 * e; gh.rotation.x -= 0.9 * e;
+    }
     if (this.reload > 0.01) { gh.rotation.z += 0.5 * this.reload; gh.rotation.x -= 0.3 * this.reload; gh.position.y -= 0.06 * this.reload; }
     if (this.swingT > 0) {
       const p = 1 - this.swingT;

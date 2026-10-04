@@ -25,11 +25,13 @@ export class Hud {
   }
 
   health(hp, max = 100) {
-    $('hp-num').textContent = Math.max(0, Math.ceil(hp));
-    const f = $('hp-fill');
     const pct = Math.max(0, Math.min(100, (hp / max) * 100));
-    f.style.width = pct + '%';
-    f.classList.toggle('low', pct <= 35);
+    if (pct === this.lastHp) return;
+    this.lastHp = pct;
+    $('hp-num').textContent = Math.max(0, Math.ceil(hp));
+    $('hp-fill').style.width = pct + '%';
+    $('hp-lag').style.width = pct + '%'; // trails behind via a delayed CSS transition
+    $('health').classList.toggle('low', pct <= 35);
   }
 
   modeBar(html) {
@@ -37,23 +39,39 @@ export class Hud {
   }
 
   ammo(id, cur, mag, frags) {
+    const key = `${id}|${cur}|${mag}|${frags}`;
+    if (key === this.lastAmmo) return;
+    this.lastAmmo = key;
     const w = WEAPONS[id];
     $('wname').textContent = w.name;
-    const c = $('ammo-cur');
-    if (w.type === 'melee') { c.textContent = '∞'; $('ammo-mag').textContent = ''; c.classList.remove('low'); return; }
-    if (w.type === 'throw') { c.textContent = frags; $('ammo-mag').textContent = '/ ' + w.count; c.classList.toggle('low', frags === 0); return; }
-    c.textContent = cur;
-    $('ammo-mag').textContent = '/ ' + mag;
-    c.classList.toggle('low', cur <= Math.ceil(mag * 0.25));
+    const c = $('ammo-cur'), fill = $('ammo-fill');
+    let low = false, pct = 100;
+    if (w.type === 'melee') { c.textContent = '∞'; $('ammo-mag').textContent = ''; }
+    else if (w.type === 'throw') { c.textContent = frags; $('ammo-mag').textContent = '/ ' + w.count; low = frags === 0; pct = (frags / w.count) * 100; }
+    else { c.textContent = cur; $('ammo-mag').textContent = '/ ' + mag; low = cur <= Math.ceil(mag * 0.25); pct = (cur / mag) * 100; }
+    c.classList.toggle('low', low);
+    fill.style.width = Math.min(100, pct) + '%';
+    fill.classList.toggle('low', low);
   }
 
-  slots(loadout, slot, frags) {
-    const key = loadout.join() + slot + frags;
+  // Slot cards. They brighten for a moment after each weapon change, then fade back.
+  slots(loadout, slot, frags, ammo = {}) {
+    const key = loadout.join() + slot + frags + loadout.map((id) => ammo[id]).join();
     if (key === this.lastSlots) return;
     this.lastSlots = key;
-    $('slots').innerHTML = loadout.map((id, i) =>
-      `<div class="${i === slot ? 'sel' : ''} ${i === 3 && frags === 0 ? 'off' : ''}" title="${SLOT_NAMES[i]}"><b>${i + 1}</b>${W_LABEL[id]}${i === 3 ? ' ×' + frags : ''}</div>`
-    ).join('');
+    $('slots').innerHTML = loadout.map((id, i) => {
+      const w = WEAPONS[id];
+      const count = w.type === 'throw' ? '×' + frags : w.mag ? ammo[id] ?? w.mag : '';
+      const off = (i === 3 && frags === 0) || (w.mag && ammo[id] === 0);
+      return `<div class="${i === slot ? 'sel' : ''} ${off ? 'off' : ''}" title="${SLOT_NAMES[i]}"><b>${i + 1}</b><span>${W_LABEL[id]}</span><em>${count}</em></div>`;
+    }).join('');
+  }
+
+  weaponChanged() {
+    const el = $('weapon-info');
+    el.classList.add('changed');
+    clearTimeout(this.timers.wpn);
+    this.timers.wpn = setTimeout(() => el.classList.remove('changed'), 1600);
   }
 
   // White-out that fades over up to ~4 seconds.

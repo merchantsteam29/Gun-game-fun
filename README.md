@@ -46,7 +46,7 @@ The lobby creator gets a **Host panel** button in the pause menu (Esc):
 
 ## Loadout
 
-Pick one per slot in the menu or pause menu (applies on next spawn).
+Pick one per slot in the menu or pause menu (applies on next spawn). Hover a weapon to see its damage, fire rate, range and mobility.
 
 | Slot | Options |
 |---|---|
@@ -60,13 +60,17 @@ The Grenade Launcher one-shots on a direct hit but slows you down while it's out
 ## Controls
 
 WASD move · Mouse aim · LMB fire · RMB aim/scope · Space jump · Shift sprint · Ctrl/C crouch ·
-R reload · 1–4 / wheel switch · G quick grenade · F quick melee · T inspect · Tab scoreboard · Esc pause/loadout
+R reload · 1–4 / wheel switch · Q last weapon · G quick grenade · F quick melee · T inspect · Tab scoreboard · Esc pause/loadout
+
+Switching holsters your current weapon before drawing the next (heavier weapons take longer). Quick melee (F) swings
+immediately and then puts your previous weapon back in your hands. When you throw your last grenade you go back to
+the weapon you had out before.
 
 ## Mobile
 
 Phones and tablets get touch controls automatically (play in landscape):
 floating joystick on the left, drag on the right to look, and buttons for fire (drag it to aim while shooting),
-aim, jump, crouch, reload, weapon swap, grenade, melee, scoreboard and pause.
+aim, jump, crouch, reload, weapon swap (toggles primary/secondary), grenade, melee, scoreboard and pause.
 Add `?mobile` or `?desktop` to the URL to force a mode.
 
 ## Run locally

@@ -82,6 +82,10 @@ export class Viewmodel {
     this.adsT = 0;
     this.sprintT = 0;
     this.raiseT = 0;
+    this.raiseDur = 0.3;
+    this.next = null; // model waiting to be drawn once the current one is holstered
+    this.dropT = 0;
+    this.dropDur = 1;
     this.kick = 0;
     this.kickYaw = 0;
     this.land = 0;
@@ -110,19 +114,34 @@ export class Viewmodel {
   setColor(c) { this.sleeveMat.color.set(c); }
   setVisible(v) { this.root.visible = v; }
 
-  equip(id) {
-    for (const m of Object.values(this.models)) m.holder.visible = false;
-    this.cur = id;
-    this.quick = null;
+  // Lower the current model for `drop` seconds, then raise `id` over `raise` seconds.
+  equip(id, { drop = 0, raise = 0.3 } = {}) {
     this.anim = null;
     this.cycleAnim = null;
     this.inspectT = -1;
+    this.raiseDur = Math.max(0.05, raise);
+    if (drop > 0 && this.cur && this.cur !== id && !this.quick) {
+      // Continue lowering from wherever the current model is.
+      const lowered = this.next ? 1 - this.dropT / this.dropDur : this.raiseT;
+      this.next = id;
+      this.dropDur = drop;
+      this.dropT = drop * (1 - Math.min(1, lowered));
+      return;
+    }
+    this.next = null;
+    this.swapTo(id, raise > 0 ? 1 : 0);
+  }
+
+  swapTo(id, raiseT) {
+    for (const m of Object.values(this.models)) m.holder.visible = false;
+    this.cur = id;
+    this.quick = null;
     this.cylAngle = this.cylTarget = 0;
     const m = this.models[id];
     m.holder.visible = true;
     if (m.parts.muzzle) m.parts.muzzle.add(this.flash, this.flash2);
     this.flash.visible = this.flash2.visible = false;
-    this.raiseT = 1;
+    this.raiseT = raiseT;
   }
 
   fire(w) {
@@ -165,7 +184,7 @@ export class Viewmodel {
     this.anim = { name: 'throw', t: 0, dur: 0.8 };
   }
 
-  inspect() { if (!this.anim && this.raiseT <= 0) this.inspectT = 0; }
+  inspect() { if (!this.anim && !this.next && this.raiseT <= 0) this.inspectT = 0; }
   cancelInspect() { this.inspectT = -1; }
   landed(k) { this.land = Math.max(this.land, k); }
 
@@ -178,6 +197,14 @@ export class Viewmodel {
   update(dt, s) {
     if (!this.cur) return;
     this.t += dt;
+    let lower = 0;
+    if (this.next) {
+      this.dropT -= dt;
+      if (this.dropT <= 0) {
+        this.swapTo(this.next, 1);
+        this.next = null;
+      } else lower = 1 - this.dropT / this.dropDur;
+    }
     const m = this.model;
     const id = m.id;
     const w = WEAPONS[id];
@@ -185,7 +212,7 @@ export class Viewmodel {
 
     this.adsT += ((s.ads ? 1 : 0) - this.adsT) * Math.min(1, dt * 14);
     this.sprintT += ((s.sprint ? 1 : 0) - this.sprintT) * Math.min(1, dt * 9);
-    this.raiseT = Math.max(0, this.raiseT - dt * 3.5);
+    if (!this.next) this.raiseT = Math.max(0, this.raiseT - dt / this.raiseDur);
     this.kick *= Math.exp(-dt * 12);
     this.land *= Math.exp(-dt * 7);
     this.flashT -= dt;
@@ -214,8 +241,13 @@ export class Viewmodel {
     tp.x -= this.sprintT * 0.06; tp.y -= this.sprintT * 0.04; tp.z += this.sprintT * 0.03;
     tr.x -= this.sprintT * 0.3; tr.y += this.sprintT * 0.65; tr.z += this.sprintT * 0.3;
 
+    // Draw (raiseT 1 -> 0) eases up from below; holster (lower 0 -> 1) tips the weapon away.
     const e = this.raiseT * this.raiseT * (3 - 2 * this.raiseT);
     tp.y -= 0.32 * e; tr.x -= 0.9 * e; tr.z += 0.4 * e;
+    if (lower > 0) {
+      const l = lower * lower;
+      tp.y -= 0.34 * l; tp.x += 0.05 * l; tr.x -= 0.8 * l; tr.z -= 0.5 * l;
+    }
 
     // Reset animated parts
     for (const p of Object.values(P)) {

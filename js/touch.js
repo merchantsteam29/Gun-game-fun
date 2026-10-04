@@ -139,7 +139,7 @@ export class TouchControls {
         if (a === 'pause') { this.onPause(); return; }
         if (!g.me.alive || g.matchOver) return;
         if (a === 'reload') g.startReload();
-        else if (a === 'swap') g.cycleSlot(1);
+        else if (a === 'swap') g.swapGuns();
         else if (a === 'nade') g.quickThrow();
         else if (a === 'melee') g.quickMelee();
     }

@@ -85,6 +85,7 @@ export class Game {
     this.ammo = {};
     this.util = 0;
     this.fireCd = 0; this.switchT = 0; this.reloadT = 0; this.autoSwitchT = 0;
+    this.lastSlot = 1; this.returnSlot = -1; this.returnT = 0; this.wheelCd = 0;
     this.burstLeft = 0; this.burstT = 0; this.spin = 0;
     this.pendingMelee = null; this.pendingThrow = null; this.cycleSfxT = 0;
     this.recoil = 0; this.shake = 0; this.flinch = 0; this.landDip = 0;
@@ -182,6 +183,7 @@ export class Game {
       if (!this.me.alive || this.matchOver) return;
       const n = { Digit1: 0, Digit2: 1, Digit3: 2, Digit4: 3 }[e.code];
       if (n !== undefined) this.switchSlot(n);
+      else if (e.code === 'KeyQ') this.swapLast();
       else if (e.code === 'KeyR') this.startReload();
       else if (e.code === 'KeyG') this.quickThrow();
       else if (e.code === 'KeyF') this.quickMelee();
@@ -205,7 +207,9 @@ export class Game {
       if (e.button === 2) this.mouse.right = false;
     });
     this.canvas.addEventListener('wheel', (e) => {
-      if (!this.locked || !this.me.alive) return;
+      // Trackpads fire a stream of wheel events; one switch per notch.
+      if (!this.locked || !this.me.alive || this.matchOver || this.wheelCd > 0 || !e.deltaY) return;
+      this.wheelCd = 0.14;
       this.cycleSlot(Math.sign(e.deltaY));
     }, { passive: true });
     document.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -431,6 +435,8 @@ export class Game {
     this.fireCd = 0;
     this.burstLeft = 0;
     this.pendingMelee = this.pendingThrow = null;
+    this.lastSlot = 1;
+    this.returnSlot = -1;
     this.switchSlot(0, true);
   }
 
@@ -642,16 +648,42 @@ export class Game {
 
   // ---------- Weapons ----------
 
+  // Holster the current weapon, then draw the new one. Switching again mid-way retargets
+  // without restarting the whole sequence. `instant` skips both (spawns, quick melee).
   switchSlot(i, instant = false) {
-    if (i === this.slot || i >= this.loadout.length) return;
+    if (i === this.slot || i < 0 || i >= this.loadout.length) return;
     if (i === 3 && this.util <= 0) return;
+    const prevId = this.slot >= 0 ? this.curW : null;
+    if (this.slot >= 0 && this.slot !== 3) this.lastSlot = this.slot;
     this.slot = i;
     this.reloadT = 0;
     this.burstLeft = 0;
-    const id = this.curW;
-    this.switchT = instant ? 0 : WEAPONS[id].switch;
-    this.vm.equip(id);
-    if (!instant) sfx.equip(0.5);
+    this.spin = 0;
+    this.returnSlot = -1;
+    const id = this.curW, w = WEAPONS[id];
+    if (instant || !prevId) {
+      this.switchT = 0;
+      this.vm.equip(id, { drop: 0, raise: prevId ? 0 : 0.3 });
+    } else {
+      // Still in the middle of drawing something: the holster is quicker.
+      const drop = this.switchT > 0 ? 0.08 : Math.min(0.22, WEAPONS[prevId].switch * 0.45);
+      this.switchT = drop + w.switch;
+      this.vm.equip(id, { drop, raise: w.switch });
+      sfx.equip(0.35);
+    }
+    this.hud.weaponChanged();
+  }
+
+  // Q: back to the previous weapon.
+  swapLast() {
+    let s = this.lastSlot;
+    if (s === this.slot || s < 0 || s >= this.loadout.length) s = this.slot === 0 ? 1 : 0;
+    this.switchSlot(s);
+  }
+
+  // Mobile swap button: toggle between the two guns (melee/utility have their own buttons).
+  swapGuns() {
+    this.switchSlot(this.slot === 0 ? 1 : 0);
   }
 
   startReload() {
@@ -670,12 +702,18 @@ export class Game {
     this.throwUtil(this.slot !== 3);
   }
 
+  // F: swing straight away, then put the previous weapon back in hand.
   quickMelee() {
     const ms = this.meleeSlot();
-    if (ms < 0 || (this.fireCd > 0 && this.slot === ms)) return;
+    if (ms < 0 || (this.fireCd > 0 && this.slot === ms) || this.pendingThrow) return;
+    const from = this.slot;
     this.switchSlot(ms, true);
     this.fireCd = 0;
     this.melee();
+    if (from !== ms && from >= 0) {
+      this.returnSlot = from;
+      this.returnT = WEAPONS[this.loadout[ms]].rate * 0.9;
+    }
   }
 
   updateWeapon(dt) {
@@ -690,8 +728,18 @@ export class Game {
     }
     if (this.autoSwitchT > 0) {
       this.autoSwitchT -= dt;
-      if (this.autoSwitchT <= 0 && this.slot === 3 && this.util === 0) this.switchSlot(0);
+      if (this.autoSwitchT <= 0 && this.slot === 3 && this.util === 0) this.switchSlot(this.lastSlot >= 0 ? this.lastSlot : 0);
     }
+    if (this.returnSlot >= 0) {
+      this.returnT -= dt;
+      // Swinging again (melee()) extends the window; otherwise go back to the weapon we came from.
+      if (this.returnT <= 0 && !this.pendingMelee) {
+        const s = this.returnSlot;
+        this.returnSlot = -1;
+        this.switchSlot(s);
+      }
+    }
+    this.wheelCd -= dt;
     if (this.cycleSfxT > 0) {
       this.cycleSfxT -= dt;
       if (this.cycleSfxT <= 0) sfx.cycle(0.5);
@@ -825,6 +873,7 @@ export class Game {
   melee() {
     const w = WEAPONS[this.loadout[this.meleeSlot()]] || WEAPONS.knife;
     this.fireCd = w.rate;
+    if (this.returnSlot >= 0) this.returnT = w.rate * 0.9;
     this.vm.swing(w.style);
     (sfx[w.id] || sfx.knife)(0.7);
     this.net.send({ t: 'fx', k: 'melee', s: w.style });
@@ -1196,7 +1245,7 @@ export class Game {
     const id = this.curW, w = WEAPONS[id];
     hud.health(me.alive ? me.hp : 0, this.maxHp);
     hud.ammo(id, this.ammo[id] ?? 0, w.mag || 0, this.util);
-    hud.slots(this.loadout, this.slot, this.util);
+    hud.slots(this.loadout, this.slot, this.util, this.ammo);
     hud.reloading(this.reloadT > 0 && me.alive);
     const px = (this.spread / Math.tan((this.camera.fov * Math.PI) / 360)) * (innerHeight / 2);
     hud.spread(Math.min(80, px), this.ads && w.type === 'gun');

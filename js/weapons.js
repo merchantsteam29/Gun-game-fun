@@ -198,5 +198,44 @@ export const SHORT = {
   handcannon: 'H-Cannon', sawedoff: 'Sawed-Off', katana: 'Katana', bat: 'Bat', flash: 'Flash', tknife: 'T-Knives',
 };
 
+// Menu summary: a one-line description plus 0..1 stat bars.
+export function weaponInfo(id) {
+  const w = WEAPONS[id];
+  const tags = [];
+  let dmg = 0, rate = 0, range = 0;
+  if (w.type === 'gun') {
+    tags.push(w.cycle === 'bolt' ? 'Bolt-action' : w.cycle === 'pump' ? 'Pump-action' : w.burst ? `${w.burst}-round burst` : w.auto ? 'Full-auto' : 'Semi-auto');
+    tags.push(`${w.mag} rounds`);
+    if (w.pellets > 1) tags.push(`${w.pellets} pellets`);
+    if (w.scope) tags.push('Scoped');
+    if (w.spinup) tags.push('Spins up');
+    dmg = (w.dmg * w.pellets * (w.burst || 1)) / 110;
+    rate = 0.06 / w.rate;
+    range = w.falloff ? w.falloff[1] / 120 : w.range / 300;
+  } else if (w.type === 'proj') {
+    tags.push(w.bolt ? 'Bolt projectile' : 'Explosive', `${w.mag} round${w.mag > 1 ? 's' : ''}`);
+    if (w.directDmg >= 999) tags.push('One-shot direct hit');
+    dmg = Math.max(w.directDmg, w.splash || 0) / 110;
+    rate = 0.25 / w.rate;
+    range = w.projSpeed / 70;
+  } else if (w.type === 'melee') {
+    tags.push(w.style === 'chop' ? 'Heavy swing' : 'Quick slash', 'Backstabs');
+    if (w.knockback) tags.push('Knockback');
+    dmg = w.dmg / 110;
+    rate = 0.3 / w.rate;
+    range = w.range / 3.2;
+  } else {
+    tags.push(w.smoke ? 'Blocks vision' : w.flash ? 'Blinds' : w.sticky ? 'Sticks to targets' : w.bolt ? 'Thrown blade' : `${w.fuse}s fuse`, `×${w.count}`);
+    dmg = (w.splash || w.directDmg || 0) / 110;
+    rate = 0.3 / w.rate;
+    range = w.throwSpeed / 30;
+  }
+  const c = (v) => Math.max(0.04, Math.min(1, v));
+  return {
+    tag: tags.join(' · '),
+    stats: [['Damage', c(dmg)], ['Fire rate', c(rate)], ['Range', c(range)], ['Mobility', c((w.speedMul - 0.6) / 0.6)]],
+  };
+}
+
 // Gun Game: one kill per level; a melee kill knocks the victim down a level.
 export const GUNGAME_LADDER = ['revolver', 'mpistol', 'smg', 'doublebarrel', 'burst', 'dmr', 'ar', 'minigun', 'sniper', 'rocket', 'handcannon', 'pistol', 'knife'];

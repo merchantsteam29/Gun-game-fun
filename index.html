@@ -38,15 +38,20 @@
   <div id="notice"></div>
 
   <div id="health">
-    <div class="label">HP</div>
-    <div class="bar"><div id="hp-fill"></div></div>
     <div id="hp-num">100</div>
+    <div class="hp-side">
+      <div class="label">HEALTH</div>
+      <div class="bar"><div id="hp-lag"></div><div id="hp-fill"></div></div>
+    </div>
   </div>
 
   <div id="weapon-info">
-    <div id="ammo"><span id="ammo-cur">30</span><span id="ammo-mag">/ 30</span></div>
-    <div id="wname">Assault Rifle</div>
     <div id="slots"></div>
+    <div class="wrow">
+      <div id="wname">Assault Rifle</div>
+      <div id="ammo"><span id="ammo-cur">30</span><span id="ammo-mag">/ 30</span></div>
+    </div>
+    <div id="ammo-bar"><div id="ammo-fill"></div></div>
   </div>
   <div id="reload-hint">RELOADING</div>
 
@@ -71,39 +76,49 @@
 
 <!-- Main menu -->
 <div id="menu" class="overlay">
-  <div class="panel">
-    <h1>WAREHOUSE <span>FFA</span></h1>
-    <div class="field">
-      <label for="name">Callsign</label>
-      <input id="name" maxlength="16" autocomplete="off" spellcheck="false">
+  <div class="panel menu-panel">
+    <header class="brand">
+      <h1>WAREHOUSE <span>FFA</span></h1>
+      <p>Browser arena shooter · up to 12 players with bots</p>
+    </header>
+    <div class="menu-grid">
+      <section>
+        <h3>Profile</h3>
+        <div class="field">
+          <label for="name">Callsign</label>
+          <input id="name" maxlength="16" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="field">
+          <label>Color</label>
+          <div id="colors" class="swatches"></div>
+        </div>
+        <h3>Play</h3>
+        <div class="field two">
+          <div>
+            <label for="mode-pick">Game mode</label>
+            <select id="mode-pick"></select>
+          </div>
+          <div>
+            <label for="map-pick">Starting map</label>
+            <select id="map-pick"></select>
+          </div>
+        </div>
+        <div id="mode-desc" class="note"></div>
+        <div class="actions">
+          <button id="btn-host" class="primary">Create Lobby</button>
+          <div class="divider"><span>or join a friend</span></div>
+          <div class="join">
+            <input id="join-code" maxlength="5" placeholder="CODE" autocomplete="off" spellcheck="false">
+            <button id="btn-join">Join</button>
+          </div>
+        </div>
+        <p id="menu-status"></p>
+      </section>
+      <section>
+        <h3>Loadout</h3>
+        <div id="menu-loadout" class="loadout"></div>
+      </section>
     </div>
-    <div class="field">
-      <label>Color</label>
-      <div id="colors" class="swatches"></div>
-    </div>
-    <div class="field">
-      <label>Loadout</label>
-      <div id="menu-loadout" class="loadout"></div>
-    </div>
-    <div class="field two">
-      <div>
-        <label for="mode-pick">Game mode</label>
-        <select id="mode-pick"></select>
-      </div>
-      <div>
-        <label for="map-pick">Starting map</label>
-        <select id="map-pick"></select>
-      </div>
-    </div>
-    <div id="mode-desc" class="loadout-note"></div>
-    <div class="actions">
-      <button id="btn-host" class="primary">Create Lobby</button>
-      <div class="join">
-        <input id="join-code" maxlength="5" placeholder="CODE" autocomplete="off" spellcheck="false">
-        <button id="btn-join">Join</button>
-      </div>
-    </div>
-    <p id="menu-status"></p>
     <details class="controls">
       <summary>Controls</summary>
       <div class="grid">
@@ -111,9 +126,10 @@
         <span><kbd>LMB</kbd> fire</span><span><kbd>RMB</kbd> aim down sights</span>
         <span><kbd>Space</kbd> jump</span><span><kbd>Shift</kbd> sprint</span>
         <span><kbd>Ctrl</kbd>/<kbd>C</kbd> crouch</span><span><kbd>R</kbd> reload</span>
-        <span><kbd>1-4</kbd> / wheel switch</span><span><kbd>G</kbd> quick frag</span>
-        <span><kbd>F</kbd> quick melee</span><span><kbd>T</kbd> inspect</span>
-        <span><kbd>Tab</kbd> scoreboard</span><span><kbd>Esc</kbd> loadout / pause</span>
+        <span><kbd>1-4</kbd> / wheel switch</span><span><kbd>Q</kbd> last weapon</span>
+        <span><kbd>G</kbd> quick throw</span><span><kbd>F</kbd> quick melee</span>
+        <span><kbd>T</kbd> inspect</span><span><kbd>Tab</kbd> scoreboard</span>
+        <span><kbd>Esc</kbd> loadout / pause</span>
       </div>
     </details>
   </div>
@@ -121,22 +137,26 @@
 
 <!-- Pause / click-to-play -->
 <div id="pause" class="overlay hidden">
-  <div class="panel small">
-    <h2 id="pause-title">PAUSED</h2>
-    <div class="code-box">
-      <div class="label">Lobby code</div>
-      <div id="pause-code">-----</div>
-      <button id="btn-copy">Copy invite link</button>
+  <div class="panel pause-panel">
+    <div class="pause-head">
+      <h2 id="pause-title">PAUSED</h2>
+      <div class="code-box">
+        <div>
+          <div class="label">Lobby code</div>
+          <div id="pause-code">-----</div>
+        </div>
+        <button id="btn-copy">Copy invite link</button>
+      </div>
     </div>
     <div class="field">
-      <label>Loadout (applies next spawn)</label>
+      <label>Loadout <span class="muted">· applies on next spawn</span></label>
       <div id="pause-loadout" class="loadout"></div>
     </div>
     <div class="field">
       <label for="sens">Mouse sensitivity <span id="sens-val"></span></label>
       <input id="sens" type="range" min="0.2" max="3" step="0.05">
     </div>
-    <div class="actions">
+    <div class="actions row">
       <button id="btn-resume" class="primary">Click to play</button>
       <button id="btn-hostpanel" class="hidden">Host panel</button>
       <button id="btn-leave" class="danger">Leave lobby</button>
