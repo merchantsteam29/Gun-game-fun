@@ -97,10 +97,10 @@ trade swing speed for reach and movement speed, and only the Sledgehammer one-sh
 
 | Slot | Options |
 |---|---|
-| Primary | Assault Rifle, Battle Rifle, Carbine, SMG, PDW, Vector, Burst Rifle, LMG, DMR, Laser Rifle, Minigun (spins up), Sniper Rifle (scoped), Anti-Materiel Rifle (scoped, one-shots), Railgun, Shotgun, Auto Shotgun, Slug Shotgun, Double Barrel, Grenade Launcher, Rocket Launcher, Crossbow, Harpoon Gun |
-| Secondary | Pistol, Burst Pistol, Revolver, Auto Revolver, Machine Pistol, Micro SMG, Hand Cannon, Sawed-Off, Flare Gun |
-| Melee | Combat Knife, Brass Knuckles, Machete, Fire Axe, Katana, Baseball Bat (knockback), Sledgehammer (big knockback), Scythe — backstabs one-shot |
-| Utility | Frag, Sticky, Impact (explodes on contact), Vortex (pulls players in), Smoke, Flashbang, Throwing Knives |
+| Primary | Assault Rifle, Burst Rifle, SMG, LMG, DMR, Sniper Rifle (scoped), Shotgun, Rocket Launcher |
+| Secondary | Pistol, Revolver, Machine Pistol |
+| Melee | Combat Knife, Katana, Baseball Bat (knockback) — backstabs one-shot |
+| Utility | Frag, Sticky, Smoke, Flashbang |
 
 ## Party chat
 
@@ -185,6 +185,27 @@ re-downloads every file (a hard refresh) — automatically after 5 seconds in th
 
 **Releasing:** bump the version in both `js/version.js` and `version.json` (same string), update the notes,
 and add any new files to the `files` list in `version.json`.
+
+## Accounts (Firebase setup)
+
+Players can optionally sign in with a **gamertag + password**; their tokens, cosmetics, missions, loadout and settings sync to every device. Until `js/firebase-config.js` is filled in, everyone plays as a guest. One-time setup:
+
+1. https://console.firebase.google.com → **Add project** (Analytics off is fine).
+2. **Build → Authentication → Get started → Sign-in method → Email/Password → Enable**.
+3. **Authentication → Settings → Authorized domains → Add** `merchantsteam29.github.io`.
+4. **Build → Firestore Database → Create database** (production mode).
+5. **Firestore → Rules**, paste and **Publish**:
+   ```
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       match /players/{uid} { allow read, write: if request.auth != null && request.auth.uid == uid; }
+     }
+   }
+   ```
+6. **Project settings → Your apps → Web (</>)** → register → copy the `firebaseConfig` object into `js/firebase-config.js` (replace `null`), commit and push.
+
+There's no email, so a forgotten password can't be reset.
 
 ## Run locally
 

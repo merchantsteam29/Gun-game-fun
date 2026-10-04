@@ -39,7 +39,7 @@ h3 { font-size: 12px; letter-spacing: 2px; color: var(--accent); margin: 0 0 12p
 section > h3:not(:first-child) { margin-top: 22px; }
 .field { margin-bottom: 14px; }
 .field label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 6px; }
-input[type=text], input:not([type]), #join-code { width: 100%; padding: 10px 12px; background: rgba(255,255,255,0.05);
+input[type=text], input[type=password], input:not([type]), #join-code { width: 100%; padding: 10px 12px; background: rgba(255,255,255,0.05);
   border: 1px solid var(--line); color: var(--text); font: inherit; font-size: 16px; border-radius: 6px; outline: none; transition: border-color 0.15s, background 0.15s; }
 input:focus { border-color: var(--accent); background: rgba(255,255,255,0.07); }
 input[type=range] { width: 100%; accent-color: var(--accent); }
@@ -492,6 +492,27 @@ body.tablet #touch .b-chat { left: calc(136px + env(safe-area-inset-left)); top:
   .set-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 14px; }
   .set-tabs button { text-align: center; border-left: 1px solid var(--line) !important; border-radius: 6px; }
 }
+/* ---------- Accounts ---------- */
+.acct-card { border: 1px solid var(--line); border-radius: var(--radius); background: rgba(0,0,0,0.25); padding: 14px 16px; margin-bottom: 16px; }
+.acct-card h3 { margin-bottom: 4px; }
+.acct-card .note { margin: 0 0 10px; }
+.acct-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto; gap: 8px; align-items: end; }
+.acct-form .field { margin: 0; }
+.acct-form button { white-space: nowrap; }
+.acct-err { color: var(--danger); font-size: 13px; min-height: 18px; margin-top: 8px; }
+.acct-err.ok { color: var(--ok); }
+.acct-in { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.acct-in .who { font-size: 18px; font-weight: 700; letter-spacing: 1px; }
+.acct-in .who b { color: var(--accent); }
+.acct-in .note { flex: 1 1 220px; margin: 0; }
+.acct-badge { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; background: var(--ok); color: #0b0d10; font-size: 11px; font-weight: 800; margin-left: 6px; }
+.player-chip .acct-badge { width: 14px; height: 14px; font-size: 10px; margin-left: 0; }
+.acct-prompt { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; text-transform: none; letter-spacing: 0.3px;
+  font-size: 13px; border-color: rgba(255,176,32,0.45); background: var(--accent-soft); }
+.acct-prompt b { color: var(--accent); }
+.acct-prompt small { font-size: 11px; color: var(--muted); font-weight: 400; }
+#name:disabled { opacity: 0.7; cursor: not-allowed; }
+@media (max-width: 700px) { .acct-form { grid-template-columns: 1fr 1fr; } }
 /* ---------- Controller ---------- */
 body.pad .pad-focus { outline: 2px solid var(--accent) !important; outline-offset: 2px; box-shadow: 0 0 0 5px rgba(255,176,32,0.18), 0 0 18px rgba(255,176,32,0.25); position: relative; z-index: 1; }
 body.pad .menu-nav button.pad-focus { outline-offset: -2px; }

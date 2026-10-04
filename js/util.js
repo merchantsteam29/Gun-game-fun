@@ -20,5 +20,10 @@ export function esc(s) {
 
 export const store = {
   get(k, d) { try { const v = localStorage.getItem('whffa.' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
-  set(k, v) { try { localStorage.setItem('whffa.' + k, JSON.stringify(v)); } catch { /* ignore */ } },
+  set(k, v) {
+    try { localStorage.setItem('whffa.' + k, JSON.stringify(v)); } catch { /* ignore */ }
+    if (store.onSet) store.onSet(k); // accounts sync saved progress
+  },
+  del(k) { try { localStorage.removeItem('whffa.' + k); } catch { /* ignore */ } },
+  onSet: null,
 };

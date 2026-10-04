@@ -56,80 +56,6 @@ export function mergeStatic(root) {
 // mag, bolt, pump, slide, cyl, lid, pin, spin (groups) and fore, muzzle, port (anchor points).
 const builders = {
   ...GUNS,
-  machete(g) {
-    rbox(g, M.poly, 0.034, 0.038, 0.13, 0, 0, 0.02);
-    box(g, M.black, 0.05, 0.012, 0.014, 0, -0.012, -0.05);
-    box(g, M.steel, 0.006, 0.05, 0.4, 0, 0.008, -0.25);
-    box(g, M.gunmetal, 0.007, 0.012, 0.4, 0, 0.03, -0.25);
-    box(g, M.steel, 0.006, 0.06, 0.08, 0, 0.012, -0.47, -0.25);
-    anchor(g, 'muzzle', 0, 0, -0.5);
-  },
-  sledge(g) {
-    rbox(g, M.wood, 0.034, 0.04, 0.75, 0, 0, -0.26);
-    cyl(g, M.tape, 0.023, 0.18, 0, 0, 0.02, 8);
-    rbox(g, M.gunmetal, 0.09, 0.09, 0.2, 0, 0.0, -0.64, 0, Math.PI / 2, 0);
-    for (const s of [-1, 1]) box(g, M.steel, 0.095, 0.095, 0.012, s * 0.1, 0.0, -0.64, 0, Math.PI / 2, 0);
-    anchor(g, 'fore', 0, 0, -0.25);
-    anchor(g, 'muzzle', 0, 0, -0.64);
-  },
-  impact(g) {
-    const s = new THREE.Mesh(new THREE.SphereGeometry(0.05, 14, 12), M.dark);
-    g.add(s);
-    const band = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.008, 6, 16), M.orange);
-    band.rotation.x = Math.PI / 2;
-    g.add(band);
-    for (let i = 0; i < 6; i++) {
-      const n = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.025, 6), M.orange);
-      const a = (i / 6) * Math.PI * 2;
-      n.position.set(Math.cos(a) * 0.05, 0.02, Math.sin(a) * 0.05);
-      g.add(n);
-    }
-    cyl(g, M.mid, 0.014, 0.03, 0, 0.06, 0, 10).rotation.x = 0;
-    const pin = grp(g, 'pin', -0.02, 0.075, 0);
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.016, 0.004, 6, 12), M.steel);
-    ring.rotation.y = Math.PI / 2;
-    pin.add(ring);
-    anchor(g, 'muzzle', 0, 0, 0);
-  },
-  knuckles(g) {
-    rbox(g, M.gold, 0.1, 0.035, 0.03, 0, 0.02, -0.04);
-    for (let i = 0; i < 4; i++) {
-      const r = new THREE.Mesh(new THREE.TorusGeometry(0.014, 0.006, 6, 12), M.gold);
-      r.position.set(-0.036 + i * 0.024, 0.045, -0.04);
-      g.add(r);
-    }
-    box(g, M.gold, 0.08, 0.025, 0.04, 0, -0.01, -0.03, 0.3);
-    rbox(g, M.dark, 0.08, 0.08, 0.1, 0, 0, 0.02); // fist (glove)
-    anchor(g, 'muzzle', 0, 0.03, -0.06);
-  },
-  scythe(g) {
-    rbox(g, M.woodDark, 0.034, 0.04, 0.95, 0, 0, -0.32);
-    cyl(g, M.tape, 0.024, 0.14, 0, 0, 0.06, 8);
-    box(g, M.dark, 0.05, 0.05, 0.06, 0, 0, -0.78);
-    // Curved blade from short boxes
-    for (let i = 0; i < 7; i++) {
-      const a = i * 0.16;
-      box(g, M.steel, 0.008, 0.05 - i * 0.004, 0.08, 0, 0.04 + Math.sin(a) * 0.12 + i * 0.03, -0.8 + Math.cos(a) * 0.02 + i * 0.045, -0.3 - a * 0.9);
-    }
-    anchor(g, 'fore', 0, 0, -0.35);
-    anchor(g, 'muzzle', 0, 0.2, -0.6);
-  },
-  vortex(g) {
-    const s = new THREE.Mesh(new THREE.SphereGeometry(0.05, 14, 12), M.dark);
-    g.add(s);
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.058, 0.008, 6, 20), M.purple);
-    ring.rotation.x = Math.PI / 2;
-    g.add(ring);
-    const core = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 6), M.purple);
-    core.position.y = 0.05;
-    g.add(core);
-    box(g, M.mid, 0.015, 0.09, 0.015, 0.035, 0.02, 0);
-    const pin = grp(g, 'pin', -0.025, 0.075, 0);
-    const pr = new THREE.Mesh(new THREE.TorusGeometry(0.016, 0.004, 6, 12), M.steel);
-    pr.rotation.y = Math.PI / 2;
-    pin.add(pr);
-    anchor(g, 'muzzle', 0, 0, 0);
-  },
   katana(g) {
     rbox(g, M.black, 0.035, 0.04, 0.22, 0, 0, 0.04);
     for (let i = 0; i < 6; i++) box(g, M.bone, 0.037, 0.03, 0.006, 0, 0, -0.04 + i * 0.03, 0, 0, i % 2 ? 0.5 : -0.5);
@@ -307,27 +233,6 @@ export function buildProjectile(kind) {
     flame.rotation.x = -Math.PI / 2;
     flame.position.z = 0.33;
     g.add(flame);
-  } else if (kind === 'flare') {
-    const core = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), new THREE.MeshBasicMaterial({ color: '#ff5a2a' }));
-    g.add(core);
-    const halo = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8),
-      new THREE.MeshBasicMaterial({ color: '#ff8a3a', transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }));
-    g.add(halo);
-  } else if (kind === 'harpoon') {
-    box(g, M.steel, 0.012, 0.012, 0.62, 0, 0, 0);
-    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.07, 4), M.steel);
-    tip.rotation.x = -Math.PI / 2;
-    tip.position.z = -0.34;
-    g.add(tip);
-    for (const s of [-1, 1]) box(g, M.steel, 0.004, 0.035, 0.014, s * 0.014, 0, -0.29, 0, 0, s * 0.6);
-  } else if (kind === 'crossbow') {
-    box(g, M.steel, 0.012, 0.012, 0.5, 0, 0, 0);
-    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.04, 4), M.steel);
-    tip.rotation.x = -Math.PI / 2;
-    tip.position.z = -0.27;
-    g.add(tip);
-    box(g, M.red, 0.04, 0.002, 0.06, 0, 0, 0.22);
-    box(g, M.red, 0.002, 0.04, 0.06, 0, 0, 0.22);
   } else {
     const gun = buildGun(kind);
     gun.scale.setScalar(1.3);

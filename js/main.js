@@ -16,6 +16,7 @@ import { Updater } from './updater.js';
 import { esc } from './util.js';
 import { Chat } from './chat.js';
 import { GamepadInput } from './gamepad.js';
+import { Account, TAG_RULES } from './account.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -26,6 +27,8 @@ const settings = {
   map: store.get('map', 'warehouse'),
   mode: store.get('mode', 'ffa'),
 };
+// Optional gamertag + password account (Firebase). Signed in, your gamertag is your name.
+const account = new Account();
 if (!MAPS[settings.map]) settings.map = 'warehouse';
 if (!MODES[settings.mode]) settings.mode = 'ffa';
 
@@ -87,7 +90,7 @@ function renderColors() {
 
 // Header chip: your name and color; tap to edit your character.
 function renderChip() {
-  $('chip-name').textContent = settings.name || 'Player';
+  $('chip-name').innerHTML = esc(settings.name || 'Player') + (account.signedIn ? ' <span class="acct-badge" title="Signed in">✓</span>' : '');
   $('chip-dot').style.background = settings.color;
   $('chip-tokens').textContent = '🪙 ' + getTokens();
 }
@@ -156,6 +159,65 @@ function setBusy(v) {
 
 $('name').value = settings.name;
 $('name').addEventListener('input', () => { settings.name = $('name').value.trim(); store.set('name', settings.name); renderChip(); });
+
+// ---------- Account card (Character section) ----------
+function applyAccountName() {
+  const locked = account.signedIn && account.tag;
+  if (locked && settings.name !== account.tag) { settings.name = account.tag; store.set('name', account.tag); }
+  if (locked) $('name').value = account.tag;
+  $('name').disabled = !!locked;
+  $('name').title = locked ? 'Signed in: your gamertag is your name' : '';
+  renderChip();
+}
+
+function renderAccount() {
+  const card = $('acct-card');
+  $('acct-prompt').classList.toggle('hidden', !account.enabled || account.signedIn || account.status !== 'ready');
+  card.classList.toggle('hidden', !account.enabled);
+  if (!account.enabled) { applyAccountName(); return; }
+  if (account.status === 'loading') {
+    card.innerHTML = '<h3>Account</h3><p class="note">Connecting…</p>';
+  } else if (account.status === 'error') {
+    card.innerHTML = '<h3>Account</h3><p class="note">Couldn\'t reach the account service right now. You can still play as a guest.</p>';
+  } else if (account.signedIn) {
+    card.innerHTML = `<div class="acct-in"><div class="who"><b>${esc(account.tag || '')}</b><span class="acct-badge">✓</span></div>
+      <p class="note">Signed in. Your tokens, cosmetics, missions, loadout and settings are saved to your account.</p>
+      <button id="acct-out">Sign out</button></div>`;
+    $('acct-out').onclick = () => { $('acct-out').disabled = true; account.signOut(); };
+  } else {
+    card.innerHTML = `<h3>Account</h3>
+      <p class="note">Optional. Sign in to keep your progress on every device and claim your gamertag. Signing in replaces this device's guest progress with your account's.</p>
+      <form class="acct-form" id="acct-form" autocomplete="on">
+        <div class="field"><label for="acct-tag">Gamertag</label><input id="acct-tag" maxlength="16" autocomplete="username" spellcheck="false" autocapitalize="off" placeholder="${TAG_RULES}"></div>
+        <div class="field"><label for="acct-pw">Password</label><input id="acct-pw" type="password" maxlength="64" autocomplete="current-password" placeholder="6+ characters"></div>
+        <button type="submit" class="primary">Sign in</button>
+        <button type="button" id="acct-new">Create account</button>
+      </form>
+      <div class="acct-err" id="acct-err"></div>`;
+    const go = async (kind) => {
+      const tag = $('acct-tag').value.trim(), pw = $('acct-pw').value;
+      const btns = card.querySelectorAll('button');
+      btns.forEach((b) => { b.disabled = true; });
+      $('acct-err').className = 'acct-err ok';
+      $('acct-err').textContent = kind === 'new' ? 'Creating your account…' : 'Signing in…';
+      try {
+        if (kind === 'new') await account.signUp(tag, pw);
+        else await account.signIn(tag, pw); // loads your progress (the page may reload)
+      } catch (e) {
+        btns.forEach((b) => { b.disabled = false; });
+        $('acct-err').className = 'acct-err';
+        $('acct-err').textContent = e.message;
+      }
+    };
+    $('acct-form').onsubmit = (e) => { e.preventDefault(); go('in'); };
+    $('acct-new').onclick = () => go('new');
+  }
+  applyAccountName();
+}
+account.onChange = renderAccount;
+renderAccount();
+window.account = account; // debugging
+$('acct-prompt').onclick = () => { showPane('character'); setTimeout(() => { const t = $('acct-tag'); if (t) t.focus(); }, 30); };
 
 // Mode and map pickers are tap targets rather than dropdowns (much easier on touch screens).
 const MAP_BLURB = {
