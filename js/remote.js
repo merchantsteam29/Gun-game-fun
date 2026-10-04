@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry as RoundedBox } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { buildGun, modelQuality } from './models.js';
+import { buildGun, modelQuality, mergeStatic } from './models.js';
 
 // Plain boxes on phones (see modelQuality).
 const RoundedBoxGeometry = function (sx, sy, sz, seg, r) {
@@ -142,11 +142,14 @@ export class RemotePlayer {
     this.armsL = { sh: this.shoulderL, up: new Limb(this.limbs, bodyMat, 0.14), fo: new Limb(this.limbs, bodyMat, 0.12), hand: mesh(new THREE.BoxGeometry(0.09, 0.09, 0.1), gloveMat, 0, 0, 0, this.limbs) };
     this.armsR = { sh: this.shoulderR, up: new Limb(this.limbs, bodyMat, 0.14), fo: new Limb(this.limbs, bodyMat, 0.12), hand: mesh(new THREE.BoxGeometry(0.09, 0.09, 0.1), gloveMat, 0, 0, 0, this.limbs) };
 
+    mergeStatic(this.root); // body parts per bone -> one mesh per material
+
     this.tag = nameTag(name, color);
     this.tag.position.set(0, 2.15, 0);
     this.root.add(this.tag);
 
     this.root.visible = this.limbs.visible = false;
+    if (!modelQuality.remoteShadows) for (const g of [this.root, this.limbs]) g.traverse((o) => { o.castShadow = false; });
     scene.add(this.root, this.limbs);
   }
 
@@ -173,6 +176,7 @@ export class RemotePlayer {
     if (!this.guns[id]) {
       const g = buildGun(id);
       g.scale.setScalar(1.25);
+      if (!modelQuality.remoteShadows) g.traverse((o) => { o.castShadow = false; });
       this.gunHolder.add(g);
       this.guns[id] = g;
     }

@@ -8,8 +8,8 @@ import { RemotePlayer } from './remote.js';
 import { Effects } from './effects.js';
 import { Hud } from './hud.js';
 import { sfx } from './audio.js';
-import { buildProjectile } from './models.js';
-import { clamp, esc } from './util.js';
+import { buildProjectile, modelQuality } from './models.js';
+import { clamp, esc, store } from './util.js';
 
 const JUMP = 8, WALK = 5.6, SPRINT = 1.35, CROUCH_SPD = 0.55, PAD_JUMP = 14;
 const STAND_H = 1.8, CROUCH_H = 1.2, EYE_STAND = 1.62, EYE_CROUCH = 1.05;
@@ -31,24 +31,37 @@ export class Game {
     this.canvas = canvas;
     this.touch = mobile;
     this.joy = { x: 0, y: 0 };
+    this.mobile = mobile;
+    // Low graphics: no shadows, lower resolution. Turned on automatically (and remembered)
+    // if the device ever loses its graphics context; ?lowgfx / ?highgfx force it.
+    const params = new URLSearchParams(location.search);
+    if (params.has('highgfx')) store.set('lowgfx', false);
+    this.lowGfx = params.has('lowgfx') || store.get('lowgfx', false);
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: !mobile, powerPreference: 'high-performance' });
-    renderer.setPixelRatio(Math.min(devicePixelRatio, mobile ? 1.25 : 2));
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = mobile ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.autoClear = false;
     this.renderer = renderer;
-    // Phones can drop the GPU context under memory pressure; let three.js restore it
-    // instead of leaving a frozen gray canvas, and tell the player what's happening.
+    this.applyGfx();
+    // Phones can drop the GPU context under load; let three.js restore it, drop to low
+    // graphics so it doesn't happen again, and tell the player what's happening.
     const sys = (show) => {
       const el = document.getElementById('sys-msg');
       if (!el) return;
       document.getElementById('sys-title').textContent = 'Graphics were reset';
-      document.getElementById('sys-text').textContent = 'Your device ran low on graphics memory. Recovering… if the screen stays blank, reload.';
+      document.getElementById('sys-text').textContent = 'Your device ran out of graphics power, so the game is switching to low graphics. If the screen stays blank, tap Reload.';
       el.classList.toggle('hidden', !show);
     };
-    canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); sys(true); });
-    canvas.addEventListener('webglcontextrestored', () => sys(false));
+    canvas.addEventListener('webglcontextlost', (e) => {
+      e.preventDefault();
+      sys(true);
+      this.lowGfx = true;
+      store.set('lowgfx', true);
+    });
+    canvas.addEventListener('webglcontextrestored', () => {
+      this.applyGfx();
+      sys(false);
+    });
 
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(75, 1, 0.05, 300);
@@ -120,6 +133,19 @@ export class Game {
     this.resize();
     this.last = performance.now();
     renderer.setAnimationLoop(() => this.frame());
+  }
+
+  applyGfx() {
+    const r = this.renderer, low = this.lowGfx;
+    r.setPixelRatio(Math.min(devicePixelRatio, low ? 1 : this.mobile ? 1.25 : 2));
+    modelQuality.remoteShadows = !low && !this.mobile; // other players' shadows are the priciest part on phones
+    if (r.shadowMap.enabled === !low) return;
+    r.shadowMap.enabled = !low;
+    // Shadow on/off changes shaders, so every material needs recompiling.
+    for (const s of [this.scene, this.vm && this.vm.scene]) {
+      if (s) s.traverse((o) => { if (o.material) o.material.needsUpdate = true; });
+    }
+    if (this.mapGroup) this.mapGroup.traverse((o) => { if (o.isDirectionalLight) o.castShadow = !low; });
   }
 
   get curW() { return this.loadout[this.slot] || this.loadout[0]; }

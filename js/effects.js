@@ -3,8 +3,14 @@ import * as THREE from 'three';
 const unitBox = new THREE.BoxGeometry(1, 1, 1);
 const sphereGeo = new THREE.SphereGeometry(1, 16, 12);
 const _c = new THREE.Vector3(), _ab = new THREE.Vector3(), _ac = new THREE.Vector3();
+const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _col = new THREE.Color();
+const MAX_PARTICLES = 400, MAX_TRACERS = 96;
+const TRACER_COLOR = new THREE.Color('#ffe9a8');
+const Z = new THREE.Vector3(0, 0, 1);
 
-// Pooled transient effects: tracers, particles, explosions, flash lights.
+// Transient effects: tracers, particles, explosions, flash lights.
+// Particles and tracers are each one InstancedMesh, so a firefight costs two draw calls
+// instead of one per spark (hundreds), which phones can't afford.
 export class Effects {
   constructor(scene) {
     this.scene = scene;
@@ -13,8 +19,17 @@ export class Effects {
     this.booms = [];
     this.smokes = [];
 
-    this.tracerMat = new THREE.MeshBasicMaterial({ color: '#ffe9a8', transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false });
-    this.partMats = {};
+    this.partMesh = new THREE.InstancedMesh(unitBox, new THREE.MeshBasicMaterial(), MAX_PARTICLES);
+    this.partMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX_PARTICLES * 3), 3);
+    this.partMesh.count = 0;
+    this.partMesh.frustumCulled = false;
+    scene.add(this.partMesh);
+    // Additive blending: fading a tracer = darkening its instance color.
+    this.tracerMesh = new THREE.InstancedMesh(unitBox, new THREE.MeshBasicMaterial({ blending: THREE.AdditiveBlending, transparent: true, depthWrite: false }), MAX_TRACERS);
+    this.tracerMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX_TRACERS * 3), 3);
+    this.tracerMesh.count = 0;
+    this.tracerMesh.frustumCulled = false;
+    scene.add(this.tracerMesh);
 
     this.flashLight = new THREE.PointLight('#ffc070', 0, 9, 2);
     scene.add(this.flashLight);
@@ -24,19 +39,14 @@ export class Effects {
     this.boomLT = 0;
   }
 
-  partMat(color) {
-    return (this.partMats[color] ||= new THREE.MeshBasicMaterial({ color, transparent: true }));
-  }
-
   tracer(from, to) {
     const len = from.distanceTo(to);
     if (len < 0.5) return;
-    const m = new THREE.Mesh(unitBox, this.tracerMat.clone());
-    m.scale.set(0.018, 0.018, len);
-    m.position.copy(from).lerp(to, 0.5);
-    m.lookAt(to);
-    this.scene.add(m);
-    this.tracers.push({ m, t: 0.07 });
+    if (this.tracers.length >= MAX_TRACERS) this.tracers.shift();
+    _ab.subVectors(to, from).normalize();
+    this.tracers.push({
+      pos: from.clone().lerp(to, 0.5), quat: new THREE.Quaternion().setFromUnitVectors(Z, _ab), len, t: 0.07,
+    });
   }
 
   muzzleFlash(pos) {
@@ -46,15 +56,14 @@ export class Effects {
   }
 
   burst(pos, normal, color, n = 6, speed = 3, size = 0.05, life = 0.4) {
-    if (this.particles.length > 300) return;
-    for (let i = 0; i < n; i++) {
-      const m = new THREE.Mesh(unitBox, this.partMat(color));
-      m.scale.setScalar(size * (0.6 + Math.random() * 0.8));
-      m.position.copy(pos);
+    const col = new THREE.Color(color);
+    for (let i = 0; i < n && this.particles.length < MAX_PARTICLES; i++) {
       const v = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(speed);
       if (normal) v.addScaledVector(normal, speed * 0.8);
-      this.scene.add(m);
-      this.particles.push({ m, v, t: life * (0.6 + Math.random() * 0.6), g: 9 });
+      this.particles.push({
+        pos: pos.clone(), v, size: size * (0.6 + Math.random() * 0.8), col,
+        rot: new THREE.Euler(Math.random() * 3, Math.random() * 3, 0), t: life * (0.6 + Math.random() * 0.6), g: 9,
+      });
     }
   }
 
@@ -116,8 +125,7 @@ export class Effects {
   }
 
   clear() {
-    for (const tr of this.tracers) this.scene.remove(tr.m);
-    for (const p of this.particles) this.scene.remove(p.m);
+    this.partMesh.count = this.tracerMesh.count = 0;
     for (const b of this.booms) this.scene.remove(b.fire, b.smoke);
     for (const s of this.smokes) this.scene.remove(...s.puffs);
     this.tracers = []; this.particles = []; this.booms = []; this.smokes = [];
@@ -141,20 +149,28 @@ export class Effects {
         this.smokes.splice(i, 1);
       }
     }
-    for (let i = this.tracers.length - 1; i >= 0; i--) {
-      const tr = this.tracers[i];
-      tr.t -= dt;
-      tr.m.material.opacity = Math.max(0, tr.t / 0.07) * 0.85;
-      if (tr.t <= 0) { this.scene.remove(tr.m); tr.m.material.dispose(); this.tracers.splice(i, 1); }
-    }
-    for (let i = this.particles.length - 1; i >= 0; i--) {
-      const p = this.particles[i];
-      p.t -= dt;
+    this.tracers = this.tracers.filter((tr) => (tr.t -= dt) > 0);
+    const tm = this.tracerMesh;
+    this.tracers.forEach((tr, i) => {
+      tm.setMatrixAt(i, _m.compose(tr.pos, tr.quat, _s.set(0.018, 0.018, tr.len)));
+      tm.setColorAt(i, _col.copy(TRACER_COLOR).multiplyScalar(Math.max(0, tr.t / 0.07) * 0.85));
+    });
+    tm.count = this.tracers.length;
+    tm.instanceMatrix.needsUpdate = true;
+    tm.instanceColor.needsUpdate = true;
+
+    this.particles = this.particles.filter((p) => (p.t -= dt) > 0);
+    const pm = this.partMesh;
+    this.particles.forEach((p, i) => {
       p.v.y -= p.g * dt;
-      p.m.position.addScaledVector(p.v, dt);
-      p.m.scale.multiplyScalar(Math.exp(-dt * 2));
-      if (p.t <= 0) { this.scene.remove(p.m); this.particles.splice(i, 1); }
-    }
+      p.pos.addScaledVector(p.v, dt);
+      p.size *= Math.exp(-dt * 2);
+      pm.setMatrixAt(i, _m.compose(p.pos, _q.setFromEuler(p.rot), _s.setScalar(p.size)));
+      pm.setColorAt(i, p.col);
+    });
+    pm.count = this.particles.length;
+    pm.instanceMatrix.needsUpdate = true;
+    pm.instanceColor.needsUpdate = true;
     for (let i = this.booms.length - 1; i >= 0; i--) {
       const b = this.booms[i];
       b.t += dt;

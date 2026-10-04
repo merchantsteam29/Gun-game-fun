@@ -1,5 +1,52 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+const _inv = new THREE.Matrix4(), _rel = new THREE.Matrix4();
+const KEEP_ATTRS = ['position', 'normal', 'uv'];
+
+// Merges every mesh under each non-mesh node (the root and each named/animated group) into
+// one mesh per material. A detailed model goes from dozens of draw calls to a handful, which
+// matters a lot on phones; animated groups keep their own merged meshes so they still move.
+export function mergeStatic(root) {
+  root.updateMatrixWorld(true);
+  const containers = [];
+  root.traverse((o) => { if (!o.isMesh && !o.isSprite) containers.push(o); });
+  for (const c of containers) {
+    const byMat = new Map();
+    const collect = (o) => {
+      for (const ch of o.children) {
+        if (!ch.isMesh) continue; // other containers handle their own meshes
+        if (!byMat.has(ch.material)) byMat.set(ch.material, []);
+        byMat.get(ch.material).push(ch);
+        collect(ch); // meshes parented to meshes (e.g. grip grooves)
+      }
+    };
+    collect(c);
+    _inv.copy(c.matrixWorld).invert();
+    for (const [mat, meshes] of byMat) {
+      if (meshes.length < 2) continue;
+      const geos = meshes.map((m) => {
+        const g = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone();
+        for (const k of Object.keys(g.attributes)) if (!KEEP_ATTRS.includes(k)) g.deleteAttribute(k);
+        g.clearGroups();
+        return g.applyMatrix4(_rel.multiplyMatrices(_inv, m.matrixWorld));
+      });
+      const merged = mergeGeometries(geos);
+      geos.forEach((g) => g.dispose());
+      if (!merged) continue;
+      const mesh = new THREE.Mesh(merged, mat);
+      mesh.castShadow = meshes.some((m) => m.castShadow);
+      mesh.receiveShadow = meshes.some((m) => m.receiveShadow);
+      for (const m of meshes) {
+        if (m.parent) m.parent.remove(m);
+        m.geometry.dispose();
+      }
+      c.add(mesh);
+    }
+  }
+  return root;
+}
 
 // Low-poly weapon models. Barrel points down -Z; origin is the right-hand grip.
 // Named children drive animation: mag, bolt, pump, slide, cyl, lid, pin, spin (groups) and
@@ -37,7 +84,7 @@ function box(p, mat, sx, sy, sz, x, y, z, rx = 0, ry = 0, rz = 0) {
   return m;
 }
 // Set before models are built; phones use plain boxes to save GPU memory.
-export const modelQuality = { rounded: true };
+export const modelQuality = { rounded: true, remoteShadows: true };
 
 // Box with softened edges, for receivers, stocks and grips.
 function rbox(p, mat, sx, sy, sz, x, y, z, rx = 0, ry = 0, rz = 0) {
@@ -877,6 +924,7 @@ export function buildGun(id) {
   const g = new THREE.Group();
   (builders[id] || builders.ar)(g);
   g.traverse((o) => { if (o.isMesh) o.castShadow = o.material !== M.glass; });
+  mergeStatic(g);
   const parts = {};
   g.traverse((o) => { if (o.name) parts[o.name] = o; });
   for (const p of Object.values(parts)) p.userData.base = p.position.clone();
