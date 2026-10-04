@@ -25,10 +25,12 @@ export class Hud {
   }
 
   health(hp, max = 100) {
+    const shown = Math.max(0, Math.ceil(hp));
     const pct = Math.max(0, Math.min(100, (hp / max) * 100));
-    if (pct === this.lastHp) return;
-    this.lastHp = pct;
-    $('hp-num').textContent = Math.max(0, Math.ceil(hp));
+    const key = shown + '/' + max;
+    if (key === this.lastHp) return;
+    this.lastHp = key;
+    $('hp-num').textContent = shown;
     $('hp-fill').style.width = pct + '%';
     $('hp-lag').style.width = pct + '%'; // trails behind via a delayed CSS transition
     $('health').classList.toggle('low', pct <= 35);
@@ -147,7 +149,7 @@ export class Hud {
   scoreboard(show, players, myId, mode, colorFor) {
     $('scoreboard').classList.toggle('hidden', !show);
     if (!show) return;
-    const scoreLabel = { gungame: 'Lvl', koth: 'Pts', infection: 'Inf' }[mode] || 'Score';
+    const scoreLabel = { gungame: 'Lvl', koth: 'Pts', infection: 'Inf', lms: 'Lives', juggernaut: 'Pts' }[mode] || 'Score';
     $('sb-head').innerHTML = `<th></th><th>Player</th><th>${scoreLabel}</th><th>K</th><th>D</th>`;
     const rows = [...players.values()].sort((a, b) => (a.team || 0) - (b.team || 0) || b.sc - a.sc || b.k - a.k || a.d - b.d);
     $('sb-body').innerHTML = rows.map((p) => {
@@ -157,18 +159,18 @@ export class Hud {
     }).join('');
   }
 
-  death(show, killerName, weapon, secs) {
+  death(show, killerName, weapon, secs, status = null) {
     $('death').classList.toggle('hidden', !show);
     if (!show) return;
     $('death-by').innerHTML = killerName ? `by <b>${esc(killerName)}</b> · ${W_LABEL[weapon] || ''}` : '';
-    $('death-timer').textContent = secs > 0 ? `Respawning in ${secs}` : 'Respawning…';
+    $('death-timer').textContent = status || (secs > 0 ? `Respawning in ${secs}` : 'Respawning…');
   }
 
   end(show, scores, myId, secs, nextMap, title, mode) {
     $('endscreen').classList.toggle('hidden', !show);
     if (!show) return;
     $('end-title').textContent = title || 'MATCH OVER';
-    const label = { gungame: 'LVL', koth: 'PTS', infection: 'INF' }[mode] || 'PTS';
+    const label = { gungame: 'LVL', koth: 'PTS', infection: 'INF', lms: 'LIVES' }[mode] || 'PTS';
     $('end-body').innerHTML = scores.map((p, i) =>
       `<tr class="${p.id === myId ? 'me' : ''}"><td>#${i + 1}</td><td><span class="dot" style="background:${esc(p.color)}"></span> ${esc(p.name)}</td><td>${p.sc} ${label}</td><td>${p.k} K</td><td>${p.d} D</td></tr>`
     ).join('');

@@ -21,6 +21,17 @@ The next match starts automatically on the next map.
 | Gun Game | Each kill moves you to the next of 13 weapons; finish with a knife kill. Melee kills demote the victim |
 | King of the Hill | Stand in the zone alone to score points; it moves every minute. First to 90 |
 | Infection | After 10s one player becomes a zombie; anyone killed joins them. Survive the 4 minutes |
+| Hardpoint | Red vs Blue over a moving zone; your team scores while it's the only team inside. First to 150 |
+| Juggernaut | First kill makes you the Juggernaut (4x health, minigun). Kill it to take over. Only Juggernaut kills and Juggernaut takedowns score. First to 15 |
+| Last Man Standing | 3 lives each (the score limit), no respawns once you're out. Last player with lives wins |
+| Instagib | Every hit kills, with your own loadout. First to 25 |
+| Snipers Only | Sniper rifles and revolvers. First to 20 |
+| Shotgun Brawl | Shotgun, sawed-off and flashbangs. First to 25 |
+| Blade Party | Katana, axe, knife and throwing knives; faster movement and higher jumps. First to 20 |
+| Boom Town | Rocket launcher, grenade launcher, bat and stickies. First to 25 |
+| Roulette | A random loadout every time you spawn. First to 25 |
+| Vampire | No health regen; damage you deal heals you and kills heal more. First to 25 |
+| Moon Gravity | Low gravity and big jumps. First to 25 |
 
 ## Host panel
 

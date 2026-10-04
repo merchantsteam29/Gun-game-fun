@@ -129,7 +129,7 @@ export class HostPanel {
         sel.onchange = () => L.setBotDifficulty(p.id, sel.value);
         row.appendChild(sel);
       }
-      if (teams && L.s.mode === 'tdm') {
+      if (MODES[L.s.mode].redBlue) {
         const b = document.createElement('button');
         b.textContent = p.team === 1 ? '→ Blue' : '→ Red';
         b.onclick = () => { L.setTeam(p.id, p.team === 1 ? 2 : 1); this.renderPlayers(); };

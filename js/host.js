@@ -1,20 +1,37 @@
 import { spawns, setMapData, MAP_ORDER, MAPS } from './maps.js';
 import { phys } from './physics.js';
-import { WEAPONS, GUNGAME_LADDER } from './weapons.js';
+import { WEAPONS, GUNGAME_LADDER, SLOTS } from './weapons.js';
 import { NavGrid } from './nav.js';
 import { Bot, BOT_NAMES } from './bot.js';
 import { COLORS } from './util.js';
 
+// redBlue: two balanced teams. hill: uses the moving zone. loadout: forced for everyone.
+// preset: physics/rule overrides applied when the mode is picked.
 export const MODES = {
   ffa: { name: 'Free For All', short: 'FFA', teams: false, score: 25, time: 10, desc: 'Most kills wins.' },
-  tdm: { name: 'Team Deathmatch', short: 'TDM', teams: true, score: 50, time: 10, desc: 'Red vs Blue. First team to the score limit.' },
+  tdm: { name: 'Team Deathmatch', short: 'TDM', teams: true, redBlue: true, score: 50, time: 10, desc: 'Red vs Blue. First team to the score limit.' },
   gungame: { name: 'Gun Game', short: 'GUN GAME', teams: false, score: GUNGAME_LADDER.length, time: 12, desc: 'Each kill upgrades your weapon. Finish with a knife kill.' },
-  koth: { name: 'King of the Hill', short: 'KOTH', teams: false, score: 90, time: 10, desc: 'Hold the zone alone to score. It moves every minute.' },
+  koth: { name: 'King of the Hill', short: 'KOTH', teams: false, hill: true, score: 90, time: 10, desc: 'Hold the zone alone to score. It moves every minute.' },
   infection: { name: 'Infection', short: 'INFECTION', teams: true, score: 0, time: 4, desc: 'Zombies infect survivors. Survive until time runs out.' },
+  hardpoint: { name: 'Hardpoint', short: 'HARDPOINT', teams: true, redBlue: true, hill: true, score: 150, time: 10, desc: 'Red vs Blue fight over a moving zone. Hold it with only your team inside to score.' },
+  juggernaut: { name: 'Juggernaut', short: 'JUGGERNAUT', teams: false, score: 15, time: 10, desc: 'First kill makes you the Juggernaut: 4x health and a minigun. Kill the Juggernaut to take over. Only Juggernaut kills (and killing it) score.' },
+  lms: { name: 'Last Man Standing', short: 'LMS', teams: false, score: 3, time: 8, desc: 'Everyone gets a few lives (the score limit). Last player with lives left wins.' },
+  instagib: { name: 'Instagib', short: 'INSTAGIB', teams: false, score: 25, time: 8, instakill: true, desc: 'Every hit kills. Bring your own loadout.' },
+  snipers: { name: 'Snipers Only', short: 'SNIPERS', teams: false, score: 20, time: 10, loadout: ['sniper', 'revolver', 'knife', 'smoke'], desc: 'Sniper rifles and revolvers. Find a perch.' },
+  shotguns: { name: 'Shotgun Brawl', short: 'SHOTGUNS', teams: false, score: 25, time: 8, loadout: ['shotgun', 'sawedoff', 'knife', 'flash'], desc: 'Shotguns only. Get close and personal.' },
+  blades: { name: 'Blade Party', short: 'BLADES', teams: false, score: 20, time: 8, loadout: ['katana', 'axe', 'knife', 'tknife'], preset: { moveSpeed: 1.25, jump: 1.15 }, desc: 'Melee and throwing knives only. Everyone moves faster.' },
+  boom: { name: 'Boom Town', short: 'BOOM', teams: false, score: 25, time: 8, loadout: ['rocket', 'gl', 'bat', 'sticky'], desc: 'Launchers, stickies and a bat. Mind the splash.' },
+  roulette: { name: 'Roulette', short: 'ROULETTE', teams: false, score: 25, time: 10, desc: 'A random loadout every time you spawn.' },
+  vampire: { name: 'Vampire', short: 'VAMPIRE', teams: false, score: 25, time: 10, desc: 'No health regen. Damage you deal heals you, and kills heal more.' },
+  moon: { name: 'Moon Gravity', short: 'MOON', teams: false, score: 25, time: 10, preset: { gravity: 0.35, jump: 1.3 }, desc: 'Low gravity and huge jumps. Most kills wins.' },
 };
-export const MODE_ORDER = ['ffa', 'tdm', 'gungame', 'koth', 'infection'];
+export const MODE_ORDER = ['ffa', 'tdm', 'gungame', 'koth', 'infection', 'hardpoint', 'juggernaut', 'lms', 'instagib', 'snipers', 'shotguns', 'blades', 'boom', 'roulette', 'vampire', 'moon'];
 export const TEAM_COLORS = { 1: '#e5483b', 2: '#3d8fe0' };
 export const ZOMBIE_COLOR = '#6fbf3a';
+export const JUGG_COLOR = '#ffcc33';
+export const JUGG_TEAM = 3;
+const JUGG_LOADOUT = ['minigun', 'handcannon', 'bat', 'frag'];
+const PHYS_DEFAULTS = { gameSpeed: 1, moveSpeed: 1, jump: 1, gravity: 1 };
 
 const PROTECT_MS = 1500;
 const END_SCREEN_MS = 10000;
@@ -27,7 +44,7 @@ export function defaultSettings(mode = 'ffa', map = 'warehouse') {
     mode, map, rotate: true,
     scoreLimit: MODES[mode].score, timeLimit: MODES[mode].time,
     health: 100, respawn: 3, infiniteAmmo: false, headshotsOnly: false, friendlyFire: false,
-    gameSpeed: 1, moveSpeed: 1, jump: 1, gravity: 1,
+    ...PHYS_DEFAULTS, ...MODES[mode].preset,
   };
 }
 
@@ -79,7 +96,11 @@ export class HostLogic {
     this.hillHolder = null;
     this.infectAt = this.s.mode === 'infection' ? Date.now() + INFECT_DELAY_MS : 0;
     this.infected = false;
+    this.jugg = null;
   }
+
+  // Lives left in Last Man Standing are stored as the player's score.
+  outOfLives(p) { return this.s.mode === 'lms' && p.score <= 0; }
 
   // ---------- Players ----------
 
@@ -103,8 +124,9 @@ export class HostLogic {
       players: [...this.players.values()].map((q) => this.info(q)),
     });
     this.broadcast({ t: 'pjoin', ...this.info(p) }, id);
-    if (this.phase === 'playing') this.spawn(p);
-    else this.sendTo(id, this.endMsg());
+    if (this.phase !== 'playing') this.sendTo(id, this.endMsg());
+    else if (this.s.mode === 'lms') this.sendTo(id, { t: 'notice', text: 'ROUND IN PROGRESS · SPECTATING' });
+    else this.spawn(p);
   }
 
   addBot(difficulty = 'normal') {
@@ -117,7 +139,7 @@ export class HostLogic {
     this.players.set(id, p);
     this.ensureNav();
     this.broadcast({ t: 'pjoin', ...this.info(p) });
-    if (this.phase === 'playing') this.spawn(p);
+    if (this.phase === 'playing' && this.s.mode !== 'lms') this.spawn(p);
     return id;
   }
 
@@ -126,7 +148,9 @@ export class HostLogic {
     if (!p) return;
     this.players.delete(id);
     this.broadcast({ t: 'pleave', id, name: p.name });
+    if (this.jugg === id) this.jugg = null;
     this.checkInfectionEnd();
+    this.checkLmsEnd();
   }
 
   kick(id) {
@@ -154,7 +178,7 @@ export class HostLogic {
   }
 
   autoTeam(p) {
-    if (this.s.mode === 'tdm') {
+    if (this.mode.redBlue) {
       let red = 0, blue = 0;
       for (const q of this.players.values()) if (q !== p) { if (q.team === 1) red++; else if (q.team === 2) blue++; }
       return red <= blue ? 1 : 2;
@@ -176,12 +200,14 @@ export class HostLogic {
       return w === 'knife' ? ['knife'] : [w, 'knife'];
     }
     if (this.s.mode === 'infection' && p.team === 2) return ['claws'];
-    return null;
+    if (this.s.mode === 'juggernaut' && p.id === this.jugg) return JUGG_LOADOUT;
+    if (this.s.mode === 'roulette') return SLOTS.map((opts) => opts[(Math.random() * opts.length) | 0]);
+    return this.mode.loadout || null;
   }
 
   pickSpawn(p) {
     const enemies = [...this.players.values()].filter((q) => q.alive && q !== p && this.hostile(p, q));
-    const side = this.s.mode === 'tdm' ? (p.team === 1 ? -1 : 1) : 0;
+    const side = this.mode.redBlue ? (p.team === 1 ? -1 : 1) : 0;
     const scored = spawns.map((s) => {
       let min = 1e9;
       for (const o of enemies) min = Math.min(min, Math.hypot(o.st[0] - s.x, o.st[1] - s.y, o.st[2] - s.z));
@@ -191,7 +217,12 @@ export class HostLogic {
     return scored[Math.floor(Math.random() * Math.min(3, scored.length))].s;
   }
 
-  maxHp(p) { return Math.round(this.s.health * (p.team === 2 && this.s.mode === 'infection' ? 1.5 : 1)); }
+  maxHp(p) {
+    let k = 1;
+    if (this.s.mode === 'infection' && p.team === 2) k = 1.5;
+    if (this.s.mode === 'juggernaut' && p.id === this.jugg) k = 4;
+    return Math.round(this.s.health * k);
+  }
 
   spawn(p) {
     const s = this.pickSpawn(p);
@@ -229,12 +260,16 @@ export class HostLogic {
     const w = WEAPONS[m.w];
     const explosive = ['gl', 'frag', 'sticky', 'rocket', 'crossbow', 'tknife'].includes(m.w);
     if (!attacker.alive && !explosive) return;
-    if (v !== attacker && !this.hostile(attacker, v) && !(this.s.friendlyFire && this.s.mode === 'tdm')) return;
+    if (v !== attacker && !this.hostile(attacker, v) && !(this.s.friendlyFire && this.mode.redBlue)) return;
     if (this.s.headshotsOnly && w && w.type === 'gun' && !m.head && v !== attacker) return;
     const now = Date.now();
     if (now < v.protectUntil && v !== attacker) return;
-    const dmg = Math.max(0, Math.min(999, Number(m.dmg) || 0));
+    let dmg = Math.max(0, Math.min(999, Number(m.dmg) || 0));
     if (!dmg) return;
+    if (this.mode.instakill && v !== attacker) dmg = 999;
+    if (this.s.mode === 'vampire' && v !== attacker && attacker.alive) {
+      attacker.hp = Math.min(this.maxHp(attacker), attacker.hp + Math.min(dmg, Math.max(0, v.hp)) * 0.5);
+    }
     v.hp -= dmg;
     v.lastDmg = now;
     const dead = v.hp <= 0;
@@ -253,14 +288,25 @@ export class HostLogic {
     this.broadcast({ t: 'kill', k: attacker.id, v: v.id, w, head });
 
     switch (this.s.mode) {
-      case 'ffa':
-        attacker.score = attacker.kills;
-        if (attacker.kills >= this.s.scoreLimit) this.endMatch();
-        break;
       case 'tdm':
         if (enemyKill) this.teamScore[attacker.team]++;
         attacker.score = attacker.kills;
         if (this.teamScore[attacker.team] >= this.s.scoreLimit) this.endMatch();
+        break;
+      case 'hardpoint': // personal score is kills; the team score comes from the zone
+        attacker.score = attacker.kills;
+        break;
+      case 'juggernaut':
+        this.juggKill(attacker, v, enemyKill);
+        break;
+      case 'lms':
+        v.score = Math.max(0, v.score - 1);
+        if (v.score <= 0) {
+          v.respawnAt = 0;
+          this.sendTo(v.id, { t: 'notice', text: 'OUT OF LIVES' });
+          this.broadcast({ t: 'notice', text: `${v.name} IS OUT` });
+        }
+        this.checkLmsEnd();
         break;
       case 'gungame': {
         const wdef = WEAPONS[w];
@@ -285,13 +331,50 @@ export class HostLogic {
         }
         this.checkInfectionEnd();
         break;
+      default: // ffa and the kill-count variants
+        if (this.s.mode === 'vampire' && enemyKill && attacker.alive) attacker.hp = Math.min(this.maxHp(attacker), attacker.hp + 30);
+        attacker.score = attacker.kills;
+        if (attacker.kills >= this.s.scoreLimit) this.endMatch();
     }
+  }
+
+  // Juggernaut: the first kill crowns a Juggernaut; killing it passes the crown on.
+  juggKill(attacker, v, enemyKill) {
+    const wasJugg = v.id === this.jugg;
+    if (wasJugg) {
+      v.team = 0;
+      this.jugg = null;
+    }
+    if (!enemyKill) {
+      if (wasJugg) this.broadcast({ t: 'notice', text: 'THE JUGGERNAUT IS DOWN' });
+      return;
+    }
+    if (attacker.id === this.jugg || wasJugg) {
+      attacker.score++;
+      if (attacker.score >= this.s.scoreLimit) { this.endMatch(); return; }
+    }
+    if (!this.jugg && attacker.alive) this.makeJugg(attacker);
+  }
+
+  makeJugg(p) {
+    this.jugg = p.id;
+    p.team = JUGG_TEAM;
+    p.hp = this.maxHp(p);
+    this.broadcast({ t: 'notice', text: `${p.name} IS THE JUGGERNAUT` });
+    this.sendTo(p.id, { t: 'loadout', l: JUGG_LOADOUT, hp: p.hp });
+  }
+
+  checkLmsEnd() {
+    if (this.s.mode !== 'lms' || this.phase !== 'playing') return;
+    const all = [...this.players.values()];
+    if (all.length < 2) return;
+    if (all.filter((p) => p.score > 0).length <= 1) this.endMatch();
   }
 
   // ---------- Modes ----------
 
   currentHill() {
-    if (this.s.mode !== 'koth') return null;
+    if (!this.mode.hill) return null;
     const hills = MAPS[this.s.map].hills;
     return hills[this.hillIdx % hills.length];
   }
@@ -330,8 +413,8 @@ export class HostLogic {
     this.phase = 'ended';
     this.restartAt = Date.now() + END_SCREEN_MS;
     const sorted = [...this.players.values()].sort((a, b) => b.score - a.score || b.kills - a.kills);
-    if (this.s.mode === 'tdm') {
-      const [, r, b] = this.teamScore;
+    if (this.mode.redBlue) {
+      const r = Math.floor(this.teamScore[1]), b = Math.floor(this.teamScore[2]);
       this.endTitle = r === b ? 'DRAW' : r > b ? 'RED TEAM WINS' : 'BLUE TEAM WINS';
     } else if (this.s.mode === 'infection') {
       this.endTitle = winnerTeam === 2 ? 'ZOMBIES WIN' : 'SURVIVORS WIN';
@@ -355,6 +438,7 @@ export class HostLogic {
       this.s.mode = mode;
       this.s.scoreLimit = MODES[mode].score;
       this.s.timeLimit = MODES[mode].time;
+      Object.assign(this.s, PHYS_DEFAULTS, MODES[mode].preset);
     }
     this.s.map = map && MAPS[map] ? map : manual ? this.s.map : this.nextMap();
     this.loadMap(this.s.map);
@@ -362,8 +446,9 @@ export class HostLogic {
     this.beginMatchState();
     const list = [...this.players.values()].sort(() => Math.random() - 0.5);
     list.forEach((p, i) => {
-      p.kills = 0; p.deaths = 0; p.score = 0; p.level = 0;
-      p.team = this.s.mode === 'tdm' ? (i % 2) + 1 : this.s.mode === 'infection' ? 1 : 0;
+      p.kills = 0; p.deaths = 0; p.level = 0;
+      p.score = this.s.mode === 'lms' ? Math.max(1, this.s.scoreLimit) : 0;
+      p.team = this.mode.redBlue ? (i % 2) + 1 : this.s.mode === 'infection' ? 1 : 0;
       p.alive = false;
       p.respawnAt = 0;
     });
@@ -392,10 +477,10 @@ export class HostLogic {
       for (const p of this.players.values()) {
         if (!p.alive && p.respawnAt && now >= p.respawnAt) { p.respawnAt = 0; this.spawn(p); }
         const max = this.maxHp(p);
-        if (p.alive && p.hp < max && now - p.lastDmg > 5000) p.hp = Math.min(max, p.hp + max * 0.25 * rdt);
+        if (p.alive && p.hp < max && now - p.lastDmg > 5000 && this.s.mode !== 'vampire') p.hp = Math.min(max, p.hp + max * 0.25 * rdt);
       }
       if (this.s.mode === 'infection' && !this.infected && this.infectAt && now >= this.infectAt) this.startInfection();
-      if (this.s.mode === 'koth') this.tickHill(rdt, now);
+      if (this.mode.hill) this.tickHill(rdt, now);
       for (const p of this.players.values()) if (p.bot) p.bot.update(dt);
     } else if (now >= this.restartAt) {
       this.startMatch();
@@ -408,7 +493,7 @@ export class HostLogic {
         Math.ceil(p.hp), p.kills, p.deaths, st[7], p.team, Math.floor(p.score)];
     }
     const msg = { t: 'snap', s, tl: this.phase === 'playing' ? Math.max(0, Math.ceil((this.endsAt - now) / 1000)) : 0 };
-    if (this.s.mode === 'tdm') msg.ts = [this.teamScore[1], this.teamScore[2]];
+    if (this.mode.redBlue) msg.ts = [Math.floor(this.teamScore[1]), Math.floor(this.teamScore[2])];
     if (this.s.mode === 'infection') msg.inf = this.infected ? 0 : Math.max(0, Math.ceil((this.infectAt - now) / 1000));
     const hill = this.currentHill();
     if (hill) msg.z = [...hill, this.hillState, this.hillHolder, Math.max(0, Math.ceil((this.hillUntil - now) / 1000))];
@@ -424,6 +509,21 @@ export class HostLogic {
     const [x, y, z, r] = this.currentHill();
     const inside = [...this.players.values()].filter((p) => p.alive &&
       Math.hypot(p.st[0] - x, p.st[2] - z) <= r && p.st[1] >= y - 0.6 && p.st[1] <= y + 2.5);
+    if (this.s.mode === 'hardpoint') {
+      // Team version: holder is the team number while only one team is inside.
+      const teams = new Set(inside.map((p) => p.team));
+      if (teams.size === 1) {
+        const t = inside[0].team;
+        this.teamScore[t] += dt;
+        this.hillState = 1;
+        this.hillHolder = t;
+        if (this.teamScore[t] >= this.s.scoreLimit) this.endMatch();
+      } else {
+        this.hillState = teams.size ? 2 : 0;
+        this.hillHolder = null;
+      }
+      return;
+    }
     if (inside.length === 1) {
       const p = inside[0];
       p.score += dt;

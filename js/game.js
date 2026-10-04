@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { MAPS, setMapData, buildMapScene } from './maps.js';
 import { moveBody, overlap, raycast, rayAABB, PLAYER_R, phys } from './physics.js';
-import { MODES, TEAM_COLORS, ZOMBIE_COLOR, defaultSettings } from './host.js';
+import { MODES, TEAM_COLORS, ZOMBIE_COLOR, JUGG_COLOR, JUGG_TEAM, defaultSettings } from './host.js';
 import { WEAPONS, DEFAULT_LOADOUT, GUNGAME_LADDER } from './weapons.js';
 import { Viewmodel } from './viewmodel.js';
 import { RemotePlayer } from './remote.js';
@@ -9,7 +9,7 @@ import { Effects } from './effects.js';
 import { Hud } from './hud.js';
 import { sfx } from './audio.js';
 import { buildProjectile } from './models.js';
-import { clamp } from './util.js';
+import { clamp, esc } from './util.js';
 
 const JUMP = 8, WALK = 5.6, SPRINT = 1.35, CROUCH_SPD = 0.55, PAD_JUMP = 14;
 const STAND_H = 1.8, CROUCH_H = 1.2, EYE_STAND = 1.62, EYE_CROUCH = 1.05;
@@ -118,13 +118,14 @@ export class Game {
 
   // Teammates can't be damaged (unless friendly fire is on in TDM).
   isAlly(r) {
-    if (!this.teams || (this.rules.friendlyFire && this.rules.mode === 'tdm')) return false;
+    if (!this.teams || (this.rules.friendlyFire && MODES[this.rules.mode].redBlue)) return false;
     const p = this.players.get(r.id);
     return !!p && p.team === this.myTeam;
   }
 
   colorFor(p) {
     if (this.rules.mode === 'infection') return p.team === 2 ? ZOMBIE_COLOR : p.color;
+    if (this.rules.mode === 'juggernaut') return p.team === JUGG_TEAM ? JUGG_COLOR : p.color;
     if (this.teams && TEAM_COLORS[p.team]) return TEAM_COLORS[p.team];
     return p.color;
   }
@@ -539,6 +540,8 @@ export class Game {
         this.roll + Math.sin(this.bobPhase) * 0.004 * bob + this.flinch * 0.02);
     } else if (this.deathInfo) {
       this.deathCam(dt, now);
+    } else {
+      this.menuCam(now); // waiting to spawn (e.g. joined mid-round in Last Man Standing)
     }
     cam.updateMatrixWorld();
 
@@ -871,7 +874,9 @@ export class Game {
   meleeSlot() { return this.loadout.findIndex((id) => WEAPONS[id].type === 'melee'); }
 
   melee() {
-    const w = WEAPONS[this.loadout[this.meleeSlot()]] || WEAPONS.knife;
+    // Swing what's in hand if it's a blade (some modes give two), else the melee slot.
+    const cur = WEAPONS[this.curW];
+    const w = cur.type === 'melee' ? cur : WEAPONS[this.loadout[this.meleeSlot()]] || WEAPONS.knife;
     this.fireCd = w.rate;
     if (this.returnSlot >= 0) this.returnT = w.rate * 0.9;
     this.vm.swing(w.style);
@@ -1205,7 +1210,8 @@ export class Game {
     this.zoneWall.position.y = 1.5;
     this.zoneRing.scale.set(r, r, 1);
     let color = '#ffffff';
-    if (state === 2) color = '#ff4040';
+    if (state === 2) color = this.rules.mode === 'hardpoint' ? '#ffb020' : '#ff4040';
+    else if (state === 1 && this.rules.mode === 'hardpoint') color = TEAM_COLORS[holder] || '#ffffff';
     else if (state === 1) color = holder === this.myId ? '#4dff9a' : '#ffb020';
     this.zoneWall.material.color.set(color);
     this.zoneRing.material.color.set(color);
@@ -1214,10 +1220,27 @@ export class Game {
 
   modeBar() {
     const mode = this.rules.mode, me = this.players.get(this.myId);
-    if (mode === 'tdm' && this.teamScore) {
+    if (MODES[mode].redBlue && this.teamScore) {
       const [r, b] = this.teamScore;
       const mine = me && me.team === 1 ? 'red' : 'blue';
-      return `<span class="team red ${mine === 'red' ? 'mine' : ''}">RED ${r}</span><span class="lim">/ ${this.rules.scoreLimit}</span><span class="team blue ${mine === 'blue' ? 'mine' : ''}">BLUE ${b}</span>`;
+      let bar = `<span class="team red ${mine === 'red' ? 'mine' : ''}">RED ${r}</span><span class="lim">/ ${this.rules.scoreLimit}</span><span class="team blue ${mine === 'blue' ? 'mine' : ''}">BLUE ${b}</span>`;
+      if (mode === 'hardpoint' && this.zone) {
+        const [, , , , state, holder, secs] = this.zone;
+        const st = state === 2 ? 'CONTESTED' : state === 1 ? `<span class="${holder === 1 ? 'red' : 'blue'}">${holder === 1 ? 'RED' : 'BLUE'} HOLDS</span>` : 'NEUTRAL';
+        bar += `<span class="lim"> · ZONE ${st} · MOVES IN ${secs}s</span>`;
+      }
+      return bar;
+    }
+    if (mode === 'juggernaut') {
+      let j = null;
+      for (const p of this.players.values()) if (p.team === JUGG_TEAM) j = p;
+      const who = !j ? 'FIRST KILL BECOMES THE JUGGERNAUT' : j.id === this.myId ? '<span class="jugg">YOU ARE THE JUGGERNAUT</span>' : `JUGGERNAUT: <span class="jugg">${esc(j.name)}</span>`;
+      return `${who} · FIRST TO ${this.rules.scoreLimit}`;
+    }
+    if (mode === 'lms' && me) {
+      let left = 0;
+      for (const p of this.players.values()) if (p.sc > 0) left++;
+      return `LIVES ${me.sc} · ${left} PLAYER${left === 1 ? '' : 'S'} LEFT`;
     }
     if (mode === 'gungame' && me) {
       const lvl = Math.min(me.sc + 1, GUNGAME_LADDER.length);
@@ -1262,7 +1285,9 @@ export class Game {
     if (!me.alive && this.deathInfo && !this.matchOver) {
       const secs = Math.ceil(this.rules.respawn - (now - this.deathInfo.at) / 1000);
       const killer = this.deathInfo.killer && this.players.get(this.deathInfo.killer);
-      hud.death(true, killer ? killer.name : null, this.deathInfo.w, secs);
+      const mine = this.players.get(this.myId);
+      const out = this.rules.mode === 'lms' && mine && mine.sc <= 0;
+      hud.death(true, killer ? killer.name : null, this.deathInfo.w, secs, out ? 'Out of lives · spectating until the next round' : null);
     }
     if (this.matchOver && this.endInfo) {
       const next = MAPS[this.endInfo.nextMap];

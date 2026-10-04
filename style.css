@@ -178,6 +178,7 @@ select { width: 100%; padding: 9px 10px; background: #181c23; color: var(--text)
 #mode-bar .red { color: #ff6b5e; }
 #mode-bar .blue { color: #6fb2ff; }
 #mode-bar .zombie { color: #8fe05a; }
+#mode-bar .jugg { color: #ffcc33; }
 #mode-bar .lim { color: var(--muted); font-size: 12px; }
 #killfeed { position: absolute; right: 16px; top: 14px; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 #killfeed div { background: var(--hud-bg); padding: 4px 10px; border-radius: 4px; font-size: 14px; animation: kf 6s forwards; }
