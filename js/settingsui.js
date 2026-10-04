@@ -1,6 +1,6 @@
 import { opts, setOpt, resetOpts } from './settings.js';
 import { store, esc } from './util.js';
-import { COSMETICS, SLOT_LABELS, HAIR_COLORS, MISSIONS, getStat, missionDone, isUnlocked, missionFor, getCos, setCos } from './missions.js';
+import { COSMETICS, SLOT_LABELS, HAIR_COLORS, MISSIONS, getStat, missionDone, isOwned, priceOf, buy, getTokens, getCos, setCos } from './missions.js';
 
 const $ = (id) => document.getElementById(id);
 const pct = (v) => Math.round(v * 100) + '%';
@@ -67,6 +67,7 @@ export class SettingsUI {
 
   open(tab = null) {
     if (tab != null) this.tab = TABS.findIndex((t) => t.name === tab);
+    this.tryOn = null;
     $('settings').classList.remove('hidden');
     this.render();
   }
@@ -142,44 +143,54 @@ export class SettingsUI {
     } else if (kind === 'missions') {
       el.className = 'missions';
       const done = MISSIONS.filter(missionDone).length;
-      el.innerHTML = `<div class="ms-head"><b>${done} / ${MISSIONS.length}</b> missions complete · each one unlocks a cosmetic for <a href="#" data-go>Customize</a></div>` +
-        MISSIONS.map((m) => {
-          const v = Math.min(getStat(m.stat), m.goal), ok = v >= m.goal;
-          const item = COSMETICS[m.reward[0]].find((c) => c.id === m.reward[1]);
-          return `<div class="ms ${ok ? 'done' : ''}">
-            <div class="ms-info"><b>${ok ? '✓ ' : ''}${esc(m.name)}</b><small>${esc(m.desc)}</small></div>
-            <div class="ms-bar"><i style="width:${(v / m.goal) * 100}%"></i></div>
-            <div class="ms-prog">${v}/${m.goal}</div>
-            <div class="ms-reward">${SLOT_LABELS[m.reward[0]]}: ${esc(item.name)}</div>
-          </div>`;
-        }).join('');
+      const left = MISSIONS.filter((m) => !missionDone(m)).reduce((s, m) => s + m.tokens, 0);
+      el.innerHTML = `<div class="ms-head"><span class="tok-pill">🪙 ${getTokens()}</span> <b>${done} / ${MISSIONS.length}</b> complete · ${left} tokens still to earn · spend them in <a href="#" data-go>Customize</a></div>` +
+        MISSIONS.map((m) => ({ m, ok: missionDone(m), p: Math.min(getStat(m.stat), m.goal) / m.goal }))
+          .sort((a, b) => a.ok - b.ok || b.p - a.p) // closest-to-done first, finished at the bottom
+          .map(({ m, ok }) => {
+            const v = Math.min(getStat(m.stat), m.goal);
+            return `<div class="ms ${ok ? 'done' : ''}">
+              <div class="ms-info"><b>${ok ? '✓ ' : ''}${esc(m.name)}</b><small>${esc(m.desc)}</small></div>
+              <div class="ms-bar"><i style="width:${(v / m.goal) * 100}%"></i></div>
+              <div class="ms-prog">${v}/${m.goal}</div>
+              <div class="ms-reward">🪙 ${ok ? 'Earned' : 'Reward'}: ${m.tokens}</div>
+            </div>`;
+          }).join('');
       el.querySelector('[data-go]').onclick = (e) => { e.preventDefault(); goCustomize(); };
     } else if (kind === 'customize') {
       el.className = 'customize';
       const cos = getCos();
-      el.innerHTML = `<div class="cz-preview"><canvas width="160" height="210"></canvas></div><div class="cz-slots"><div class="cz-flash"></div></div>`;
-      drawAvatar(el.querySelector('canvas'), cos, this.getColor());
+      // Tapping an item you don't own previews it ("try on") until you buy it or pick something else.
+      const t = this.tryOn;
+      const shown = t ? { ...cos, [t.slot]: t.id } : cos;
+      el.innerHTML = `<div class="cz-preview"><canvas width="160" height="210"></canvas><div class="tok-pill big">🪙 ${getTokens()}</div></div>
+        <div class="cz-slots"><div class="cz-buy hidden"></div></div>`;
+      drawAvatar(el.querySelector('canvas'), shown, this.getColor());
       const slots = el.querySelector('.cz-slots');
-      const equip = (next) => { setCos(next); if (this.onCos) this.onCos(next); rerender(); };
+      const equip = (next) => { this.tryOn = null; setCos(next); if (this.onCos) this.onCos(next); rerender(); };
+      if (t) {
+        const item = COSMETICS[t.slot].find((c) => c.id === t.id), price = priceOf(t.slot, t.id), have = getTokens();
+        const bar = el.querySelector('.cz-buy');
+        bar.classList.remove('hidden');
+        bar.innerHTML = have >= price
+          ? `<span>Previewing <b>${esc(item.name)}</b></span><button class="primary" data-buy>Buy & wear · 🪙 ${price}</button><button data-cancel>Cancel</button>`
+          : `<span>Previewing <b>${esc(item.name)}</b> · 🪙 ${price}. You need <b>${price - have}</b> more tokens. Complete missions to earn them.</span><button data-cancel>OK</button>`;
+        const b = bar.querySelector('[data-buy]');
+        if (b) b.onclick = () => { if (buy(t.slot, t.id)) equip({ ...cos, [t.slot]: t.id }); };
+        bar.querySelector('[data-cancel]').onclick = () => { this.tryOn = null; rerender(); };
+      }
       for (const slot of Object.keys(COSMETICS)) {
         const row = document.createElement('div');
         row.className = 'cz-row';
         row.innerHTML = `<div class="set-label">${SLOT_LABELS[slot]}</div><div class="cz-items">${COSMETICS[slot].map((c) => {
-          const open = isUnlocked(slot, c.id), m = missionFor(slot, c.id);
-          return `<button class="${cos[slot] === c.id ? 'sel' : ''} ${open ? '' : 'locked'}" data-id="${c.id}" ${open ? '' : `title="Unlock: ${esc(m.name)} (${esc(m.desc)})"`}>${open ? '' : '🔒 '}${esc(c.name)}</button>`;
+          const have = isOwned(slot, c.id), trying = t && t.slot === slot && t.id === c.id;
+          return `<button class="${cos[slot] === c.id && !t ? 'sel' : ''} ${trying ? 'trying' : ''} ${have ? '' : 'locked'}" data-id="${c.id}">${esc(c.name)}${have ? '' : `<small>🪙 ${c.price}</small>`}</button>`;
         }).join('')}</div>`;
         row.querySelectorAll('[data-id]').forEach((b) => {
           b.onclick = () => {
-            if (!isUnlocked(slot, b.dataset.id)) {
-              const m = missionFor(slot, b.dataset.id);
-              const f = el.querySelector('.cz-flash');
-              f.textContent = `🔒 Complete “${m.name}”: ${m.desc}`;
-              f.classList.add('show');
-              clearTimeout(this.flashT);
-              this.flashT = setTimeout(() => f.classList.remove('show'), 2600);
-              return;
-            }
-            equip({ ...cos, [slot]: b.dataset.id });
+            const id = b.dataset.id;
+            if (isOwned(slot, id)) equip({ ...cos, [slot]: id });
+            else { this.tryOn = { slot, id }; rerender(); }
           };
         });
         slots.appendChild(row);
@@ -193,7 +204,7 @@ export class SettingsUI {
       }
       const note = document.createElement('div');
       note.className = 'cz-note';
-      note.textContent = 'Other players see these on your character. Locked items unlock from Missions.';
+      note.textContent = 'Tap anything to preview it. Earn tokens from Missions and spend them on whatever you like. Other players see what you wear.';
       slots.appendChild(note);
     } else if (kind === 'layout') {
       if (this.mobile) {
@@ -224,6 +235,13 @@ function drawAvatar(canvas, cos, body) {
   if (cos.back === 'cape') R(-40, 112, 80, 88, body);
   if (cos.back === 'jetpack') { R(-46, 108, 14, 52, '#9aa1a8'); R(32, 108, 14, 52, '#9aa1a8'); R(-44, 160, 10, 14, '#ffb347'); R(34, 160, 10, 14, '#ffb347'); }
   if (cos.back === 'backpack') { R(-44, 112, 10, 44, dark); R(34, 112, 10, 44, dark); }
+  if (cos.back === 'wings') {
+    g.fillStyle = '#f4f4f4';
+    for (const s of [-1, 1]) { g.beginPath(); g.moveTo(cx + s * 30, 116); g.quadraticCurveTo(cx + s * 78, 92, cx + s * 74, 150); g.quadraticCurveTo(cx + s * 52, 136, cx + s * 30, 150); g.fill(); }
+  }
+  if (cos.back === 'sword') { R(30, 84, 6, 60, '#cfd5da'); R(24, 140, 18, 5, '#e8b923'); R(30, 145, 6, 18, '#141518'); }
+  if (cos.back === 'staff') { R(38, 60, 5, 120, '#7a4f2a'); g.fillStyle = '#7dd3ff'; g.beginPath(); g.arc(cx + 40, 58, 8, 0, 7); g.fill(); }
+  if (cos.back === 'guitar') { g.fillStyle = '#b5462a'; g.beginPath(); g.ellipse(cx - 38, 150, 16, 20, 0.2, 0, 7); g.fill(); R(-42, 96, 6, 46, '#53321a'); }
   // Legs, body, vest, arms
   R(-26, 168, 22, 40, '#2b2f36'); R(4, 168, 22, 40, '#2b2f36');
   R(-36, 106, 72, 66, body);
@@ -233,11 +251,13 @@ function drawAvatar(canvas, cos, body) {
   R(-50, 160, 14, 12, '#1e1f22'); R(36, 160, 14, 12, '#1e1f22');
   // Head
   const hx = -28, hy = 48, hs = 56;
-  const covered = ['helmet', 'cap', 'beanie', 'cowboy', 'tophat', 'viking'].includes(cos.hat);
+  const covered = ['helmet', 'cap', 'beanie', 'cowboy', 'tophat', 'viking', 'pirate', 'chef', 'wizard', 'sombrero'].includes(cos.hat);
   if (cos.hair === 'long') R(hx - 4, hy + 6, hs + 8, 58, hair);
+  if (cos.hair === 'ponytail') R(hx + hs - 4, hy + 18, 10, 40, hair);
+  if (cos.hair === 'afro' && !covered) { g.fillStyle = hair; g.beginPath(); g.arc(cx, hy + 10, 42, 0, 7); g.fill(); }
   R(hx, hy, hs, hs, skin);
   R(hx + 14, hy + 22, 8, 8, '#222'); R(hx + 34, hy + 22, 8, 8, '#222');
-  if (cos.hair === 'short' || (covered && ['mohawk', 'spiky'].includes(cos.hair))) R(hx, hy - 6, hs, 12, hair);
+  if (['short', 'ponytail'].includes(cos.hair) || (covered && ['mohawk', 'spiky', 'afro'].includes(cos.hair))) R(hx, hy - 6, hs, 12, hair);
   if (cos.hair === 'long' && !covered) R(hx - 2, hy - 6, hs + 4, 12, hair);
   if (cos.hair === 'mohawk' && !covered) R(-6, hy - 24, 12, 26, hair);
   if (cos.hair === 'spiky' && !covered) {
@@ -249,6 +269,9 @@ function drawAvatar(canvas, cos, body) {
   if (cos.face === 'shades') { R(hx + 6, hy + 20, 44, 3, '#141518'); R(hx + 8, hy + 20, 18, 10, '#141518'); R(hx + 30, hy + 20, 18, 10, '#141518'); }
   if (cos.face === 'bandana') R(hx - 2, hy + 34, hs + 4, 22, '#c0262d');
   if (cos.face === 'mustache') { R(hx + 16, hy + 38, 24, 5, '#3b2a1e'); R(hx + 12, hy + 41, 6, 4, '#3b2a1e'); R(hx + 38, hy + 41, 6, 4, '#3b2a1e'); }
+  if (cos.face === 'eyepatch') { R(hx + 30, hy + 19, 16, 13, '#141518'); R(hx, hy + 14, hs, 3, '#141518'); }
+  if (cos.face === 'clown') { g.fillStyle = '#e8262d'; g.beginPath(); g.arc(cx, hy + 33, 7, 0, 7); g.fill(); }
+  if (cos.face === 'gasmask') { R(hx + 4, hy + 16, hs - 8, 36, '#3b4030'); R(hx + 9, hy + 20, 14, 10, '#1a3a5a'); R(hx + 33, hy + 20, 14, 10, '#1a3a5a'); g.fillStyle = '#2c3036'; g.beginPath(); g.arc(cx, hy + 44, 9, 0, 7); g.fill(); }
   // Hat
   const hat = {
     helmet: () => { R(hx - 4, hy - 16, hs + 8, 24, body); R(hx - 6, hy + 4, hs + 12, 6, dark); },
@@ -269,6 +292,25 @@ function drawAvatar(canvas, cos, body) {
     party: () => { g.fillStyle = '#ff5fb4'; g.beginPath(); g.moveTo(cx - 16, hy + 2); g.lineTo(cx + 4, hy - 44); g.lineTo(cx + 18, hy + 2); g.fill(); g.fillStyle = '#f4f4f4'; g.beginPath(); g.arc(cx + 4, hy - 46, 6, 0, 7); g.fill(); },
     halo: () => { g.strokeStyle = '#ffd84a'; g.lineWidth = 5; g.beginPath(); g.ellipse(cx, hy - 20, 26, 7, 0, 0, 7); g.stroke(); },
     headband: () => { R(hx - 2, hy + 8, hs + 4, 9, '#c0262d'); R(hx + hs, hy + 10, 12, 5, '#c0262d'); },
+    pirate: () => {
+      g.fillStyle = '#141518'; g.beginPath(); g.moveTo(cx - 40, hy + 4); g.quadraticCurveTo(cx, hy - 40, cx + 40, hy + 4); g.fill();
+      g.fillStyle = '#f4f4f4'; g.beginPath(); g.arc(cx, hy - 12, 5, 0, 7); g.fill();
+    },
+    chef: () => { R(hx + 2, hy - 8, hs - 4, 12, '#f4f4f4'); g.fillStyle = '#f4f4f4'; g.beginPath(); g.arc(cx - 12, hy - 18, 14, 0, 7); g.arc(cx + 12, hy - 18, 14, 0, 7); g.arc(cx, hy - 26, 15, 0, 7); g.fill(); },
+    wizard: () => {
+      g.fillStyle = '#3a2a8a'; g.beginPath(); g.moveTo(cx - 36, hy + 4); g.lineTo(cx + 6, hy - 58); g.lineTo(cx + 36, hy + 4); g.fill();
+      R(hx - 10, hy, hs + 20, 6, '#3a2a8a'); g.fillStyle = '#ffd84a'; g.beginPath(); g.arc(cx - 4, hy - 20, 4, 0, 7); g.fill();
+    },
+    bunny: () => { for (const s of [-1, 1]) { R(s * 14 - 6, hy - 40, 12, 42, '#f4f4f4'); R(s * 14 - 3, hy - 34, 6, 30, '#ffb6c8'); } },
+    catears: () => {
+      for (const s of [-1, 1]) {
+        g.fillStyle = body; g.beginPath(); g.moveTo(cx + s * 26, hy + 2); g.lineTo(cx + s * 22, hy - 20); g.lineTo(cx + s * 8, hy + 2); g.fill();
+      }
+    },
+    sombrero: () => {
+      g.fillStyle = '#d9a441'; g.beginPath(); g.ellipse(cx, hy + 2, 62, 10, 0, 0, 7); g.fill();
+      R(hx + 8, hy - 26, hs - 16, 28, '#d9a441'); R(hx + 8, hy - 8, hs - 16, 6, '#c0262d');
+    },
   }[cos.hat];
   if (hat) hat();
 }

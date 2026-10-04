@@ -31,7 +31,7 @@ export class Hud {
   // Banner when a mission completes and unlocks a cosmetic.
   mission(name, reward) {
     const el = $('mission-toast');
-    el.innerHTML = `<small>MISSION COMPLETE</small><b>${esc(name)}</b>${reward ? `<span>Unlocked: ${esc(reward)}</span>` : ''}`;
+    el.innerHTML = `<small>MISSION COMPLETE</small><b>${esc(name)}</b>${reward ? `<span class="tok">🪙 ${esc(reward)}</span>` : ''}`;
     el.classList.remove('show');
     void el.offsetWidth;
     el.classList.add('show');

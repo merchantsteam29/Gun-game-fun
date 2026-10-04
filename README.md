@@ -32,6 +32,11 @@ The next match starts automatically on the next map.
 | Roulette | A random loadout every time you spawn. First to 25 |
 | Vampire | No health regen; damage you deal heals you and kills heal more. First to 25 |
 | Moon Gravity | Low gravity and big jumps. First to 25 |
+| Kill Confirmed | Red vs Blue. Kills drop dog tags: grab enemy tags to score, your team's to deny. First team to 40 |
+| One in the Chamber | Revolver with one bullet that kills in one hit, no reloading; each kill gives a bullet back. First to 20 |
+| Weapon Rotation | Everyone has the same random weapon, changing every 40 seconds. First to 25 |
+| Hardcore | 35 health and no regeneration. First to 25 |
+| Sidearms | Hand Cannon and Revolver only. First to 25 |
 
 ## Host panel
 
@@ -61,6 +66,9 @@ The lobby creator gets a **Host panel** button in the pause menu (Esc):
 | Space Station | Four-way sci-fi deck around a glowing reactor with a raised ring walkway and corner rooms |
 | Canyon | Two mesas facing each other across a canyon floor, joined by a rope bridge |
 | Construction Site | Three-storey concrete frame with stairs and an open atrium, containers, pipes and a tower crane |
+| Cargo Ship | Deck of a container ship at sea: cargo stacks, hatches, a mast and bridge houses with roof access at both ends |
+| Train Yard | Parked train cars across four tracks, platforms on both sides and a footbridge over everything |
+| Frozen Lake | Open ice with fishing huts and ice blocks, snowy shore banks with ramps and pine trees |
 
 ## Loadout
 
@@ -105,8 +113,8 @@ Open **Settings** from the main menu or the pause menu. Everything is saved in y
 | Video | Field of view, weapon field of view, view bobbing, graphics High/Low, FPS counter |
 | HUD & Audio | Volume, crosshair color, size and center dot |
 | Mobile | Edit button layout (drag any touch button anywhere, resize each one), button size, button opacity |
-| Missions | 17 missions (kills, headshots, melee, explosives, streaks, wins, mode-specific goals) with progress bars |
-| Customize | Hats, hair (+ color), face items and back items for your character, with a preview. Missions unlock the locked ones; other players see what you wear |
+| Missions | 37 missions (kills, headshots, sniper / shotgun / melee / secondary / explosive kills, streaks, matches, wins, maps and modes played, mode-specific goals). Each one pays tokens 🪙 |
+| Customize | 17 hats, 7 hair styles (+ colors), 8 face items and 8 back items. Tap anything to preview it on your character, then spend tokens on whatever you want. Other players see what you wear |
 
 ## Mobile
 

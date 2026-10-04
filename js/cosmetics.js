@@ -18,6 +18,11 @@ const M = {
   halo: new THREE.MeshStandardMaterial({ color: '#fff3a0', emissive: '#ffd84a', emissiveIntensity: 1.6 }),
   flame: new THREE.MeshBasicMaterial({ color: '#ffb347', transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false }),
   stache: new THREE.MeshStandardMaterial({ color: '#3b2a1e', roughness: 0.9 }),
+  wizard: new THREE.MeshStandardMaterial({ color: '#3a2a8a', roughness: 0.8 }),
+  straw: new THREE.MeshStandardMaterial({ color: '#d9a441', roughness: 0.9 }),
+  olive: new THREE.MeshStandardMaterial({ color: '#3b4030', roughness: 0.85 }),
+  woodDark: new THREE.MeshStandardMaterial({ color: '#53321a', roughness: 0.75 }),
+  orb: new THREE.MeshStandardMaterial({ color: '#9fe4ff', emissive: '#3fb8ff', emissiveIntensity: 1.5 }),
 };
 const hairMats = new Map();
 const hairMat = (c) => { if (!hairMats.has(c)) hairMats.set(c, new THREE.MeshStandardMaterial({ color: c, roughness: 0.9 })); return hairMats.get(c); };
@@ -35,7 +40,7 @@ const C = (r0, r1, h, s = 16) => new THREE.CylinderGeometry(r0, r1, h, s);
 const dome = (r) => new THREE.SphereGeometry(r, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2);
 
 // Hats that cover the top of the head hide spiky / mohawk hair.
-const COVERING = ['helmet', 'cap', 'beanie', 'cowboy', 'tophat', 'viking'];
+const COVERING = ['helmet', 'cap', 'beanie', 'cowboy', 'tophat', 'viking', 'pirate', 'chef', 'wizard', 'sombrero'];
 
 const HATS = {
   helmet(g, body) {
@@ -90,6 +95,37 @@ const HATS = {
     add(g, B(0.04, 0.12, 0.02), M.red, 0.03, 0.2, 0.16, 0.3, 0, 0.3);
     add(g, B(0.04, 0.12, 0.02), M.red, -0.03, 0.19, 0.16, 0.3, 0, -0.2);
   },
+  pirate(g) {
+    add(g, dome(0.16), M.black, 0, 0.27, 0).scale.set(1, 0.6, 1);
+    add(g, B(0.46, 0.1, 0.06), M.black, 0, 0.36, 0, 0, 0, 0).scale.set(1, 1, 1);
+    for (const s of [-1, 1]) add(g, B(0.2, 0.08, 0.05), M.black, s * 0.17, 0.32, 0, 0, 0, s * 0.45);
+    add(g, new THREE.SphereGeometry(0.025, 8, 6), M.white, 0, 0.36, -0.035);
+  },
+  chef(g) {
+    add(g, C(0.15, 0.15, 0.08), M.white, 0, 0.32, 0);
+    for (const [x, z] of [[0, 0], [0.07, 0.05], [-0.07, 0.05], [0.06, -0.06], [-0.06, -0.06]]) add(g, new THREE.SphereGeometry(0.09, 10, 8), M.white, x, 0.43, z);
+  },
+  wizard(g) {
+    add(g, C(0.26, 0.26, 0.02, 20), M.wizard, 0, 0.305, 0);
+    add(g, new THREE.ConeGeometry(0.15, 0.42, 16), M.wizard, 0.02, 0.52, 0, 0, 0, -0.12);
+    for (const [y, a] of [[0.42, 0], [0.55, 2]]) add(g, new THREE.SphereGeometry(0.018, 6, 4), M.halo, Math.cos(a) * 0.1, y, Math.sin(a) * 0.1 - 0.05);
+  },
+  bunny(g) {
+    for (const s of [-1, 1]) {
+      add(g, B(0.06, 0.26, 0.03), M.white, s * 0.07, 0.42, 0.02, 0, 0, s * 0.12);
+      add(g, B(0.03, 0.2, 0.01), M.pink, s * 0.07, 0.42, 0.003, 0, 0, s * 0.12);
+    }
+    add(g, B(0.3, 0.03, 0.3), M.white, 0, 0.3, 0);
+  },
+  catears(g, body) {
+    for (const s of [-1, 1]) add(g, new THREE.ConeGeometry(0.05, 0.11, 4), body, s * 0.09, 0.35, 0.02, 0, Math.PI / 4, s * 0.25);
+    add(g, B(0.3, 0.025, 0.3), M.black, 0, 0.3, 0);
+  },
+  sombrero(g) {
+    add(g, C(0.42, 0.42, 0.025, 24), M.straw, 0, 0.3, 0);
+    add(g, C(0.11, 0.14, 0.2), M.straw, 0, 0.41, 0);
+    add(g, C(0.142, 0.142, 0.04), M.red, 0, 0.34, 0);
+  },
 };
 
 const HAIR = {
@@ -106,6 +142,15 @@ const HAIR = {
     if (!covered) add(g, B(0.3, 0.05, 0.3), mat, 0, 0.305, 0);
     add(g, B(0.3, 0.32, 0.06), mat, 0, 0.15, 0.16);
     for (const s of [-1, 1]) add(g, B(0.03, 0.22, 0.2), mat, s * 0.155, 0.2, 0.05);
+  },
+  ponytail(g, mat, covered) {
+    HAIR.short(g, mat, covered);
+    add(g, B(0.07, 0.07, 0.07), mat, 0, 0.24, 0.17);
+    add(g, B(0.06, 0.2, 0.06), mat, 0, 0.13, 0.19, 0.15);
+  },
+  afro(g, mat, covered) {
+    if (covered) return HAIR.short(g, mat, true);
+    add(g, new THREE.SphereGeometry(0.22, 14, 10), mat, 0, 0.3, 0.02);
   },
   spiky(g, mat, covered) {
     if (covered) return HAIR.short(g, mat, true);
@@ -137,6 +182,19 @@ const FACE = {
     add(g, B(0.1, 0.025, 0.02), M.stache, 0, 0.09, -0.148);
     for (const s of [-1, 1]) add(g, B(0.05, 0.022, 0.02), M.stache, s * 0.065, 0.08, -0.148, 0, 0, s * 0.5);
   },
+  eyepatch(g) {
+    add(g, B(0.08, 0.06, 0.015), M.black, 0.06, 0.19, -0.148);
+    add(g, B(0.29, 0.015, 0.29), M.black, 0, 0.22, 0, 0, 0, -0.25);
+  },
+  clown(g) {
+    add(g, new THREE.SphereGeometry(0.035, 10, 8), M.red, 0, 0.13, -0.16);
+  },
+  gasmask(g) {
+    add(g, B(0.26, 0.2, 0.06), M.olive, 0, 0.13, -0.14);
+    for (const s of [-1, 1]) add(g, C(0.035, 0.035, 0.02, 12), M.lens, s * 0.06, 0.19, -0.172, Math.PI / 2);
+    add(g, C(0.05, 0.05, 0.08, 12), M.dark, 0, 0.07, -0.2, Math.PI / 2);
+    add(g, B(0.29, 0.03, 0.29), M.dark, 0, 0.16, 0);
+  },
 };
 
 const BACK = {
@@ -155,6 +213,27 @@ const BACK = {
   cape(g, body) {
     add(g, B(0.46, 0.7, 0.025), body, 0, 0.18, 0.18, 0.12);
     add(g, B(0.5, 0.05, 0.05), M.gold, 0, 0.53, 0.16);
+  },
+  wings(g) {
+    for (const s of [-1, 1]) {
+      for (let i = 0; i < 4; i++) add(g, B(0.34 - i * 0.05, 0.08, 0.02), M.white, s * (0.2 + i * 0.02), 0.5 - i * 0.09, 0.2, 0.1, s * 0.25, s * (0.5 - i * 0.12)).castShadow = false;
+    }
+  },
+  sword(g) {
+    add(g, B(0.05, 0.7, 0.02), M.steel, 0.08, 0.3, 0.18, 0, 0, 0.5);
+    add(g, B(0.16, 0.03, 0.04), M.gold, -0.06, 0.6, 0.18, 0, 0, 0.5);
+    add(g, B(0.035, 0.14, 0.035), M.black, -0.1, 0.68, 0.18, 0, 0, 0.5);
+    add(g, B(0.05, 0.42, 0.02), M.leather, 0, 0.3, 0.155, 0, 0, -0.75);
+  },
+  staff(g) {
+    add(g, C(0.02, 0.02, 1.0, 8), M.leather, 0.14, 0.38, 0.2, 0, 0, -0.18);
+    add(g, new THREE.SphereGeometry(0.05, 12, 8), M.orb, 0.23, 0.88, 0.2).castShadow = false;
+  },
+  guitar(g) {
+    add(g, new THREE.CylinderGeometry(0.14, 0.14, 0.06, 16), M.red, -0.06, 0.16, 0.2, Math.PI / 2, 0, 0.5).scale.set(1, 1, 1.25);
+    add(g, B(0.04, 0.5, 0.025), M.woodDark, 0.08, 0.48, 0.2, 0, 0, 0.5);
+    add(g, B(0.06, 0.08, 0.03), M.black, 0.2, 0.7, 0.2, 0, 0, 0.5);
+    add(g, B(0.04, 0.6, 0.02), M.leather, 0, 0.32, 0.155, 0, 0, -0.75);
   },
 };
 

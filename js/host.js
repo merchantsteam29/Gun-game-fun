@@ -25,8 +25,17 @@ export const MODES = {
   roulette: { name: 'Roulette', short: 'ROULETTE', teams: false, score: 25, time: 10, desc: 'A random loadout every time you spawn.' },
   vampire: { name: 'Vampire', short: 'VAMPIRE', teams: false, score: 25, time: 10, desc: 'No health regen. Damage you deal heals you, and kills heal more.' },
   moon: { name: 'Moon Gravity', short: 'MOON', teams: false, score: 25, time: 10, preset: { gravity: 0.35, jump: 1.3 }, desc: 'Low gravity and huge jumps. Most kills wins.' },
+  killconfirmed: { name: 'Kill Confirmed', short: 'KILL CONFIRMED', teams: true, redBlue: true, score: 40, time: 10, desc: 'Red vs Blue. Every kill drops a dog tag: grab enemy tags to score, grab your team’s to deny the point.' },
+  oitc: { name: 'One in the Chamber', short: 'OITC', teams: false, score: 20, time: 10, loadout: ['revolver', 'knife'], instakill: true, noReload: true, ammoStart: 1, desc: 'One bullet that kills in one hit, and no reloading. Every kill gives you another bullet. Miss and it’s knife time.' },
+  rotation: { name: 'Weapon Rotation', short: 'ROTATION', teams: false, score: 25, time: 10, desc: 'Everyone gets the same random weapon, and it changes every 40 seconds.' },
+  hardcore: { name: 'Hardcore', short: 'HARDCORE', teams: false, score: 25, time: 10, noRegen: true, preset: { health: 35 }, desc: '35 health and no regeneration. Every shot counts.' },
+  sidearms: { name: 'Sidearms', short: 'SIDEARMS', teams: false, score: 25, time: 8, loadout: ['handcannon', 'revolver', 'knife', 'flash'], desc: 'Pistols only: Hand Cannon and Revolver.' },
 };
-export const MODE_ORDER = ['ffa', 'tdm', 'gungame', 'koth', 'infection', 'hardpoint', 'juggernaut', 'lms', 'instagib', 'snipers', 'shotguns', 'blades', 'boom', 'roulette', 'vampire', 'moon'];
+export const MODE_ORDER = ['ffa', 'tdm', 'gungame', 'koth', 'infection', 'hardpoint', 'killconfirmed', 'juggernaut', 'lms', 'oitc',
+  'instagib', 'hardcore', 'rotation', 'snipers', 'shotguns', 'sidearms', 'blades', 'boom', 'roulette', 'vampire', 'moon'];
+const ROTATION_SECONDS = 40;
+// Weapon Rotation picks from every primary/secondary gun and launcher.
+const ROTATION_POOL = [...SLOTS[0], ...SLOTS[1]];
 export const TEAM_COLORS = { 1: '#e5483b', 2: '#3d8fe0' };
 export const ZOMBIE_COLOR = '#6fbf3a';
 export const JUGG_COLOR = '#ffcc33';
@@ -98,6 +107,14 @@ export class HostLogic {
     this.infectAt = this.s.mode === 'infection' ? Date.now() + INFECT_DELAY_MS : 0;
     this.infected = false;
     this.jugg = null;
+    this.tags = []; // Kill Confirmed dog tags
+    this.tagId = 0;
+    if (this.s.mode === 'rotation') { this.rotW = this.pickRotation(); this.rotUntil = Date.now() + ROTATION_SECONDS * 1000; }
+  }
+
+  pickRotation() {
+    const pool = ROTATION_POOL.filter((w) => w !== this.rotW);
+    return pool[(Math.random() * pool.length) | 0];
   }
 
   // Lives left in Last Man Standing are stored as the player's score.
@@ -205,6 +222,7 @@ export class HostLogic {
     if (this.s.mode === 'infection' && p.team === 2) return ['claws'];
     if (this.s.mode === 'juggernaut' && p.id === this.jugg) return JUGG_LOADOUT;
     if (this.s.mode === 'roulette') return SLOTS.map((opts) => opts[(Math.random() * opts.length) | 0]);
+    if (this.s.mode === 'rotation') return [this.rotW, 'knife'];
     return this.mode.loadout || null;
   }
 
@@ -234,8 +252,9 @@ export class HostLogic {
     p.st[0] = s.x; p.st[1] = s.y; p.st[2] = s.z;
     p.protectUntil = Date.now() + PROTECT_MS;
     const l = this.loadoutFor(p);
-    if (p.bot) p.bot.spawn(s, l);
-    else this.sendTo(p.id, { t: 'spawn', p: [s.x, s.y, s.z], yaw: s.yaw, hp: p.hp, l, team: p.team });
+    const start = this.mode.ammoStart; // One in the Chamber: a single bullet per life
+    if (p.bot) { p.bot.spawn(s, l); if (start) p.bot.ammo = start; }
+    else this.sendTo(p.id, { t: 'spawn', p: [s.x, s.y, s.z], yaw: s.yaw, hp: p.hp, l, team: p.team, ammo: start && l ? { [l[0]]: start } : null });
   }
 
   // ---------- Messages ----------
@@ -312,6 +331,9 @@ export class HostLogic {
       case 'hardpoint': // personal score is kills; the team score comes from the zone
         attacker.score = attacker.kills;
         break;
+      case 'killconfirmed': // the point comes from picking up the tag (see tickTags)
+        if (enemyKill) this.tags.push({ id: ++this.tagId, x: v.st[0], y: v.st[1], z: v.st[2], team: v.team, until: Date.now() + 30000 });
+        break;
       case 'juggernaut':
         this.juggKill(attacker, v, enemyKill);
         break;
@@ -352,6 +374,43 @@ export class HostLogic {
         attacker.score = attacker.kills;
         if (attacker.kills >= this.s.scoreLimit) this.endMatch();
     }
+    if (this.mode.noReload && enemyKill && attacker.alive && this.phase === 'playing') this.giveAmmo(attacker, 1);
+  }
+
+  // One in the Chamber: a kill earns a bullet.
+  giveAmmo(p, n) {
+    if (p.bot) p.bot.addAmmo(n);
+    else this.sendTo(p.id, { t: 'ammo', add: n });
+  }
+
+  // Kill Confirmed: walking over a tag scores it (enemy tag) or denies it (your team's).
+  tickTags(now) {
+    this.tags = this.tags.filter((t) => t.until > now);
+    for (const p of this.players.values()) {
+      if (!p.alive || this.phase !== 'playing') continue;
+      for (const t of this.tags) {
+        if (t.taken || Math.hypot(p.st[0] - t.x, p.st[2] - t.z) > 1.4 || Math.abs(p.st[1] - t.y) > 2) continue;
+        t.taken = true;
+        this.sendTo(p.id, { t: 'tagc' });
+        if (p.team !== t.team) {
+          this.teamScore[p.team]++;
+          p.score++;
+          this.sendTo(p.id, { t: 'notice', text: 'KILL CONFIRMED' });
+          if (this.teamScore[p.team] >= this.s.scoreLimit) this.endMatch();
+        } else {
+          this.sendTo(p.id, { t: 'notice', text: 'KILL DENIED' });
+        }
+      }
+    }
+    this.tags = this.tags.filter((t) => !t.taken);
+  }
+
+  tickRotation(now) {
+    if (now < this.rotUntil) return;
+    this.rotW = this.pickRotation();
+    this.rotUntil = now + ROTATION_SECONDS * 1000;
+    this.broadcast({ t: 'notice', text: `NEW WEAPON: ${WEAPONS[this.rotW].name.toUpperCase()}` });
+    for (const p of this.players.values()) if (p.alive) this.sendTo(p.id, { t: 'loadout', l: this.loadoutFor(p) });
   }
 
   // Juggernaut: the first kill crowns a Juggernaut; killing it passes the crown on.
@@ -454,7 +513,7 @@ export class HostLogic {
       this.s.mode = mode;
       this.s.scoreLimit = MODES[mode].score;
       this.s.timeLimit = MODES[mode].time;
-      Object.assign(this.s, PHYS_DEFAULTS, MODES[mode].preset);
+      Object.assign(this.s, PHYS_DEFAULTS, { health: 100 }, MODES[mode].preset);
     }
     this.s.map = map && MAPS[map] ? map : manual ? this.s.map : this.nextMap();
     this.loadMap(this.s.map);
@@ -493,10 +552,12 @@ export class HostLogic {
       for (const p of this.players.values()) {
         if (!p.alive && p.respawnAt && now >= p.respawnAt) { p.respawnAt = 0; this.spawn(p); }
         const max = this.maxHp(p);
-        if (p.alive && p.hp < max && now - p.lastDmg > 5000 && this.s.mode !== 'vampire') p.hp = Math.min(max, p.hp + max * 0.25 * rdt);
+        if (p.alive && p.hp < max && now - p.lastDmg > 5000 && this.s.mode !== 'vampire' && !this.mode.noRegen) p.hp = Math.min(max, p.hp + max * 0.25 * rdt);
       }
       if (this.s.mode === 'infection' && !this.infected && this.infectAt && now >= this.infectAt) this.startInfection();
       if (this.mode.hill) this.tickHill(rdt, now);
+      if (this.s.mode === 'killconfirmed') this.tickTags(now);
+      if (this.s.mode === 'rotation') this.tickRotation(now);
       for (const p of this.players.values()) if (p.bot) p.bot.update(dt);
     } else if (now >= this.restartAt) {
       this.startMatch();
@@ -511,6 +572,8 @@ export class HostLogic {
     const msg = { t: 'snap', s, tl: this.phase === 'playing' ? Math.max(0, Math.ceil((this.endsAt - now) / 1000)) : 0 };
     if (this.mode.redBlue) msg.ts = [Math.floor(this.teamScore[1]), Math.floor(this.teamScore[2])];
     if (this.s.mode === 'infection') msg.inf = this.infected ? 0 : Math.max(0, Math.ceil((this.infectAt - now) / 1000));
+    if (this.s.mode === 'killconfirmed') msg.tg = this.tags.map((t) => [t.id, r2(t.x), r2(t.y), r2(t.z), t.team]);
+    if (this.s.mode === 'rotation') msg.rot = [this.rotW, Math.max(0, Math.ceil((this.rotUntil - now) / 1000))];
     const hill = this.currentHill();
     if (hill) msg.z = [...hill, this.hillState, this.hillHolder, Math.max(0, Math.ceil((this.hillUntil - now) / 1000))];
     this.broadcast(msg);

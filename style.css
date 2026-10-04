@@ -83,6 +83,19 @@ button.big { padding: 14px 18px; font-size: 16px; letter-spacing: 2px; }
   letter-spacing: 0.3px; font-size: 14px; border-radius: 999px; max-width: 220px; }
 .player-chip i { width: 18px; height: 18px; border-radius: 50%; flex: none; box-shadow: 0 0 0 2px rgba(255,255,255,0.25); }
 .player-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.player-chip em { font-style: normal; font-size: 12px; color: var(--accent); padding-left: 8px; border-left: 1px solid var(--line); white-space: nowrap; }
+.player-chip { max-width: 300px; }
+.tok-pill { display: inline-block; padding: 2px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 13px; }
+.tok-pill.big { display: block; text-align: center; margin: 8px 10px 4px; font-size: 16px; padding: 5px 10px; }
+.cz-preview { flex-direction: column; align-items: center; }
+.cz-buy { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 10px 12px; margin-bottom: 8px; border: 1px solid var(--accent);
+  border-radius: var(--radius); background: var(--accent-soft); font-size: 13px; }
+.cz-buy span { flex: 1 1 200px; }
+.cz-buy button { padding: 8px 12px; font-size: 12px; }
+.cz-items button small { display: block; font-size: 10px; color: var(--accent); letter-spacing: 0.5px; margin-top: 1px; }
+.cz-items button.locked { opacity: 0.85; border-style: dashed; }
+.cz-items button.trying { border-color: var(--accent); border-style: solid; box-shadow: 0 0 0 2px rgba(255,176,32,0.3); }
+#mission-toast .tok { color: var(--accent); font-weight: 700; }
 .menu-nav { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: 0 -26px 16px; padding: 0 26px; flex: none; overflow-x: auto; scrollbar-width: none; }
 .menu-nav button { background: transparent; border: 0; border-bottom: 3px solid transparent; border-radius: 0; padding: 10px 14px 9px;
   color: var(--muted); font-size: 13px; white-space: nowrap; display: flex; align-items: center; }

@@ -3,7 +3,7 @@ import { MAPS, setMapData, buildMapScene } from './maps.js';
 import { moveBody, overlap, raycast, rayAABB, PLAYER_R, phys } from './physics.js';
 import { MODES, TEAM_COLORS, ZOMBIE_COLOR, JUGG_COLOR, JUGG_TEAM, defaultSettings } from './host.js';
 import { WEAPONS, DEFAULT_LOADOUT, GUNGAME_LADDER, SLOTS } from './weapons.js';
-import { track, onMissionComplete, COSMETICS } from './missions.js';
+import { track, onMissionComplete } from './missions.js';
 import { Viewmodel } from './viewmodel.js';
 import { RemotePlayer } from './remote.js';
 import { Effects } from './effects.js';
@@ -82,10 +82,10 @@ export class Game {
     this.loadMap('warehouse');
     this.fps = { frames: 0, acc: 0 };
     this.playedThisMatch = false;
+    this.tagMeshes = new Map();
+    this.tagData = null;
     onMissionComplete((ms) => {
-      const [slot, id] = ms.reward;
-      const item = COSMETICS[slot].find((c) => c.id === id);
-      this.hud.mission(ms.name, item ? item.name : '');
+      this.hud.mission(ms.name, `+${ms.tokens} tokens`);
       sfx.kill(0.9);
     });
     this.fovK = 1; // widens the view on portrait screens (see resize)
@@ -355,6 +355,9 @@ export class Game {
     this.zone = null;
     this.teamScore = null;
     this.zoneMesh.visible = false;
+    this.tagData = null;
+    this.rot = null;
+    this.updateTags(0); // removes any dog tags left in the scene
     this.hud.show(false);
     this.hud.death(false);
     this.hud.end(false);
@@ -398,6 +401,18 @@ export class Game {
       case 'notice':
         this.hud.say(m.text);
         break;
+      case 'ammo': { // One in the Chamber: a kill earned a bullet
+        const gun = this.loadout[0], W = WEAPONS[gun];
+        if (!W || !W.mag || !this.me.alive) break;
+        this.ammo[gun] = Math.min(W.mag, (this.ammo[gun] || 0) + (m.add || 1));
+        this.hud.say(`+${m.add || 1} BULLET`);
+        if (this.slot !== 0) this.switchSlot(0);
+        break;
+      }
+      case 'tagc':
+        track.tag();
+        sfx.pad(0.4);
+        break;
       case 'pcos': {
         const r = this.remotes.get(m.id);
         if (r) r.setCosmetics(m.c);
@@ -425,6 +440,8 @@ export class Game {
         this.teamScore = m.ts || null;
         this.zone = m.z || null;
         this.infection = m.inf ?? 0;
+        this.tagData = m.tg || null;
+        this.rot = m.rot || null;
         let teamsChanged = false;
         for (const id in m.s) {
           const a = m.s[id];
@@ -495,6 +512,7 @@ export class Game {
     this.refreshColors();
     this.playedThisMatch = true;
     this.setLoadout(m.l || this.nextLoadout);
+    if (m.ammo) Object.assign(this.ammo, m.ammo); // e.g. One in the Chamber's single bullet
     this.recoil = 0;
     this.deathInfo = null;
     this.hud.death(false);
@@ -546,7 +564,7 @@ export class Game {
       if (!this.teams || (pk && pv && pk.team !== pv.team)) {
         const W = WEAPONS[m.w];
         track.kill({
-          weaponType: W && W.type, head: !!m.head, mode: this.rules.mode,
+          weapon: m.w, weaponType: W && W.type, head: !!m.head, mode: this.rules.mode,
           secondary: SLOTS[1].includes(m.w),
           explosive: ['gl', 'rocket', 'frag', 'sticky', 'impact', 'flare', 'vortex'].includes(m.w),
           juggernaut: this.rules.mode === 'juggernaut' && pv && pv.team === JUGG_TEAM,
@@ -622,7 +640,7 @@ export class Game {
     else won = !!m.scores && m.scores[0] && m.scores[0].id === this.myId;
     const mine = (m.scores || []).find((s) => s.id === this.myId);
     track.matchEnd({
-      mode, won,
+      mode, won, map: this.mapId,
       survived: mode === 'infection' && team === 1 && m.title === 'SURVIVORS WIN',
       hillPoints: mode === 'koth' && mine ? mine.sc : 0,
     });
@@ -718,6 +736,7 @@ export class Game {
     }
     this.updateProjectiles(dt);
     this.updateZone(now);
+    this.updateTags(now);
 
     this.vm.update(dt, {
       speed: hs, strafe, vy: me.vel.y, ads: this.ads, sprint: this.sprinting, onGround: me.onGround,
@@ -840,6 +859,7 @@ export class Game {
   startReload() {
     const id = this.curW, w = WEAPONS[id];
     if ((w.type !== 'gun' && w.type !== 'proj') || this.reloadT > 0 || this.switchT > 0) return;
+    if (MODES[this.rules.mode].noReload) return;
     if (this.ammo[id] >= w.mag) return;
     this.reloadT = w.reload;
     this.burstLeft = 0;
@@ -929,7 +949,9 @@ export class Game {
     if (this.mouse.left && (!w.spinup || this.spin >= w.spinup)) this.tryFire();
 
     if ((w.type === 'gun' || w.type === 'proj') && this.ammo[id] === 0 && this.reloadT <= 0 && this.fireCd <= 0 && this.switchT <= 0 && this.burstLeft === 0) {
-      this.startReload();
+      // No reloading in One in the Chamber: out of bullets means knife.
+      if (MODES[this.rules.mode].noReload) { const ms = this.meleeSlot(); if (ms >= 0) this.switchSlot(ms); }
+      else this.startReload();
     }
   }
 
@@ -1377,6 +1399,33 @@ export class Game {
     this.zoneWall.material.opacity = 0.12 + Math.sin(now * 0.004) * 0.05;
   }
 
+  // Kill Confirmed dog tags: spinning, bobbing tags in the dropping team's color.
+  updateTags(now) {
+    const want = new Set();
+    for (const [id, x, y, z, team] of this.tagData || []) {
+      want.add(id);
+      let m = this.tagMeshes.get(id);
+      if (!m) {
+        m = new THREE.Group();
+        const mat = new THREE.MeshStandardMaterial({ color: TEAM_COLORS[team] || '#ffcc33', emissive: TEAM_COLORS[team] || '#ffcc33', emissiveIntensity: 0.6, metalness: 0.5, roughness: 0.3 });
+        const plate = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.32, 0.03), mat);
+        const chain = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.008, 4, 12), mat);
+        chain.position.y = 0.22;
+        m.add(plate, chain);
+        this.scene.add(m);
+        this.tagMeshes.set(id, m);
+      }
+      m.position.set(x, y + 0.7 + Math.sin(now * 0.004 + id) * 0.08, z);
+      m.rotation.y = now * 0.003 + id;
+    }
+    for (const [id, m] of this.tagMeshes) {
+      if (want.has(id)) continue;
+      this.scene.remove(m);
+      m.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+      this.tagMeshes.delete(id);
+    }
+  }
+
   modeBar() {
     const mode = this.rules.mode, me = this.players.get(this.myId);
     if (MODES[mode].redBlue && this.teamScore) {
@@ -1395,6 +1444,14 @@ export class Game {
       for (const p of this.players.values()) if (p.team === JUGG_TEAM) j = p;
       const who = !j ? 'FIRST KILL BECOMES THE JUGGERNAUT' : j.id === this.myId ? '<span class="jugg">YOU ARE THE JUGGERNAUT</span>' : `JUGGERNAUT: <span class="jugg">${esc(j.name)}</span>`;
       return `${who} · FIRST TO ${this.rules.scoreLimit}`;
+    }
+    if (mode === 'rotation' && this.rot) {
+      const W = WEAPONS[this.rot[0]];
+      return `WEAPON: <span class="jugg">${W ? W.name.toUpperCase() : '?'}</span> · CHANGES IN ${this.rot[1]}s · FIRST TO ${this.rules.scoreLimit}`;
+    }
+    if (mode === 'oitc') {
+      const gun = this.loadout[0];
+      return `ONE IN THE CHAMBER · BULLETS ${this.ammo[gun] ?? 0} · FIRST TO ${this.rules.scoreLimit}`;
     }
     if (mode === 'lms' && me) {
       let left = 0;

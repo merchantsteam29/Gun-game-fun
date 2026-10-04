@@ -55,10 +55,18 @@ export class Bot {
   }
 
   setLoadout(l) {
+    this.loadout = l || null;
     this.weapon = l ? l[0] : BOT_PRIMARIES[(Math.random() * BOT_PRIMARIES.length) | 0];
     this.ammo = stats(this.weapon).mag || 0;
     this.reloadT = 0;
     this.fireCd = 0.3;
+  }
+
+  // One in the Chamber: a kill hands back a bullet (and the gun, if we'd gone to the knife).
+  addAmmo(n) {
+    const gun = this.loadout ? this.loadout[0] : this.weapon;
+    this.ammo = Math.min((stats(gun).mag || 1), (this.weapon === gun ? this.ammo : 0) + n);
+    this.weapon = gun;
   }
 
   onMessage(m) {
@@ -109,7 +117,14 @@ export class Bot {
     // ---- Goal selection ----
     let goal = null;
     const hill = L.currentHill();
+    // Kill Confirmed: go for the nearest dog tag when nothing's shooting at us.
+    let tag = null;
+    if (!this.target && L.tags && L.tags.length) {
+      let bestT = 25;
+      for (const t of L.tags) { const dd = Math.hypot(t.x - b.pos.x, t.z - b.pos.z); if (dd < bestT) { bestT = dd; tag = t; } }
+    }
     if (this.target && melee) goal = this.lastSeen;
+    else if (tag) goal = { x: tag.x, y: tag.y, z: tag.z };
     else if (!this.target && this.lastSeen && this.lastSeenT > 0) goal = this.lastSeen;
     else if (!this.target && hill && Math.random() < 0.995) goal = { x: hill[0] + (Math.random() - 0.5) * hill[3], y: hill[1], z: hill[2] + (Math.random() - 0.5) * hill[3] };
     else if (!this.target) {
@@ -207,7 +222,11 @@ export class Bot {
         if (bestD < (w.range || 2.4)) this.melee(w);
       } else if (bestD < (w.range || 100)) this.shoot(w, eye);
     }
-    if (!melee && this.ammo <= 0 && this.reloadT <= 0) this.reloadT = w.reload || 2;
+    if (!melee && this.ammo <= 0 && this.reloadT <= 0) {
+      // No reloading in One in the Chamber: fall back to the knife until the next kill.
+      if (L.mode.noReload && this.loadout && this.loadout[1]) this.weapon = this.loadout[1];
+      else this.reloadT = w.reload || 2;
+    }
 
     const flags = (this.reloadT > 0 ? 1 : 0) | (b.onGround ? 0 : 4);
     p.st = [b.pos.x, b.pos.y, b.pos.z, this.yaw, this.pitch, this.weapon, 0, flags];

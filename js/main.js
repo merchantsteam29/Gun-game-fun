@@ -9,7 +9,7 @@ import { MODES, MODE_ORDER } from './host.js';
 import { HostPanel } from './hostpanel.js';
 import { modelQuality } from './models.js';
 import { SettingsUI } from './settingsui.js';
-import { getCos, MISSIONS, missionDone } from './missions.js';
+import { getCos, MISSIONS, missionDone, getTokens } from './missions.js';
 import { opts } from './settings.js';
 import { Chat } from './chat.js';
 
@@ -55,7 +55,7 @@ const chat = new Chat({ send: (text) => { if (net) net.send({ t: 'chat', text })
 function renderCharacter() {
   if (!settingsUI) return;
   const el = $('menu-customize');
-  el.replaceChildren(settingsUI.special('customize', { rerender: renderCharacter }));
+  el.replaceChildren(settingsUI.special('customize', { rerender: () => { renderCharacter(); renderChip(); } }));
 }
 function renderMissions() {
   if (!settingsUI) return;
@@ -85,6 +85,7 @@ function renderColors() {
 function renderChip() {
   $('chip-name').textContent = settings.name || 'Player';
   $('chip-dot').style.background = settings.color;
+  $('chip-tokens').textContent = '🪙 ' + getTokens();
 }
 
 // Loadout picker: one tab per slot, a grid of weapons for the open slot, and a stat card
@@ -142,6 +143,7 @@ const MAP_BLURB = {
   outpost: 'Snow · towers', office: 'Two floors', ruins: 'Temple · open', docks: 'Water · cranes',
   arena: 'Arena · stands', compound: 'Rooms · yard', rooftops: 'Night · bridges',
   station: 'Sci-fi · reactor', canyon: 'Mesas · bridge', construction: 'Floors · crane',
+  ship: 'Deck · containers', trains: 'Cars · footbridge', lake: 'Ice · huts',
 };
 function renderModes() {
   $('mode-tiles').innerHTML = MODE_ORDER.map((id) =>
@@ -171,7 +173,8 @@ function showPane(name) {
   store.set('menuPane', name);
   document.querySelectorAll('#menu-nav [data-pane]').forEach((b) => b.classList.toggle('sel', b.dataset.pane === name));
   document.querySelectorAll('.menu-pane').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== name));
-  if (name === 'character') renderCharacter();
+  if (name === 'character') { if (settingsUI) settingsUI.tryOn = null; renderCharacter(); }
+  renderChip();
   if (name === 'missions') renderMissions();
   document.querySelector('.menu-body').scrollTop = 0;
 }

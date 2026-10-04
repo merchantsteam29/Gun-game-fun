@@ -5,7 +5,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 // These arrays are mutated in place when the map changes so importers keep valid references.
 export const boxes = [];
 export const spawns = [];
-export const MAP_ORDER = ['warehouse', 'yard', 'town', 'pit', 'outpost', 'office', 'ruins', 'docks', 'arena', 'compound', 'rooftops', 'station', 'canyon', 'construction'];
+export const MAP_ORDER = ['warehouse', 'yard', 'town', 'pit', 'outpost', 'office', 'ruins', 'docks', 'arena', 'compound', 'rooftops', 'station', 'canyon', 'construction', 'ship', 'trains', 'lake'];
 // Render quality (lowered on mobile before any map is built).
 export const quality = { shadowSize: 2048, pointLights: true };
 
@@ -783,6 +783,139 @@ export const MAPS = {
     },
   },
 
+  ship: {
+    name: 'Cargo Ship',
+    theme: { sky: '#9ec9e8', fog: [50, 160], hemi: ['#eef6ff', '#4d6070', 2.0], sun: ['#fff4e0', 2.7, [-25, 40, 20]] },
+    bounds: 34,
+    hills: [[0, 0, -5, 3], [0, 0, 5, 3], [-23.5, 0, 0, 2.8], [23.5, 0, 0, 2.8], [-23.5, 4.3, 0, 2.5]],
+    build({ add, add2, crate2, spawn2, stairs, building }) {
+      add(-34, -3, -26, 34, -2, 26, 'water'); // the sea (out of reach)
+      add(-28, -1, -8, 28, 0, 8, 'deck');
+      // Bulwarks, plus invisible walls so nobody goes overboard
+      add(-28, 0, 7.6, 28, 1.1, 8, 'hull');
+      add(-28, 0, -8, 28, 1.1, -7.6, 'hull');
+      add(27.6, 0, -7.6, 28, 1.1, 7.6, 'hull');
+      add(-28, 0, -7.6, -27.6, 1.1, 7.6, 'hull');
+      add(-28, 1.1, 7.6, 28, 9, 8, 'invisible');
+      add(-28, 1.1, -8, 28, 9, -7.6, 'invisible');
+      add(27.6, 1.1, -7.6, 28, 9, 7.6, 'invisible');
+      add(-28, 1.1, -7.6, -27.6, 9, 7.6, 'invisible');
+      // Bridge houses at both ends, with an outside stair to the roof
+      building(20, -5, 27, 5, 4,
+        [{ side: 'w', at: -2, w: 1.8 }, { side: 'w', at: 2.5, w: 1.2, y0: 1.1, h: 0.9 }, { side: 's', at: 23.5, w: 1.4, y0: 1.1, h: 0.9 }],
+        { mat: 'shipWhite', parapet: ['e'] });
+      stairs(20.2, 5.05, 27, 6.9, 0, 4.3, '+x', 'stairs');
+      // Cargo on deck
+      add2(-6, 0, -7, 0, 2.6, -4.4, 'containerRed', 'containerBlue');
+      add2(4, 0, 2, 10, 2.6, 4.6, 'containerGreen', 'containerOrange');
+      add2(4, 2.6, 2.3, 10, 5.2, 4.3, 'containerBlue', 'containerRed');
+      add2(-14, 0, 3, -8, 2.6, 5.6, 'containerOrange', 'containerGreen');
+      add2(-18, 0, -3, -15, 0.7, 3, 'hatch');
+      add(-0.4, 0, -0.4, 0.4, 9, 0.4, 'mast');
+      crate2(-10, -5); crate2(-10, -5, 1.2); crate2(-8.8, -5);
+      crate2(14, -6); crate2(-3, 6.3);
+      for (const x of [-22, -6, 12]) add2(x - 0.3, 0, -7.4, x + 0.3, 0.6, -6.8, 'bollard');
+      for (const [x, y, z] of [[-23.5, 0, 0], [-23.5, 4.3, 0], [-12, 0, -5.5], [-4, 0, 1.5], [6, 0, -5], [-16, 0, 6.5], [14, 0, 0]]) spawn2(x, y, z);
+    },
+    decor(g, M) {
+      const funnel = [];
+      for (const s of [-1, 1]) funnel.push(new THREE.CylinderGeometry(1.1, 1.3, 4, 16).translate(s * 23.5, 6.6, 0));
+      addMerged(g, funnel, M.funnel, true);
+      addMerged(g, [new THREE.CylinderGeometry(1.12, 1.12, 0.6, 16).translate(-23.5, 8.2, 0), new THREE.CylinderGeometry(1.12, 1.12, 0.6, 16).translate(23.5, 8.2, 0)], M.funnelBand);
+      addMerged(g, [new THREE.BoxGeometry(0.15, 0.15, 14).translate(0, 8.7, 0), new THREE.BoxGeometry(14, 0.12, 0.12).translate(0, 6, 0)], M.steel, true);
+      const boats = [];
+      for (const s of [-1, 1]) boats.push(new THREE.BoxGeometry(5, 1, 1.6).translate(s * 14, 2.6, s * 8.6));
+      addMerged(g, boats, M.lifeboat, true);
+    },
+  },
+
+  trains: {
+    name: 'Train Yard',
+    theme: { sky: '#c2ccd6', fog: [45, 140], hemi: ['#f0f3f6', '#6a6258', 2.0], sun: ['#fff0d8', 2.5, [30, 38, -15]] },
+    bounds: 32,
+    hills: [[0, 4, 0, 1.8], [-20, 0, 0, 3], [20, 0, 0, 3], [-16, 0.5, 14.5, 2.5], [16, 0.5, -14.5, 2.5]],
+    build({ add, add2, crate2, spawn2, stairs }) {
+      add(-32, -1, -20, 32, 0, 20, 'gravel');
+      add(-32, 0, 19.7, 32, 4, 20, 'brickDark');
+      add(-32, 0, -20, 32, 4, -19.7, 'brickDark');
+      add(31.7, 0, -19.7, 32, 4, 19.7, 'brickDark');
+      add(-32, 0, -19.7, -31.7, 4, 19.7, 'brickDark');
+      for (const z of [-9, -3, 3, 9]) for (const s of [-0.7, 0.7]) add(-31.7, 0, z + s - 0.06, 31.7, 0.12, z + s + 0.06, 'track');
+      add2(-31.7, 0, 13, 31.7, 0.5, 16, 'platform');
+      // Parked train cars (mirrored across the yard)
+      add2(-24, 0, -10.4, -12, 3, -7.6, 'carRed', 'carBlue');
+      add2(-8, 0, -10.4, 4, 3, -7.6, 'carBlue', 'carGreen');
+      add2(-28, 0, -4.4, -18, 3, -1.6, 'carGreen', 'carRed');
+      add2(-10, 0, -4.4, -4, 2.6, -1.6, 'carTank');
+      // Footbridge over every track
+      add(-2, 3.6, -14, 2, 4, 14, 'grate');
+      add(-2, 4, -14, -1.85, 5, 14, 'rail');
+      add(1.85, 4, -14, 2, 5, 14, 'rail');
+      stairs(-2, -19, 2, -14, 0, 4, '+z', 'stairs'); // a gap from the back wall so bots can step on
+      // Crates to climb onto the cars, platform luggage
+      crate2(-11.4, -6.4); crate2(-11.4, -6.4, 1.2); crate2(-10.2, -6.4);
+      crate2(-20, 14.5, 0.5); crate2(10, 14.5, 0.5); crate2(11.2, 14.5, 0.5);
+      add2(-29, 0.5, 13.4, -27.8, 1.6, 15.6, 'bench');
+      for (const [x, y, z] of [[-26, 0.5, 14.5], [-10, 0.5, 14.5], [6, 0.5, 14.5], [-20, 0, 0], [0, 4, -8], [-14, 0, -6], [-28, 0, -12]]) spawn2(x, y, z);
+    },
+    decor(g, M) {
+      const poles = [], wires = [];
+      for (let x = -28; x <= 28; x += 14) {
+        for (const s of [-1, 1]) poles.push(new THREE.BoxGeometry(0.2, 7, 0.2).translate(x, 3.5, s * 12));
+        poles.push(new THREE.BoxGeometry(0.15, 0.15, 24).translate(x, 7, 0));
+      }
+      for (const z of [-9, -3, 3, 9]) wires.push(new THREE.BoxGeometry(60, 0.03, 0.03).translate(0, 6.4, z));
+      addMerged(g, poles, M.steel, true);
+      addMerged(g, wires, M.steel);
+      const lamps = [];
+      for (const x of [-20, -6, 8, 22]) for (const s of [-1, 1]) lamps.push(new THREE.BoxGeometry(0.8, 0.2, 0.4).translate(x, 3.6, s * 14.5));
+      addMerged(g, lamps, M.lamp);
+    },
+  },
+
+  lake: {
+    name: 'Frozen Lake',
+    theme: { sky: '#b8c7da', fog: [35, 120], hemi: ['#eef4ff', '#8a9ab0', 2.0], sun: ['#fff6ea', 2.2, [-25, 32, 18]] },
+    bounds: 32,
+    hills: [[0, 0, 0, 4], [-10, 0, -2, 1.6], [10, 0, 2, 1.6], [-24, 2, 16, 3], [24, 2, -16, 3]],
+    build({ add, add2, crate2, spawn2, stairs, building }) {
+      add(-32, -1, -22, 32, 0, 22, 'ice');
+      add(-32, 0, 21.7, 32, 5, 22, 'rockGray');
+      add(-32, 0, -22, 32, 5, -21.7, 'rockGray');
+      add(31.7, 0, -21.7, 32, 5, 21.7, 'rockGray');
+      add(-32, 0, -21.7, -31.7, 5, 21.7, 'rockGray');
+      // Snowy shore banks along both long sides, with ramps down to the ice
+      add2(-31.7, 0, 12, 31.7, 2, 21.7, 'snow');
+      stairs(-20, 8, -15, 12, 0, 2, '+z', 'snowBank');
+      stairs(10, 8, 15, 12, 0, 2, '+z', 'snowBank');
+      // Ice-fishing huts
+      building(-12, -4, -8, 0, 2.6, [{ side: 'e', at: -2.5, w: 1.6 }, { side: 'n', at: -10, w: 1, y0: 1, h: 0.7 }], { mat: 'palisade', roofMat: 'wood' });
+      building(-22, -10, -17, -5, 2.6, [{ side: 'n', at: -19.5, w: 1.4 }], { mat: 'palisade', roofMat: 'wood' });
+      // Ice blocks, drifts, rocks, a frozen rowboat
+      add2(-4, 0, 5, -1, 1.2, 6.2, 'iceBlock');
+      add2(-26, 0, -2, -24, 1.6, 2, 'rockGray');
+      add2(-16, 0, 4, -14.8, 1, 8, 'snowBank');
+      add2(-6, 0, -12, -2, 0.9, -11.2, 'snowBank');
+      add2(-30, 0, -16, -26, 0.8, -14.2, 'wood');
+      crate2(-8, 16, 2); crate2(6, 18, 2); crate2(-28, 14, 2);
+      for (const [x, y, z] of [[-26, 2, 17], [-6, 2, 16], [8, 2, 18], [-10, 0, -2], [-19.5, 0, -7.5], [-28, 0, 6], [-8, 0, 8], [0, 0, -6]]) spawn2(x, y, z);
+    },
+    decor(g, M) {
+      const needles = [], caps = [], trunks = [];
+      for (const [x, z] of [[-29, 19], [-18, 20], [-4, 20.5], [12, 19.5], [26, 20], [29, -19], [18, -20], [4, -20.5], [-12, -19.5], [-26, -20]]) {
+        trunks.push(new THREE.CylinderGeometry(0.15, 0.2, 1.2, 6).translate(x, 2.6, z));
+        needles.push(new THREE.ConeGeometry(1.4, 2.8, 8).translate(x, 4.4, z), new THREE.ConeGeometry(1, 2.2, 8).translate(x, 5.8, z));
+        caps.push(new THREE.ConeGeometry(0.6, 1, 8).translate(x, 6.9, z));
+      }
+      addMerged(g, trunks, M.steel);
+      addMerged(g, needles, M.pine, true);
+      addMerged(g, caps, M.pineSnow, true);
+      const holes = [];
+      for (const [x, z] of [[-6, -2], [6, 2], [-2, -8], [2, 8], [-14, 0], [14, 0]]) holes.push(new THREE.CylinderGeometry(0.5, 0.5, 0.02, 16).translate(x, 0.011, z));
+      addMerged(g, holes, M.iceHole);
+    },
+  },
+
   rooftops: {
     name: 'Rooftops',
     theme: { sky: '#141a2e', fog: [30, 95], hemi: ['#8090c8', '#2a2430', 1.7], sun: ['#c8d2ff', 1.2, [-18, 40, 14]], night: true },
@@ -1146,6 +1279,22 @@ function mats() {
     pipe: { color: '#5d6a78', roughness: 0.4, metalness: 0.5 },
     sandpile: { map: TEX.sand(), tile: 2, roughness: 1, color: '#d9c28f' },
     mixer: { color: '#e07b24', roughness: 0.5, metalness: 0.3 },
+    deck: { map: TEX.plank(), tile: 2.5, roughness: 0.85, color: '#c9a77a' },
+    hull: { map: TEX.metal(), tile: 2, roughness: 0.5, metalness: 0.4, color: '#b33a2e' },
+    shipWhite: { map: concrete, tile: 3, roughness: 0.6, color: '#eef1f4' },
+    hatch: { map: TEX.metal(), tile: 1.5, roughness: 0.5, metalness: 0.4, color: '#4a6b7a' },
+    mast: { color: '#d8dde2', roughness: 0.4, metalness: 0.5 },
+    gravel: { map: TEX.asphalt(), tile: 3, roughness: 1, color: '#9a948a' },
+    track: { color: '#6d6a66', roughness: 0.4, metalness: 0.6 },
+    platform: { map: concrete, tile: 2, roughness: 0.9, color: '#d4d0c8' },
+    carRed: { map: TEX.container('#7a2a22'), tile: 2.6, roughness: 0.6, metalness: 0.2 },
+    carBlue: { map: TEX.container('#2a3f66'), tile: 2.6, roughness: 0.6, metalness: 0.2 },
+    carGreen: { map: TEX.container('#2f5a3a'), tile: 2.6, roughness: 0.6, metalness: 0.2 },
+    carTank: { color: '#2c2f33', roughness: 0.4, metalness: 0.6 },
+    bench: { map: wood, tile: 1, roughness: 0.8, color: '#a0703c' },
+    ice: { map: TEX.snow(), tile: 6, roughness: 0.15, metalness: 0.2, color: '#b9d4ea' },
+    iceBlock: { color: '#a9d6f2', roughness: 0.1, metalness: 0.2, emissive: '#0a2a44', emissiveIntensity: 0.4 },
+    rockGray: { map: TEX.stone(), tile: 2, roughness: 1, color: '#8a9098' },
   };
   return MATS;
 }
@@ -1166,6 +1315,10 @@ const DECOR_MATS = {
   windowLit: new THREE.MeshStandardMaterial({ color: '#ffe2a0', emissive: '#ffcf70', emissiveIntensity: 1.4 }),
   windowDark: new THREE.MeshStandardMaterial({ color: '#1c2232', roughness: 0.2, metalness: 0.5 }),
   cactus: new THREE.MeshStandardMaterial({ color: '#4f7a3a', roughness: 0.9 }),
+  funnel: new THREE.MeshStandardMaterial({ color: '#1f2a3a', roughness: 0.6 }),
+  funnelBand: new THREE.MeshStandardMaterial({ color: '#d9a21b', roughness: 0.5 }),
+  lifeboat: new THREE.MeshStandardMaterial({ color: '#e8742b', roughness: 0.6 }),
+  iceHole: new THREE.MeshBasicMaterial({ color: '#1b3a55' }),
 };
 
 function addMerged(g, geos, mat, shadow = false) {
@@ -1203,6 +1356,7 @@ export function buildMapScene(scene, id) {
   const byMat = {};
   for (const b of boxes) (byMat[b.mat] ||= []).push(b);
   for (const [name, list] of Object.entries(byMat)) {
+    if (name === 'invisible') continue; // collision only (e.g. walls that stop you falling overboard)
     const def = M[name] || { color: '#ff00ff' };
     const mat = new THREE.MeshStandardMaterial({
       map: def.map || null, color: def.color || '#ffffff',
