@@ -1,6 +1,11 @@
 import * as THREE from 'three';
-import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { buildGun } from './models.js';
+import { RoundedBoxGeometry as RoundedBox } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { buildGun, modelQuality } from './models.js';
+
+// Plain boxes on phones (see modelQuality).
+const RoundedBoxGeometry = function (sx, sy, sz, seg, r) {
+  return modelQuality.rounded ? new RoundedBox(sx, sy, sz, seg, r) : new THREE.BoxGeometry(sx, sy, sz);
+};
 import { WEAPONS } from './weapons.js';
 import { angLerp } from './util.js';
 import { Limb, solveIK } from './rig.js';

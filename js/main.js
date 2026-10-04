@@ -7,6 +7,7 @@ import { TouchControls } from './touch.js';
 import { COLORS, randCode, store } from './util.js';
 import { MODES, MODE_ORDER } from './host.js';
 import { HostPanel } from './hostpanel.js';
+import { modelQuality } from './models.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -27,6 +28,8 @@ const mobile = params.has('mobile') || (!params.has('desktop') &&
   (matchMedia('(pointer: coarse)').matches || (navigator.maxTouchPoints > 0 && matchMedia('(hover: none)').matches)));
 if (mobile) {
   quality.shadowSize = 1024;
+  quality.pointLights = false; // each colored light makes every material's shader heavier
+  modelQuality.rounded = false;
   document.body.classList.add('mobile');
   document.querySelector('#death .small').innerHTML = 'Tap <kbd>II</kbd> to change your loadout';
 }

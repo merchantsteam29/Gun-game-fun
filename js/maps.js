@@ -7,7 +7,7 @@ export const boxes = [];
 export const spawns = [];
 export const MAP_ORDER = ['warehouse', 'yard', 'town', 'pit', 'outpost', 'office', 'ruins', 'docks', 'arena', 'compound', 'rooftops'];
 // Render quality (lowered on mobile before any map is built).
-export const quality = { shadowSize: 2048 };
+export const quality = { shadowSize: 2048, pointLights: true };
 
 // ---------- Builder API ----------
 
@@ -330,7 +330,7 @@ export const MAPS = {
       addMerged(g, cyan, M.neonCyan);
       addMerged(g, pink, M.neonPink);
       const lights = [['#36e0ff', 0, -12], ['#ff3ec8', 0, 12], ['#36e0ff', 12, 0], ['#ff3ec8', -12, 0]];
-      for (const [c, x, z] of lights) {
+      if (quality.pointLights) for (const [c, x, z] of lights) {
         const l = new THREE.PointLight(c, 30, 22, 1.6);
         l.position.set(x, 4, z);
         g.add(l);
@@ -695,7 +695,7 @@ export const MAPS = {
       addMerged(g, [new THREE.BoxGeometry(4, 0.6, 0.08).translate(-22, 4, -7.95), new THREE.BoxGeometry(4, 0.6, 0.08).translate(22, 4, 7.95)], M.neonPink);
       addMerged(g, [new THREE.BoxGeometry(0.08, 0.6, 4).translate(-17.95, 3.6, 1), new THREE.BoxGeometry(0.08, 0.6, 4).translate(17.95, 3.6, -1)], M.neonCyan);
       const lights = [['#ff3ec8', -12, 0], ['#36e0ff', 12, 0], ['#ffb347', 0, 12], ['#ffb347', 0, -12]];
-      for (const [c, x, z] of lights) {
+      if (quality.pointLights) for (const [c, x, z] of lights) {
         const l = new THREE.PointLight(c, 22, 20, 1.6);
         l.position.set(x, 4, z);
         g.add(l);

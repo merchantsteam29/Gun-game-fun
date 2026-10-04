@@ -36,8 +36,12 @@ function box(p, mat, sx, sy, sz, x, y, z, rx = 0, ry = 0, rz = 0) {
   p.add(m);
   return m;
 }
+// Set before models are built; phones use plain boxes to save GPU memory.
+export const modelQuality = { rounded: true };
+
 // Box with softened edges, for receivers, stocks and grips.
 function rbox(p, mat, sx, sy, sz, x, y, z, rx = 0, ry = 0, rz = 0) {
+  if (!modelQuality.rounded) return box(p, mat, sx, sy, sz, x, y, z, rx, ry, rz);
   const r = Math.min(sx, sy, sz) * 0.22;
   const m = new THREE.Mesh(new RoundedBoxGeometry(sx, sy, sz, 2, r), mat);
   m.position.set(x, y, z);

@@ -38,6 +38,17 @@ export class Game {
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.autoClear = false;
     this.renderer = renderer;
+    // Phones can drop the GPU context under memory pressure; let three.js restore it
+    // instead of leaving a frozen gray canvas, and tell the player what's happening.
+    const sys = (show) => {
+      const el = document.getElementById('sys-msg');
+      if (!el) return;
+      document.getElementById('sys-title').textContent = 'Graphics were reset';
+      document.getElementById('sys-text').textContent = 'Your device ran low on graphics memory. Recovering… if the screen stays blank, reload.';
+      el.classList.toggle('hidden', !show);
+    };
+    canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); sys(true); });
+    canvas.addEventListener('webglcontextrestored', () => sys(false));
 
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(75, 1, 0.05, 300);

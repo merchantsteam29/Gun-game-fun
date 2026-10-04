@@ -47,18 +47,17 @@ export class Viewmodel {
     this.sleeveMat = new THREE.MeshStandardMaterial({ color: '#3498db', roughness: 0.8 });
     this.gloveMat = new THREE.MeshStandardMaterial({ color: '#1e1f22', roughness: 0.9 });
 
-    this.models = {};
-    for (const id of Object.keys(WEAPONS)) {
-      const holder = new THREE.Group();
-      holder.scale.setScalar(S);
-      const gun = buildGun(id);
-      holder.add(gun);
-      holder.visible = false;
-      this.root.add(holder);
-      const parts = gun.userData.parts;
-      const sight = gun.userData.sight || 0.1;
-      this.models[id] = { id, holder, gun, parts, ads: [0, -sight * S, -0.3] };
-    }
+    // Weapon models are built the first time they're equipped (building all ~40 up front
+    // costs a lot of GPU memory, which phones can't spare).
+    const built = {};
+    this.models = new Proxy(built, {
+      get: (t, id) => {
+        if (typeof id !== 'string' || !WEAPONS[id]) return t[id];
+        if (!t[id]) t[id] = this.buildModel(id);
+        return t[id];
+      },
+    });
+    this.builtModels = built;
 
     // Arms (IK) and gloves.
     this.arms = {
@@ -115,6 +114,17 @@ export class Viewmodel {
     };
   }
 
+  buildModel(id) {
+    const holder = new THREE.Group();
+    holder.scale.setScalar(S);
+    const gun = buildGun(id);
+    holder.add(gun);
+    holder.visible = false;
+    this.root.add(holder);
+    const sight = gun.userData.sight || 0.1;
+    return { id, holder, gun, parts: gun.userData.parts, ads: [0, -sight * S, -0.3] };
+  }
+
   get model() { return this.models[this.quick || this.cur]; }
 
   setColor(c) { this.sleeveMat.color.set(c); }
@@ -139,7 +149,7 @@ export class Viewmodel {
   }
 
   swapTo(id, raiseT) {
-    for (const m of Object.values(this.models)) m.holder.visible = false;
+    for (const m of Object.values(this.builtModels)) m.holder.visible = false;
     this.cur = id;
     this.quick = null;
     this.cylAngle = this.cylTarget = 0;

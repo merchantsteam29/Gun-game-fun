@@ -31,8 +31,8 @@ export class Hud {
     if (key === this.lastHp) return;
     this.lastHp = key;
     $('hp-num').textContent = shown;
-    $('hp-fill').style.width = pct + '%';
-    $('hp-lag').style.width = pct + '%'; // trails behind via a delayed CSS transition
+    $('health-fill').style.width = pct + '%';
+    $('health-lag').style.width = pct + '%'; // trails behind via a delayed CSS transition
     $('health').classList.toggle('low', pct <= 35);
   }
 

@@ -22,6 +22,17 @@
 <body>
 <canvas id="game"></canvas>
 <div id="rotate-hint">Rotate your phone to landscape</div>
+<div id="sys-msg" class="hidden"><div><b id="sys-title"></b><p id="sys-text"></p><button onclick="location.reload()">Reload</button></div></div>
+<script>
+  // If the game code fails to load (e.g. a half-updated cache right after a deploy), say so
+  // instead of leaving a blank screen.
+  window.addEventListener('error', function (e) {
+    if (window.game) return;
+    document.getElementById('sys-title').textContent = 'The game failed to load';
+    document.getElementById('sys-text').textContent = 'Try reloading. If it keeps happening, clear the site data for this page. (' + (e.message || 'script error') + ')';
+    document.getElementById('sys-msg').classList.remove('hidden');
+  });
+</script>
 
 <!-- In-game HUD -->
 <div id="hud" class="hidden">
@@ -41,7 +52,7 @@
     <div id="hp-num">100</div>
     <div class="hp-side">
       <div class="label">HEALTH</div>
-      <div class="bar"><div id="hp-lag"></div><div id="hp-fill"></div></div>
+      <div class="bar"><div id="health-lag"></div><div id="health-fill"></div></div>
     </div>
   </div>
 
