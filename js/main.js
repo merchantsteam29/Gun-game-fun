@@ -9,6 +9,7 @@ import { MODES, MODE_ORDER } from './host.js';
 import { HostPanel } from './hostpanel.js';
 import { modelQuality } from './models.js';
 import { SettingsUI } from './settingsui.js';
+import { getCos } from './missions.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -171,7 +172,7 @@ async function hostLobby() {
     status(`Creating lobby ${code}…`);
     net = newNet();
     try {
-      await net.host(code, settings.name || 'Player', settings.color, { map: settings.map, mode: settings.mode });
+      await net.host(code, settings.name || 'Player', settings.color, { map: settings.map, mode: settings.mode }, getCos());
       setBusy(false);
       status('');
       enterGame();
@@ -195,7 +196,7 @@ async function joinLobby() {
   status(`Joining ${code}…`);
   net = newNet();
   try {
-    await net.join(code, settings.name || 'Player', settings.color);
+    await net.join(code, settings.name || 'Player', settings.color, getCos());
     status('');
     enterGame();
   } catch (e) {
@@ -245,12 +246,16 @@ $('btn-leave').onclick = () => leave();
 const settingsUI = new SettingsUI({
   game, mobile,
   editLayout: (done) => touch.edit(done),
+  getColor: () => settings.color,
+  onCos: (c) => { if (net) net.send({ t: 'cos', c }); },
 });
-$('btn-settings-menu').onclick = () => {
+const openFromMenu = (tab) => {
   $('menu').classList.add('hidden');
   settingsUI.onClose = () => $('menu').classList.remove('hidden');
-  settingsUI.open();
+  settingsUI.open(tab);
 };
+$('btn-settings-menu').onclick = () => openFromMenu(null);
+$('btn-missions-menu').onclick = () => openFromMenu('Missions');
 $('btn-settings-pause').onclick = () => {
   $('pause').classList.add('hidden');
   settingsUI.onClose = () => $('pause').classList.remove('hidden');

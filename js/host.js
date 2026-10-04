@@ -4,6 +4,7 @@ import { WEAPONS, GUNGAME_LADDER, SLOTS } from './weapons.js';
 import { NavGrid } from './nav.js';
 import { Bot, BOT_NAMES } from './bot.js';
 import { COLORS } from './util.js';
+import { sanitizeCos, randomCos } from './missions.js';
 
 // redBlue: two balanced teams. hill: uses the moving zone. loadout: forced for everyone.
 // preset: physics/rule overrides applied when the mode is picked.
@@ -112,11 +113,12 @@ export class HostLogic {
   }
 
   info(p) {
-    return { id: p.id, name: p.name, color: p.color, team: p.team, k: p.kills, d: p.deaths, sc: Math.floor(p.score), bot: !!p.bot };
+    return { id: p.id, name: p.name, color: p.color, team: p.team, k: p.kills, d: p.deaths, sc: Math.floor(p.score), bot: !!p.bot, cos: p.cos };
   }
 
-  addPlayer(id, name, color) {
+  addPlayer(id, name, color, cos) {
     const p = this.record(id, name, color);
+    p.cos = sanitizeCos(cos);
     p.team = this.autoTeam(p);
     this.players.set(id, p);
     this.sendTo(id, {
@@ -135,6 +137,7 @@ export class HostLogic {
     const base = BOT_NAMES.find((n) => !used.has('[BOT] ' + n)) || 'Bot' + this.botCount;
     const p = this.record(id, '[BOT] ' + base, COLORS[(Math.random() * COLORS.length) | 0]);
     p.bot = new Bot(this, p, difficulty);
+    p.cos = randomCos();
     p.team = this.autoTeam(p);
     this.players.set(id, p);
     this.ensureNav();
@@ -249,6 +252,10 @@ export class HostLogic {
         break;
       case 'hit':
         this.hit(p, m);
+        break;
+      case 'cos': // changed cosmetics mid-lobby
+        p.cos = sanitizeCos(m.c);
+        this.broadcast({ t: 'pcos', id, c: p.cos });
         break;
     }
   }

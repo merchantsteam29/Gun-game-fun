@@ -45,6 +45,7 @@
 
   <div id="lobby-tag"></div>
   <div id="fps" class="hidden"></div>
+  <div id="mission-toast"></div>
   <div id="match-info"><div id="timer">10:00</div><div id="mode-bar"></div><div id="leader"></div></div>
   <div id="killfeed"></div>
   <div id="notice"></div>
@@ -92,6 +93,10 @@
     <header class="brand">
       <h1>WAREHOUSE <span>FFA</span></h1>
       <p>Browser arena shooter · up to 12 players with bots</p>
+      <div class="brand-btns">
+        <button id="btn-missions-menu" class="ghost">Missions</button>
+        <button id="btn-settings-menu" class="gear">⚙ Settings</button>
+      </div>
     </header>
     <div class="menu-grid">
       <section>
@@ -131,9 +136,6 @@
         <div id="menu-loadout" class="loadout"></div>
       </section>
     </div>
-    <div class="menu-foot">
-      <button id="btn-settings-menu">Settings</button>
-    </div>
     <details class="controls">
       <summary>Controls</summary>
       <div class="grid">
@@ -155,6 +157,7 @@
   <div class="panel pause-panel">
     <div class="pause-head">
       <h2 id="pause-title">PAUSED</h2>
+      <button id="btn-settings-pause" class="gear">⚙ Settings</button>
       <div class="code-box">
         <div>
           <div class="label">Lobby code</div>
@@ -169,7 +172,6 @@
     </div>
     <div class="actions row">
       <button id="btn-resume" class="primary">Click to play</button>
-      <button id="btn-settings-pause">Settings</button>
       <button id="btn-hostpanel" class="hidden">Host panel</button>
       <button id="btn-leave" class="danger">Leave lobby</button>
     </div>

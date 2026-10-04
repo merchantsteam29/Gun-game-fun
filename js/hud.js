@@ -28,6 +28,17 @@ export class Hud {
 
   fps(n) { $('fps').textContent = n + ' FPS'; }
 
+  // Banner when a mission completes and unlocks a cosmetic.
+  mission(name, reward) {
+    const el = $('mission-toast');
+    el.innerHTML = `<small>MISSION COMPLETE</small><b>${esc(name)}</b>${reward ? `<span>Unlocked: ${esc(reward)}</span>` : ''}`;
+    el.classList.remove('show');
+    void el.offsetWidth;
+    el.classList.add('show');
+    clearTimeout(this.timers.mission);
+    this.timers.mission = setTimeout(() => el.classList.remove('show'), 4000);
+  }
+
   lobby(code, count, mapName) {
     const html = `LOBBY <b>${esc(code)}</b> · ${count} player${count === 1 ? '' : 's'} · ${esc(mapName)}`;
     if (html !== this.lastLobby) { this.lastLobby = html; $('lobby-tag').innerHTML = html; }

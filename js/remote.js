@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry as RoundedBox } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { buildGun, modelQuality, mergeStatic } from './models.js';
+import { buildCosmetics } from './cosmetics.js';
+import { DEFAULT_COS } from './missions.js';
 
 // Plain boxes on phones (see modelQuality).
 const RoundedBoxGeometry = function (sx, sy, sz, seg, r) {
@@ -18,8 +20,6 @@ const vestMat = new THREE.MeshStandardMaterial({ color: '#3b4030', roughness: 0.
 const pouchMat = new THREE.MeshStandardMaterial({ color: '#4a5038', roughness: 0.9 });
 const beltMat = new THREE.MeshStandardMaterial({ color: '#23262b', roughness: 0.8 });
 const metalMat = new THREE.MeshStandardMaterial({ color: '#8d939a', roughness: 0.35, metalness: 0.6 });
-const helmetRimMat = new THREE.MeshStandardMaterial({ color: '#2c3036', roughness: 0.7 });
-const lensMat = new THREE.MeshStandardMaterial({ color: '#1a2a3a', roughness: 0.1, metalness: 0.5, emissive: '#0b2033' });
 
 const THIGH = 0.46, SHIN = 0.46, UPPER = 0.3, FORE = 0.3;
 const HIP_Y = 0.94;
@@ -58,7 +58,7 @@ function nameTag(name, color) {
 // Another player's avatar, interpolated from host snapshots. Limbs are solved with IK
 // every frame from foot targets (walk cycle) and gun hand anchors.
 export class RemotePlayer {
-  constructor(scene, id, name, color) {
+  constructor(scene, id, name, color, cos) {
     this.id = id;
     this.name = name;
     this.color = color;
@@ -105,20 +105,12 @@ export class RemotePlayer {
     for (let i = -1; i <= 1; i++) mesh(new THREE.BoxGeometry(0.11, 0.12, 0.05), pouchMat, i * 0.13, 0.2, -0.18, this.spine);
     mesh(new THREE.BoxGeometry(0.3, 0.06, 0.03), pouchMat, 0, 0.42, -0.175, this.spine);
     for (const s of [-1, 1]) mesh(new RoundedBoxGeometry(0.16, 0.1, 0.24, 2, 0.03), bodyMat, s * 0.27, 0.53, 0, this.spine); // shoulders
-    mesh(new RoundedBoxGeometry(0.38, 0.34, 0.12, 2, 0.03), legMat, 0, 0.32, 0.21, this.spine); // backpack
-    mesh(new THREE.BoxGeometry(0.3, 0.06, 0.13), pouchMat, 0, 0.17, 0.22, this.spine);
 
     this.neck = new THREE.Group();
     this.neck.position.y = 0.56;
     this.spine.add(this.neck);
     mesh(new RoundedBoxGeometry(0.28, 0.3, 0.28, 2, 0.06), skinMat, 0, 0.15, 0, this.neck);
-    // Helmet (team color), goggles and chin strap
-    const helmet = mesh(new THREE.SphereGeometry(0.185, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), bodyMat, 0, 0.22, 0.01, this.neck);
-    helmet.scale.set(1, 0.85, 1.05);
-    mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.035, 16), helmetRimMat, 0, 0.22, 0.01, this.neck);
-    mesh(new RoundedBoxGeometry(0.27, 0.075, 0.05, 2, 0.02), bootMat, 0, 0.19, -0.14, this.neck);
-    for (const s of [-1, 1]) mesh(new THREE.BoxGeometry(0.09, 0.05, 0.01), lensMat, s * 0.06, 0.19, -0.166, this.neck);
-    mesh(new THREE.BoxGeometry(0.29, 0.02, 0.29), beltMat, 0, 0.19, 0, this.neck); // goggle strap
+    // Hat, hair, face and back items come from cosmetics (see setCosmetics).
 
     // Aim pivot at shoulder height carries the gun; arms are solved to its anchors.
     this.aim = new THREE.Group();
@@ -143,6 +135,8 @@ export class RemotePlayer {
     this.armsR = { sh: this.shoulderR, up: new Limb(this.limbs, bodyMat, 0.14), fo: new Limb(this.limbs, bodyMat, 0.12), hand: mesh(new THREE.BoxGeometry(0.09, 0.09, 0.1), gloveMat, 0, 0, 0, this.limbs) };
 
     mergeStatic(this.root); // body parts per bone -> one mesh per material
+    this.cos = null;
+    this.setCosmetics(cos);
 
     this.tag = nameTag(name, color);
     this.tag.position.set(0, 2.15, 0);
@@ -168,6 +162,25 @@ export class RemotePlayer {
     old.material.map.dispose();
     old.material.dispose();
     this.root.add(this.tag);
+  }
+
+  setCosmetics(c) {
+    const cos = c || DEFAULT_COS;
+    if (this.cos && JSON.stringify(this.cos) === JSON.stringify(cos)) return;
+    this.cos = cos;
+    for (const g of [this.cosHead, this.cosBack]) {
+      if (!g) continue;
+      g.parent.remove(g);
+      g.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
+    }
+    const { head, back } = buildCosmetics(cos, this.bodyMat);
+    mergeStatic(head);
+    mergeStatic(back);
+    if (!modelQuality.remoteShadows) for (const g of [head, back]) g.traverse((o) => { o.castShadow = false; });
+    this.neck.add(head);
+    this.spine.add(back);
+    this.cosHead = head;
+    this.cosBack = back;
   }
 
   setWeapon(id) {

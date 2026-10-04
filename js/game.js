@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { MAPS, setMapData, buildMapScene } from './maps.js';
 import { moveBody, overlap, raycast, rayAABB, PLAYER_R, phys } from './physics.js';
 import { MODES, TEAM_COLORS, ZOMBIE_COLOR, JUGG_COLOR, JUGG_TEAM, defaultSettings } from './host.js';
-import { WEAPONS, DEFAULT_LOADOUT, GUNGAME_LADDER } from './weapons.js';
+import { WEAPONS, DEFAULT_LOADOUT, GUNGAME_LADDER, SLOTS } from './weapons.js';
+import { track, onMissionComplete, COSMETICS } from './missions.js';
 import { Viewmodel } from './viewmodel.js';
 import { RemotePlayer } from './remote.js';
 import { Effects } from './effects.js';
@@ -77,6 +78,13 @@ export class Game {
     this.hud = new Hud();
     this.loadMap('warehouse');
     this.fps = { frames: 0, acc: 0 };
+    this.playedThisMatch = false;
+    onMissionComplete((ms) => {
+      const [slot, id] = ms.reward;
+      const item = COSMETICS[slot].find((c) => c.id === id);
+      this.hud.mission(ms.name, item ? item.name : '');
+      sfx.kill(0.9);
+    });
     onOpts((o) => {
       this.vm.camera.fov = o.vmFov;
       this.vm.camera.updateProjectionMatrix();
@@ -348,7 +356,7 @@ export class Game {
 
   addRemote(p) {
     if (p.id === this.myId || this.remotes.has(p.id)) return;
-    this.remotes.set(p.id, new RemotePlayer(this.scene, p.id, p.name, p.color));
+    this.remotes.set(p.id, new RemotePlayer(this.scene, p.id, p.name, p.color, p.cos));
   }
 
   onNet(m) {
@@ -378,6 +386,11 @@ export class Game {
       case 'notice':
         this.hud.say(m.text);
         break;
+      case 'pcos': {
+        const r = this.remotes.get(m.id);
+        if (r) r.setCosmetics(m.c);
+        break;
+      }
       case 'kicked':
         if (this.onKicked) this.onKicked();
         break;
@@ -432,6 +445,8 @@ export class Game {
       }
       case 'boom': this.remoteBoom(m); break;
       case 'end':
+        if (!this.matchOver && this.playedThisMatch) this.trackMatchEnd(m);
+        this.playedThisMatch = false;
         this.matchOver = true;
         this.endInfo = { scores: m.scores, until: performance.now() + m.next * 1000, nextMap: m.nextMap, title: m.title };
         this.me.alive = false;
@@ -466,6 +481,7 @@ export class Game {
     const pl = this.players.get(this.myId);
     if (pl && m.team !== undefined) pl.team = m.team;
     this.refreshColors();
+    this.playedThisMatch = true;
     this.setLoadout(m.l || this.nextLoadout);
     this.recoil = 0;
     this.deathInfo = null;
@@ -515,7 +531,17 @@ export class Game {
       this.hud.say(`ELIMINATED ${v.name}`);
       this.hud.hit('kill');
       sfx.kill(0.8);
+      if (!this.teams || (pk && pv && pk.team !== pv.team)) {
+        const W = WEAPONS[m.w];
+        track.kill({
+          weaponType: W && W.type, head: !!m.head, mode: this.rules.mode,
+          secondary: SLOTS[1].includes(m.w),
+          explosive: ['gl', 'rocket', 'frag', 'sticky', 'impact', 'flare'].includes(m.w),
+          juggernaut: this.rules.mode === 'juggernaut' && pv && pv.team === JUGG_TEAM,
+        });
+      }
     }
+    if (m.v === this.myId) track.died();
     const killerPos = m.k === this.myId ? this.me.pos : this.remotes.get(m.k)?.pos;
     if (m.v === this.myId) {
       this.me.alive = false;
@@ -536,6 +562,21 @@ export class Game {
         r.die(killerPos && killerPos !== r.pos ? killerPos : null);
       }
     }
+  }
+
+  // Mission progress from the end-of-match result.
+  trackMatchEnd(m) {
+    const mode = this.rules.mode, me = this.players.get(this.myId), team = me ? me.team : 0;
+    let won;
+    if (MODES[mode].redBlue) won = (team === 1 && m.title === 'RED TEAM WINS') || (team === 2 && m.title === 'BLUE TEAM WINS');
+    else if (mode === 'infection') won = (team === 2 && m.title === 'ZOMBIES WIN') || (team === 1 && m.title === 'SURVIVORS WIN');
+    else won = !!m.scores && m.scores[0] && m.scores[0].id === this.myId;
+    const mine = (m.scores || []).find((s) => s.id === this.myId);
+    track.matchEnd({
+      mode, won,
+      survived: mode === 'infection' && team === 1 && m.title === 'SURVIVORS WIN',
+      hillPoints: mode === 'koth' && mine ? mine.sc : 0,
+    });
   }
 
   // ---------- Main loop ----------

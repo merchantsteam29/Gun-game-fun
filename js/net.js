@@ -20,7 +20,7 @@ export class Net {
     this.nextId = 1;
   }
 
-  host(code, name, color, opts) {
+  host(code, name, color, opts, cos) {
     return new Promise((resolve, reject) => {
       const peer = new Peer(PREFIX + code);
       this.peer = peer;
@@ -37,7 +37,7 @@ export class Net {
           const now = Date.now();
           for (const c of this.conns.values()) if (now - c.lastSeen > TIMEOUT_MS) c.close();
         }, 2000);
-        this.logic.addPlayer('host', name, color);
+        this.logic.addPlayer('host', name, color, cos);
         resolve();
       });
       peer.on('disconnected', () => { if (!this.closed) peer.reconnect(); });
@@ -63,7 +63,7 @@ export class Net {
         }
         conn.gid = 'p' + this.nextId++;
         this.conns.set(conn.gid, conn);
-        this.logic.addPlayer(conn.gid, m.name, m.color);
+        this.logic.addPlayer(conn.gid, m.name, m.color, m.cos);
       } else if (conn.gid) this.logic.handle(conn.gid, m);
     });
     const drop = () => {
@@ -76,7 +76,7 @@ export class Net {
     conn.on('error', drop);
   }
 
-  join(code, name, color) {
+  join(code, name, color, cos) {
     return new Promise((resolve, reject) => {
       const peer = new Peer();
       this.peer = peer;
@@ -90,7 +90,7 @@ export class Net {
           done = true;
           clearTimeout(timer);
           this.code = code;
-          conn.send({ t: 'hello', name, color });
+          conn.send({ t: 'hello', name, color, cos });
           this.lastHostMsg = Date.now();
           this.pinger = setInterval(() => {
             if (conn.open) conn.send({ t: 'ping' });

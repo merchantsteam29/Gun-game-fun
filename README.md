@@ -91,6 +91,8 @@ Open **Settings** from the main menu or the pause menu. Everything is saved in y
 | Video | Field of view, weapon field of view, view bobbing, graphics High/Low, FPS counter |
 | HUD & Audio | Volume, crosshair color, size and center dot |
 | Mobile | Edit button layout (drag any touch button anywhere, resize each one), button size, button opacity |
+| Missions | 17 missions (kills, headshots, melee, explosives, streaks, wins, mode-specific goals) with progress bars |
+| Customize | Hats, hair (+ color), face items and back items for your character, with a preview. Missions unlock the locked ones; other players see what you wear |
 
 ## Mobile
 
