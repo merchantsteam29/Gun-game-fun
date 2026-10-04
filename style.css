@@ -331,7 +331,7 @@ body.mobile #chat .cl { font-size: 12px; }
 body.mobile #chat-log { max-height: 110px; }
 body.mobile:not(.tablet) #chat.open { width: min(420px, calc(100% - 32px)); }
 body.tablet #chat { bottom: 130px; }
-body.tablet #touch .b-chat { left: calc(124px + env(safe-area-inset-left)); top: 52px; width: 46px; height: 46px; }
+body.tablet #touch .b-chat { left: calc(136px + env(safe-area-inset-left)); top: 52px; width: 46px; height: 46px; }
 
 /* ---------- Settings ---------- */
 .settings-panel { width: 680px; }
@@ -443,7 +443,7 @@ body.mobile canvas#game { touch-action: none; }
 .b-reload { right: calc(40px + env(safe-area-inset-right)); bottom: 228px; width: 50px; height: 50px; }
 .b-swap { right: calc(200px + env(safe-area-inset-right)); bottom: 140px; width: 50px; height: 50px; font-size: 20px; }
 .b-nade { right: calc(100px + env(safe-area-inset-right)); bottom: 238px; width: 50px; height: 50px; font-size: 10px; }
-.b-melee { right: calc(156px + env(safe-area-inset-right)); bottom: 214px; width: 50px; height: 50px; font-size: 10px; }
+.b-melee { right: calc(156px + env(safe-area-inset-right)); bottom: 236px; width: 50px; height: 50px; font-size: 10px; } /* clear of AIM below it */
 .b-score { left: calc(16px + env(safe-area-inset-left)); top: 44px; width: 40px; height: 40px; border-radius: 8px; font-size: 18px; }
 .b-pause { left: calc(64px + env(safe-area-inset-left)); top: 44px; width: 40px; height: 40px; border-radius: 8px; font-size: 14px; }
 
@@ -523,6 +523,7 @@ body.tablet h1 { font-size: 32px; }
 body.tablet .tile { min-height: 48px; }
 body.tablet .menu-nav button { padding: 12px 16px 11px; font-size: 14px; }
 body.tablet .b-score, body.tablet .b-pause { top: 52px; width: 46px; height: 46px; }
+body.tablet .b-pause { left: calc(76px + env(safe-area-inset-left)); } /* tablet buttons draw 15% larger, so spread these out */
 /* Weapon slot bar (tablet only) */
 .slotbar { display: none; }
 body.tablet #touch:not(.editing) .slotbar { display: flex; position: absolute; left: 50%; transform: translateX(-50%);
