@@ -22,8 +22,8 @@ export const WEAPONS = {
   },
   lmg: {
     id: 'lmg', name: 'LMG', type: 'gun', auto: true,
-    rate: 0.085, dmg: 20, head: 1.5, pellets: 1, mag: 100, reload: 4.2,
-    spread: 0.02, moveSpread: 0.05, adsMul: 0.35, range: 250,
+    rate: 0.095, dmg: 20, head: 1.5, pellets: 1, mag: 100, reload: 4.2,
+    spread: 0.022, moveSpread: 0.05, adsMul: 0.35, range: 250,
     recoil: 0.012, speedMul: 0.82, switch: 0.6, reloadStyle: 'box',
   },
   sniper: {
@@ -87,7 +87,7 @@ export const WEAPONS = {
 
   br: {
     id: 'br', name: 'Battle Rifle', type: 'gun', auto: true,
-    rate: 0.13, dmg: 31, head: 1.7, pellets: 1, mag: 20, reload: 2.3,
+    rate: 0.15, dmg: 30, head: 1.6, pellets: 1, mag: 20, reload: 2.3,
     spread: 0.01, moveSpread: 0.04, adsMul: 0.25, range: 280,
     recoil: 0.024, speedMul: 0.92, switch: 0.42, reloadStyle: 'mag',
   },
@@ -99,7 +99,7 @@ export const WEAPONS = {
   },
   autoshot: {
     id: 'autoshot', name: 'Auto Shotgun', type: 'gun', auto: true,
-    rate: 0.24, dmg: 9, head: 1.25, pellets: 8, mag: 10, reload: 2.6,
+    rate: 0.28, dmg: 9, head: 1.25, pellets: 8, mag: 10, reload: 2.6,
     spread: 0.085, moveSpread: 0.02, adsMul: 0.8, range: 45, falloff: [7, 24, 0.3],
     recoil: 0.04, speedMul: 0.93, switch: 0.45, reloadStyle: 'mag',
   },
@@ -112,8 +112,8 @@ export const WEAPONS = {
   },
   railgun: {
     id: 'railgun', name: 'Railgun', type: 'gun', auto: false,
-    rate: 1.3, dmg: 95, head: 1.6, pellets: 1, mag: 4, reload: 2.8,
-    spread: 0.004, moveSpread: 0.02, adsMul: 0, range: 400, adsFov: 38,
+    rate: 1.3, dmg: 90, head: 1.6, pellets: 1, mag: 4, reload: 2.8,
+    spread: 0.03, moveSpread: 0.02, adsMul: 0, range: 400, adsFov: 38,
     recoil: 0.07, speedMul: 0.9, switch: 0.55, reloadStyle: 'mag',
   },
 
@@ -137,13 +137,13 @@ export const WEAPONS = {
   },
   laser: {
     id: 'laser', name: 'Laser Rifle', type: 'gun', auto: true, tracer: '#3fe8ff',
-    rate: 0.075, dmg: 15, head: 1.6, pellets: 1, mag: 40, reload: 2.2,
+    rate: 0.08, dmg: 15, head: 1.4, pellets: 1, mag: 40, reload: 2.2,
     spread: 0.004, moveSpread: 0.012, adsMul: 0.5, range: 260,
     recoil: 0.003, speedMul: 1.0, switch: 0.35, reloadStyle: 'mag',
   },
   harpoon: {
     id: 'harpoon', name: 'Harpoon Gun', type: 'proj', auto: false, bolt: true,
-    rate: 0.6, mag: 1, reload: 1.8,
+    rate: 0.6, mag: 1, reload: 2.2,
     projSpeed: 52, projGravity: 7, directDmg: 110, head: 1.6,
     spread: 0, moveSpread: 0, adsMul: 1, adsFov: 48,
     recoil: 0.05, speedMul: 0.92, switch: 0.45, reloadStyle: 'mag',
@@ -184,7 +184,7 @@ export const WEAPONS = {
   },
   revolver: {
     id: 'revolver', name: 'Revolver', type: 'gun', auto: false,
-    rate: 0.5, dmg: 50, head: 2.0, pellets: 1, mag: 6, reload: 2.2,
+    rate: 0.45, dmg: 50, head: 2.0, pellets: 1, mag: 6, reload: 2.2,
     spread: 0.01, moveSpread: 0.03, adsMul: 0.3, range: 180,
     recoil: 0.06, speedMul: 1.05, switch: 0.3, reloadStyle: 'revolver',
   },
@@ -197,13 +197,13 @@ export const WEAPONS = {
 
   handcannon: {
     id: 'handcannon', name: 'Hand Cannon', type: 'gun', auto: false,
-    rate: 0.42, dmg: 58, head: 2.0, pellets: 1, mag: 7, reload: 1.9,
+    rate: 0.48, dmg: 58, head: 2.0, pellets: 1, mag: 7, reload: 1.9,
     spread: 0.012, moveSpread: 0.04, adsMul: 0.3, range: 160,
     recoil: 0.07, speedMul: 1.0, switch: 0.35, reloadStyle: 'mag',
   },
   sawedoff: {
     id: 'sawedoff', name: 'Sawed-Off', type: 'gun', auto: false,
-    rate: 0.25, dmg: 11, head: 1.2, pellets: 9, mag: 2, reload: 1.8,
+    rate: 0.25, dmg: 12, head: 1.2, pellets: 9, mag: 2, reload: 1.8,
     spread: 0.11, moveSpread: 0.02, adsMul: 0.85, range: 30, falloff: [4, 15, 0.2],
     recoil: 0.06, speedMul: 1.05, switch: 0.25, reloadStyle: 'shells',
   },
@@ -227,12 +227,12 @@ export const WEAPONS = {
   },
   bat: {
     id: 'bat', name: 'Baseball Bat', type: 'melee', style: 'chop',
-    rate: 0.7, dmg: 45, backstab: 100, range: 2.7, hitDelay: 0.28, knockback: 13,
+    rate: 0.7, dmg: 50, backstab: 100, range: 2.7, hitDelay: 0.28, knockback: 13,
     spread: 0, moveSpread: 0, speedMul: 1.05, switch: 0.3,
   },
   machete: {
     id: 'machete', name: 'Machete', type: 'melee', style: 'slash',
-    rate: 0.55, dmg: 65, backstab: 150, range: 2.7, hitDelay: 0.1,
+    rate: 0.48, dmg: 65, backstab: 150, range: 2.7, hitDelay: 0.1,
     spread: 0, moveSpread: 0, speedMul: 1.1, switch: 0.25,
   },
   sledge: {

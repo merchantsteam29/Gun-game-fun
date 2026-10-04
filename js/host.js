@@ -38,6 +38,15 @@ export const MODES = {
 export const MODE_ORDER = ['ffa', 'tdm', 'gungame', 'koth', 'infection', 'ctf', 'hardpoint', 'killconfirmed', 'juggernaut', 'bounty', 'lms', 'oitc',
   'instagib', 'headshots', 'hardcore', 'bighead', 'rotation', 'snipers', 'shotguns', 'sidearms', 'blades', 'boom', 'roulette', 'vampire', 'moon'];
 const FLAG_RETURN_MS = 20000;
+
+// Largest damage a single hit message can carry for a weapon (all pellets on the head, backstabs, direct hits).
+function maxHitDmg(w) {
+  if (!w) return 999;
+  const head = Math.max(1, w.head || 1);
+  if (w.type === 'gun') return Math.ceil(w.dmg * head * (w.pellets || 1)) + 1;
+  if (w.type === 'melee') return Math.max(w.dmg, w.backstab || 0) + 1;
+  return Math.ceil(Math.max((w.directDmg || 0) * head, w.splash || 0)) + 1;
+}
 const ROTATION_SECONDS = 40;
 // Weapon Rotation picks from every primary/secondary gun and launcher.
 const ROTATION_POOL = [...SLOTS[0], ...SLOTS[1]];
@@ -396,7 +405,8 @@ export class HostLogic {
     if (this.s.headshotsOnly && w && w.type === 'gun' && !m.head && v !== attacker) return;
     const now = Date.now();
     if (now < v.protectUntil && v !== attacker) return;
-    let dmg = Math.max(0, Math.min(999, Number(m.dmg) || 0));
+    // Never accept more than the weapon can deal in one hit (keeps modded clients in line).
+    let dmg = Math.max(0, Math.min(maxHitDmg(w), Number(m.dmg) || 0));
     if (!dmg) return;
     if (this.mode.instakill && v !== attacker) dmg = 999;
     if (this.s.mode === 'vampire' && v !== attacker && attacker.alive) {
