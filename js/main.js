@@ -11,6 +11,7 @@ import { modelQuality } from './models.js';
 import { SettingsUI } from './settingsui.js';
 import { getCos, MISSIONS, missionDone } from './missions.js';
 import { opts } from './settings.js';
+import { Chat } from './chat.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -49,6 +50,7 @@ window.game = game; // handy for debugging from the console
 let net = null;
 let busy = false;
 let settingsUI = null; // created further down; the Character / Missions sections reuse its views
+const chat = new Chat({ send: (text) => { if (net) net.send({ t: 'chat', text }); }, mobile });
 
 function renderCharacter() {
   if (!settingsUI) return;
@@ -139,6 +141,7 @@ const MAP_BLURB = {
   warehouse: 'Indoor · mezzanines', yard: 'Outdoor · containers', town: 'Rooftops · houses', pit: 'Small · jump pads',
   outpost: 'Snow · towers', office: 'Two floors', ruins: 'Temple · open', docks: 'Water · cranes',
   arena: 'Arena · stands', compound: 'Rooms · yard', rooftops: 'Night · bridges',
+  station: 'Sci-fi · reactor', canyon: 'Mesas · bridge', construction: 'Floors · crane',
 };
 function renderModes() {
   $('mode-tiles').innerHTML = MODE_ORDER.map((id) =>
@@ -190,9 +193,18 @@ if (typeof Peer === 'undefined') status('Networking library failed to load. Chec
 
 // ---------- Lobby flow ----------
 
+// Chat lines for lobby events and messages (team / zombie colors match the scoreboard).
+function chatOnNet(m) {
+  const colorOf = (id, fallback) => { const p = game.players.get(id); return p ? game.colorFor(p) : fallback; };
+  if (m.t === 'welcome') { chat.setLobby(true); chat.system(`Joined lobby ${net ? net.code : ''}. Say hi!`); }
+  else if (m.t === 'chat') chat.add(m.name, colorOf(m.id, m.color), m.text, m.id === game.myId);
+  else if (m.t === 'pjoin' && !m.bot) chat.system(`${m.name} joined`);
+  else if (m.t === 'pleave' && !String(m.name).startsWith('[BOT]')) chat.system(`${m.name} left`);
+}
+
 function newNet() {
   const n = new Net();
-  n.onMessage = (m) => game.onNet(m);
+  n.onMessage = (m) => { game.onNet(m); chatOnNet(m); };
   n.onClose = (reason) => leave(reason);
   game.attach(n, { loadout: settings.loadout, color: settings.color });
   return n;
@@ -208,6 +220,7 @@ function enterGame() {
 }
 
 function showPause() {
+  chat.setPaused(true);
   renderLoadout($('pause-loadout'));
   $('btn-hostpanel').classList.toggle('hidden', !(net && net.isHost));
   $('pause').classList.remove('hidden');
@@ -260,6 +273,8 @@ async function joinLobby() {
 
 function leave(reason) {
   if (net) { net.destroy(); net = null; }
+  chat.setLobby(false);
+  chat.setPaused(false);
   touch.show(false);
   game.setLocked(false);
   game.reset();
@@ -283,6 +298,7 @@ const touch = new TouchControls(game, () => {
 $('btn-resume').onclick = () => {
   initAudio();
   $('pause').classList.add('hidden');
+  chat.setPaused(false);
   game.lock();
   if (mobile) {
     touch.show(true);
@@ -312,6 +328,16 @@ showPane(urlCode ? 'play' : menuPane);
 updateMissionCount();
 // Loadout starts open where there's room; on phones it's one tap away so the buttons stay on screen.
 $('pause-lo').open = !mobile || tablet;
+
+// Enter opens chat while playing (keeps your view; stops you walking while you type).
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' || mobile || chat.typing || !game.active || !game.locked) return;
+  e.preventDefault();
+  game.keys.clear();
+  game.mouse.left = false;
+  chat.open();
+});
+touch.onChat = () => { game.keys.clear(); game.mouse.left = false; chat.open(); };
 
 // Esc backs out of Settings and the Host panel.
 document.addEventListener('keydown', (e) => {

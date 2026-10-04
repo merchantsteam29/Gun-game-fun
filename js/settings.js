@@ -8,6 +8,9 @@ const DEFAULTS = {
   adsSens: 0.8,       // multiplier while aiming down sights
   touchSens: 1,       // drag-to-look speed on touch screens
   invertY: false,
+  aimAssist: true,        // touch screens only
+  aimAssistStrength: 0.6,
+  showChat: true,
   aimToggle: false,   // right mouse toggles aim instead of hold
   volume: 1,
   crossColor: '#ffffff',

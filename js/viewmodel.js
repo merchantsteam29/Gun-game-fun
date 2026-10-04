@@ -17,10 +17,14 @@ const HIP = {
   br: [0.17, -0.17, -0.42], pdw: [0.16, -0.16, -0.38], autoshot: [0.17, -0.18, -0.42], amr: [0.19, -0.2, -0.44],
   railgun: [0.18, -0.19, -0.42], bpistol: [0.15, -0.15, -0.38], flare: [0.15, -0.15, -0.38],
   machete: [0.2, -0.21, -0.36], sledge: [0.2, -0.26, -0.34], impact: [0.17, -0.18, -0.34],
+  carbine: [0.17, -0.17, -0.41], vector: [0.16, -0.16, -0.38], slug: [0.17, -0.17, -0.42], laser: [0.17, -0.18, -0.42],
+  harpoon: [0.18, -0.18, -0.42], microsmg: [0.15, -0.15, -0.37], autorev: [0.15, -0.15, -0.38],
+  knuckles: [0.2, -0.2, -0.34], scythe: [0.22, -0.26, -0.34], vortex: [0.17, -0.18, -0.34],
 };
 const REST_ROT = {
   knife: [0.25, 0.15, -0.35], axe: [0.55, 0.1, -0.15], claws: [0.35, 0.1, -0.2], katana: [0.75, 0.15, -0.35], bat: [0.7, 0.1, -0.2],
   tknife: [0.25, 0.1, -0.3], machete: [0.45, 0.15, -0.3], sledge: [0.65, 0.1, -0.15],
+  knuckles: [0.15, 0.1, -0.1], scythe: [0.8, 0.1, -0.2],
 };
 const SHOULDER_R = new THREE.Vector3(0.21, -0.4, 0.04);
 const SHOULDER_L = new THREE.Vector3(-0.16, -0.42, -0.02);
@@ -162,7 +166,7 @@ export class Viewmodel {
 
   fire(w) {
     this.inspectT = -1;
-    const big = w.type === 'proj' || ['shotgun', 'sniper', 'revolver', 'doublebarrel', 'sawedoff', 'handcannon', 'dmr', 'amr', 'railgun', 'autoshot'].includes(w.id);
+    const big = w.type === 'proj' || ['shotgun', 'sniper', 'revolver', 'doublebarrel', 'sawedoff', 'handcannon', 'dmr', 'amr', 'railgun', 'autoshot', 'slug', 'autorev'].includes(w.id);
     this.kick = Math.min(1.4, this.kick + (big ? 1 : 0.45));
     this.kickYaw = (Math.random() - 0.5) * (big ? 0.12 : 0.05);
     this.flashT = 0.05;

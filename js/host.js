@@ -253,6 +253,15 @@ export class HostLogic {
       case 'hit':
         this.hit(p, m);
         break;
+      case 'chat': { // party chat: plain text, max 100 chars, at most ~2 messages a second each
+        const now = Date.now();
+        if (now - (p.lastChat || 0) < 450) break;
+        const text = String(m.text || '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 100);
+        if (!text) break;
+        p.lastChat = now;
+        this.broadcast({ t: 'chat', id, name: p.name, color: p.color, text });
+        break;
+      }
       case 'cos': // changed cosmetics mid-lobby
         p.cos = sanitizeCos(m.c);
         this.broadcast({ t: 'pcos', id, c: p.cos });
@@ -265,7 +274,7 @@ export class HostLogic {
     const v = this.players.get(m.v);
     if (!v || !v.alive) return;
     const w = WEAPONS[m.w];
-    const explosive = ['gl', 'frag', 'sticky', 'rocket', 'crossbow', 'tknife', 'flare', 'impact'].includes(m.w);
+    const explosive = ['gl', 'frag', 'sticky', 'rocket', 'crossbow', 'tknife', 'flare', 'impact', 'harpoon', 'vortex'].includes(m.w);
     if (!attacker.alive && !explosive) return;
     if (v !== attacker && !this.hostile(attacker, v) && !(this.s.friendlyFire && this.mode.redBlue)) return;
     if (this.s.headshotsOnly && w && w.type === 'gun' && !m.head && v !== attacker) return;

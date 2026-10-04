@@ -15,6 +15,8 @@ const TABS = [
     { key: 'sens', label: 'Mouse sensitivity', type: 'range', min: 0.1, max: 4, step: 0.05, fmt: mul, only: 'desktop' },
     { key: 'touchSens', label: 'Look sensitivity', type: 'range', min: 0.3, max: 3, step: 0.05, fmt: mul, only: 'mobile' },
     { key: 'adsSens', label: 'Aiming sensitivity', hint: 'Multiplier while aiming down sights', type: 'range', min: 0.2, max: 1.5, step: 0.05, fmt: mul },
+    { key: 'aimAssist', label: 'Aim assist', hint: 'Slows your aim on enemies, tracks them while you shoot or aim, and snaps a little when you aim', type: 'check', only: 'mobile' },
+    { key: 'aimAssistStrength', label: 'Aim assist strength', type: 'range', min: 0.1, max: 1, step: 0.05, fmt: pct, only: 'mobile' },
     { key: 'invertY', label: 'Invert look up / down', type: 'check' },
     { key: 'aimToggle', label: 'Toggle aim with right mouse', hint: 'Click once to aim, again to stop (instead of holding)', type: 'check', only: 'desktop' },
   ] },
@@ -27,6 +29,7 @@ const TABS = [
   ] },
   { name: 'HUD & Audio', rows: [
     { key: 'volume', label: 'Volume', type: 'range', min: 0, max: 1, step: 0.05, fmt: pct },
+    { key: 'showChat', label: 'Show party chat', hint: 'Turn off to hide all chat messages', type: 'check' },
     { key: 'crossColor', label: 'Crosshair color', type: 'swatch', options: CROSS_COLORS },
     { key: 'crossSize', label: 'Crosshair size', type: 'range', min: 0.6, max: 2, step: 0.05, fmt: mul },
     { key: 'crossDot', label: 'Crosshair center dot', type: 'check' },

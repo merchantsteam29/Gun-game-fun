@@ -5,7 +5,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 // These arrays are mutated in place when the map changes so importers keep valid references.
 export const boxes = [];
 export const spawns = [];
-export const MAP_ORDER = ['warehouse', 'yard', 'town', 'pit', 'outpost', 'office', 'ruins', 'docks', 'arena', 'compound', 'rooftops'];
+export const MAP_ORDER = ['warehouse', 'yard', 'town', 'pit', 'outpost', 'office', 'ruins', 'docks', 'arena', 'compound', 'rooftops', 'station', 'canyon', 'construction'];
 // Render quality (lowered on mobile before any map is built).
 export const quality = { shadowSize: 2048, pointLights: true };
 
@@ -635,6 +635,154 @@ export const MAPS = {
     },
   },
 
+  station: {
+    name: 'Space Station',
+    theme: { sky: '#05070f', fog: [35, 120], hemi: ['#9fb4ff', '#202436', 1.9], sun: ['#dfe6ff', 1.6, [20, 40, -15]], night: true },
+    bounds: 26,
+    hills: [[0, 2, -6.5, 2.5], [-19.5, 0, -19.5, 3], [19.5, 0, 19.5, 3], [19.5, 0, -19.5, 3], [-19.5, 0, 19.5, 3]],
+    build({ add, add4, spawn4, stairs, wallX, wallZ }) {
+      add(-26, -1, -26, 26, 0, 26, 'metalFloor');
+      add4(-26, 0, -26, 26, 6, -25, 'stationWall');
+      // Reactor core with a raised ring walkway (crawlspace underneath) and four ramps
+      add(-3, 0, -3, 3, 7, 3, 'reactor');
+      add4(-8, 1.6, -8, 8, 2, -5, 'grate');
+      add4(-8, 2, -8.1, -1.6, 2.9, -8, 'rail');
+      add4(1.6, 2, -8.1, 8, 2.9, -8, 'rail');
+      stairs(-1.5, -12, 1.5, -8, 0, 2, '+z', 'stairs', add4);
+      // Corner rooms with doorways
+      wallX(-14, -25, -14, [[-19.5, 2.5]], 0, 4, 'stationWall', add4, 0.3);
+      wallZ(-14, -25, -14, [[-19.5, 2.5]], 0, 4, 'stationWall', add4, 0.3);
+      add4(-24.5, 0, -24.5, -22, 1, -22.6, 'console');
+      add4(-17, 0, -24, -15.8, 1.2, -22.8, 'crate');
+      // Corridor cover
+      add4(-11, 0, -19, -9.8, 1.2, -17.8, 'crate');
+      add4(-19, 0, -9, -18.4, 1.1, -5, 'stationWall');
+      add4(-12, 0, -12, -11, 4, -11, 'stationWall');
+      add4(-5, 0, -19.5, -3, 0.9, -18.9, 'console');
+      spawn4(-19.5, 0, -19.5);
+      spawn4(-22, 0, -6);
+      spawn4(-6, 0, -22);
+      spawn4(0, 2, -6.5);
+    },
+    decor(g, M) {
+      const strips = [];
+      for (let i = 0; i < 4; i++) {
+        const a = (i * Math.PI) / 2, c = Math.cos(a), s = Math.sin(a);
+        const geo = new THREE.BoxGeometry(50, 0.08, 0.08);
+        geo.rotateY(-a);
+        strips.push(geo.clone().translate(s * 24.9, 5.5, -c * 24.9), geo.clone().translate(s * 24.9, 0.15, -c * 24.9));
+      }
+      for (let y = 1; y < 7; y += 1.5) strips.push(new THREE.BoxGeometry(6.1, 0.1, 6.1).translate(0, y, 0));
+      addMerged(g, strips, M.neonCyan);
+      // A planet hanging outside the windows
+      const planet = new THREE.Mesh(new THREE.SphereGeometry(30, 32, 20), new THREE.MeshBasicMaterial({ color: '#4a6bd8', fog: false }));
+      planet.position.set(-60, 25, -95);
+      g.add(planet);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(46, 2, 2, 64), new THREE.MeshBasicMaterial({ color: '#c9b48a', fog: false }));
+      ring.position.copy(planet.position);
+      ring.rotation.set(1.2, 0.3, 0);
+      g.add(ring);
+    },
+  },
+
+  canyon: {
+    name: 'Canyon',
+    theme: { sky: '#f2b47a', fog: [50, 150], hemi: ['#ffe6c8', '#8a5a3a', 1.9], sun: ['#ffc98a', 3.0, [-30, 30, 20]] },
+    bounds: 34,
+    hills: [[0, 5, 0, 1.8], [-24, 5, 17, 3.5], [24, 5, -17, 3.5], [-10, 0, 0, 3.5], [10, 0, 0, 3.5]],
+    build({ add, add2, crate2, spawn2, stairs }) {
+      add(-34, -1, -24, 34, 0, 24, 'sand');
+      add(-34, 0, -24, -33, 8, 24, 'rock');
+      add(33, 0, -24, 34, 8, 24, 'rock');
+      add(-33, 0, 23, 33, 8, 24, 'rock');
+      add(-33, 0, -24, 33, 8, -23, 'rock');
+      // Two mesas facing each other across the canyon floor
+      add2(-33, 0, 10, 33, 5, 23, 'rock');
+      stairs(-30, 2, -26, 10, 0, 5, '+z', 'rockStep');
+      stairs(18, 2, 22, 10, 0, 5, '+z', 'rockStep');
+      // Rope bridge across the middle, on a rock pillar
+      add(-2, 4.6, -10, 2, 5, 10, 'wood');
+      add(-2, 5, -10, -1.9, 6, 10, 'rail');
+      add(1.9, 5, -10, 2, 6, 10, 'rail');
+      add(-2.5, 0, -0.6, 2.5, 4.6, 0.6, 'rockStep');
+      // Canyon floor boulders and a broken wagon
+      add2(-16, 0, -3, -13, 2, 0, 'rockStep');
+      add2(-6, 0, 4, -4, 1.4, 7, 'rockStep');
+      add2(10, 0, 2, 13, 2.4, 5, 'rockStep');
+      add2(-24, 0, 4, -21, 1.1, 5.4, 'wood');
+      crate2(-22, 7); crate2(-28, -6);
+      // Mesa-top cover
+      add2(-14, 5, 15, -11, 6.4, 16.2, 'rockStep');
+      add2(-4, 5, 18, -1, 6.2, 19, 'wood');
+      add2(8, 5, 13, 9.2, 6.2, 14.2, 'crate');
+      add2(-26, 5, 13, -25, 7, 14, 'wood');
+      for (const [x, y, z] of [[-30, 5, 20], [-12, 5, 20], [6, 5, 18], [-24, 0, -4], [-14, 0, 6], [8, 0, -6], [-28, 0, 0]]) spawn2(x, y, z);
+    },
+    decor(g, M) {
+      const cactus = [];
+      for (const [x, z] of [[-18, -7], [18, 7], [-8, -8], [8, 8], [-29, 6], [29, -6], [14, 20], [-14, -20]]) {
+        const y = Math.abs(z) > 10 ? 5 : 0;
+        cactus.push(new THREE.CylinderGeometry(0.22, 0.26, 2.4, 8).translate(x, y + 1.2, z));
+        cactus.push(new THREE.CylinderGeometry(0.14, 0.14, 0.9, 8).translate(x + 0.45, y + 1.5, z));
+        cactus.push(new THREE.CylinderGeometry(0.14, 0.14, 0.7, 8).translate(x - 0.42, y + 1.2, z));
+      }
+      addMerged(g, cactus, M.cactus, true);
+      const rope = [];
+      for (let z = -9; z <= 9; z += 1.5) for (const x of [-1.95, 1.95]) rope.push(new THREE.BoxGeometry(0.06, 1, 0.06).translate(x, 5.5, z));
+      addMerged(g, rope, M.steel);
+    },
+  },
+
+  construction: {
+    name: 'Construction Site',
+    theme: { sky: '#b7c9d8', fog: [45, 130], hemi: ['#f2f5f8', '#7a6a58', 2.0], sun: ['#fff2dc', 2.7, [25, 42, 18]] },
+    bounds: 30,
+    hills: [[0, 0.3, 0, 3], [0, 4, -5, 2.8], [-6, 7.6, -4, 2.5], [6, 7.6, 4, 2.5], [-22, 0, 0, 3.5], [22, 0, 0, 3.5]],
+    build({ add, add2, crate2, spawn2, stairs }) {
+      add(-30, -1, -22, 30, 0, 22, 'dirt');
+      add(-30, 0, 21.7, 30, 3, 22, 'fence');
+      add(-30, 0, -22, 30, 3, -21.7, 'fence');
+      add(29.7, 0, -21.7, 30, 3, 21.7, 'fence');
+      add(-30, 0, -21.7, -29.7, 3, 21.7, 'fence');
+      // Unfinished three-storey frame: open atrium on floor 2, half-built floor 3
+      add(-10, 0, -8, 10, 0.3, 8, 'slab');
+      add2(-10, 3.6, -8, 10, 4, -1, 'slab');
+      add2(-10, 7.2, -8, -2, 7.6, 0, 'slab');
+      for (const x of [-9.5, -4.5, 4.5, 9.5]) add2(x - 0.3, 0.3, -7.8, x + 0.3, 7.2, -7.2, 'slab');
+      stairs(10.2, -8, 12.2, -1, 0, 4, '+z', 'stairs'); // tops out by the atrium, clear of the corner column
+      stairs(-2, -7.8, 3, -5.8, 4, 7.6, '-x', 'stairs');
+      add2(-10, 4, -8, -9.85, 5, -1, 'rail');
+      // Yard: containers, pipe stacks, sand piles, a cement mixer
+      add2(-24, 0, -16, -18, 2.6, -13.4, 'containerOrange', 'containerBlue');
+      add2(-26, 0, 4, -23.4, 2.6, 10, 'containerBlue', 'containerGreen');
+      add2(-16, 0, 12, -10, 0.9, 13.6, 'pipe');
+      add2(-16, 0.9, 12.3, -10, 1.7, 13.3, 'pipe');
+      add2(-18, 0, -6, -15, 1, -3, 'sandpile');
+      add2(-17.5, 1, -5.5, -15.5, 1.8, -3.5, 'sandpile');
+      add2(-6, 0, 13, -3.5, 1.8, 15.5, 'mixer');
+      crate2(-20, 16); crate2(-21.2, 16); crate2(-20, 16, 1.2);
+      crate2(-13, -16); crate2(-4, -17);
+      add2(-27, 0, -4, -26.4, 1, 0, 'barrier');
+      for (const [x, y, z] of [[-26, 0, -18], [-15, 0, -2], [-6, 0.3, -4], [-6, 4, -4], [-6, 7.6, -4], [-20, 0, 8], [-12, 0, 18], [-26, 0, 14]]) spawn2(x, y, z);
+    },
+    decor(g, M) {
+      // Tower crane over the site
+      const crane = [
+        new THREE.BoxGeometry(1.2, 22, 1.2).translate(18, 11, -16),
+        new THREE.BoxGeometry(34, 1, 1).translate(8, 22, -16),
+        new THREE.BoxGeometry(6, 1, 1).translate(27, 22, -16),
+        new THREE.BoxGeometry(2.5, 2.5, 2.5).translate(28, 20.5, -16),
+        new THREE.BoxGeometry(2.4, 1.6, 2.4).translate(18, 23.2, -16),
+      ];
+      addMerged(g, crane, M.craneYellow, true);
+      addMerged(g, [new THREE.CylinderGeometry(0.04, 0.04, 12, 4).translate(-4, 16, -16), new THREE.BoxGeometry(1.4, 0.4, 1.4).translate(-4, 9.8, -16)], M.steel);
+      // Rebar poking out of the top floor
+      const rebar = [];
+      for (let x = -9.5; x <= -2.5; x += 1) rebar.push(new THREE.CylinderGeometry(0.025, 0.025, 1.2, 4).translate(x, 8.2, -7.8), new THREE.CylinderGeometry(0.025, 0.025, 1.2, 4).translate(-x, 8.2, 7.8));
+      addMerged(g, rebar, M.steel);
+    },
+  },
+
   rooftops: {
     name: 'Rooftops',
     theme: { sky: '#141a2e', fog: [30, 95], hemi: ['#8090c8', '#2a2430', 1.7], sun: ['#c8d2ff', 1.2, [-18, 40, 14]], night: true },
@@ -987,6 +1135,17 @@ function mats() {
     metalFloor: { map: TEX.metal(), tile: 2, roughness: 0.6, metalness: 0.3 },
     bunkerWall: { map: concrete, tile: 3, roughness: 0.9, color: '#9ba38f' },
     ac: { map: TEX.metal(), tile: 1, roughness: 0.5, metalness: 0.4, color: '#c9ced3' },
+    stationWall: { map: TEX.metal(), tile: 2, roughness: 0.4, metalness: 0.5, color: '#b8c4d8' },
+    reactor: { color: '#1b2a4a', roughness: 0.3, metalness: 0.6, emissive: '#1e7bff', emissiveIntensity: 0.9 },
+    console: { color: '#2a2f3a', roughness: 0.4, metalness: 0.4, emissive: '#0f5f6a', emissiveIntensity: 0.8 },
+    rock: { map: TEX.stone(), tile: 3, roughness: 1, color: '#c07a4a' },
+    rockStep: { map: TEX.stone(), tile: 2, roughness: 1, color: '#a8653c' },
+    dirt: { map: TEX.sand(), tile: 4, roughness: 1, color: '#9c8466' },
+    slab: { map: concrete, tile: 3, roughness: 0.9, color: '#c9c6bf' },
+    fence: { map: TEX.metal(), tile: 1.5, roughness: 0.6, metalness: 0.3, color: '#7f8a6a' },
+    pipe: { color: '#5d6a78', roughness: 0.4, metalness: 0.5 },
+    sandpile: { map: TEX.sand(), tile: 2, roughness: 1, color: '#d9c28f' },
+    mixer: { color: '#e07b24', roughness: 0.5, metalness: 0.3 },
   };
   return MATS;
 }
@@ -1006,6 +1165,7 @@ const DECOR_MATS = {
   banner: new THREE.MeshStandardMaterial({ color: '#a8261e', roughness: 1 }),
   windowLit: new THREE.MeshStandardMaterial({ color: '#ffe2a0', emissive: '#ffcf70', emissiveIntensity: 1.4 }),
   windowDark: new THREE.MeshStandardMaterial({ color: '#1c2232', roughness: 0.2, metalness: 0.5 }),
+  cactus: new THREE.MeshStandardMaterial({ color: '#4f7a3a', roughness: 0.9 }),
 };
 
 function addMerged(g, geos, mat, shadow = false) {
@@ -1051,7 +1211,7 @@ export function buildMapScene(scene, id) {
       emissiveMap: def.emissiveMap ? def.map : null,
     });
     const mesh = new THREE.Mesh(mergeGeometries(list.map((b) => boxGeo(b, def))), mat);
-    mesh.castShadow = !['floor', 'asphalt', 'sand', 'neonFloor', 'water', 'metalFloor'].includes(name);
+    mesh.castShadow = !['floor', 'asphalt', 'sand', 'neonFloor', 'water', 'metalFloor', 'dirt'].includes(name);
     mesh.receiveShadow = true;
     group.add(mesh);
   }

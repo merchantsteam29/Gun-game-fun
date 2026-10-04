@@ -58,6 +58,9 @@ The lobby creator gets a **Host panel** button in the pause menu (Esc):
 | Colosseum | Sand arena with raised stands all round, a central dais, obelisks and broken walls |
 | Military Compound | Walled base: rooms off a central yard, doorways, a catwalk, sandbags and crates |
 | Rooftops | Night city: climb fire escapes and cross plank bridges between rooftops around a central tower |
+| Space Station | Four-way sci-fi deck around a glowing reactor with a raised ring walkway and corner rooms |
+| Canyon | Two mesas facing each other across a canyon floor, joined by a rope bridge |
+| Construction Site | Three-storey concrete frame with stairs and an open atrium, containers, pipes and a tower crane |
 
 ## Loadout
 
@@ -65,10 +68,21 @@ Pick one per slot in the menu or pause menu (applies on next spawn). Hover a wea
 
 | Slot | Options |
 |---|---|
-| Primary | Assault Rifle, Battle Rifle, SMG, PDW, Burst Rifle, LMG, DMR, Minigun (spins up), Sniper Rifle (scoped), Anti-Materiel Rifle (scoped, one-shots), Railgun, Shotgun, Auto Shotgun, Double Barrel, Grenade Launcher, Rocket Launcher, Crossbow |
-| Secondary | Pistol, Burst Pistol, Revolver, Machine Pistol, Hand Cannon, Sawed-Off, Flare Gun |
-| Melee | Combat Knife, Machete, Fire Axe, Katana, Baseball Bat (knockback), Sledgehammer (big knockback) — backstabs one-shot |
-| Utility | Frag, Sticky, Impact (explodes on contact), Smoke, Flashbang, Throwing Knives |
+| Primary | Assault Rifle, Battle Rifle, Carbine, SMG, PDW, Vector, Burst Rifle, LMG, DMR, Laser Rifle, Minigun (spins up), Sniper Rifle (scoped), Anti-Materiel Rifle (scoped, one-shots), Railgun, Shotgun, Auto Shotgun, Slug Shotgun, Double Barrel, Grenade Launcher, Rocket Launcher, Crossbow, Harpoon Gun |
+| Secondary | Pistol, Burst Pistol, Revolver, Auto Revolver, Machine Pistol, Micro SMG, Hand Cannon, Sawed-Off, Flare Gun |
+| Melee | Combat Knife, Brass Knuckles, Machete, Fire Axe, Katana, Baseball Bat (knockback), Sledgehammer (big knockback), Scythe — backstabs one-shot |
+| Utility | Frag, Sticky, Impact (explodes on contact), Vortex (pulls players in), Smoke, Flashbang, Throwing Knives |
+
+## Party chat
+
+Press **Enter** (PC) or tap **💬** (phones/tablets) to type to everyone in the lobby. The chat box is always open on
+the pause screen. Messages fade after a few seconds; turn chat off in Settings → HUD & Audio.
+
+## Aim assist (phones & tablets)
+
+On touch screens, aim slows down while your crosshair is on an enemy, gently tracks them while you shoot or aim down
+sights, and snaps a little toward a nearby enemy when you start aiming. Toggle it or set its strength in
+Settings → Controls.
 
 The Grenade Launcher one-shots on a direct hit but slows you down while it's out.
 

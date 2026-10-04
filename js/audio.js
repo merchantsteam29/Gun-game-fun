@@ -102,6 +102,14 @@ export const sfx = {
   railgun: play((o) => { tone(o, { dur: 0.35, f0: 2200, f1: 180, type: 'sawtooth', gain: 0.35 }); nz(o, { dur: 0.2, f0: 6000, f1: 1500, type: 'highpass', gain: 0.6 }); }),
   bpistol: play((o) => { nz(o, { dur: 0.09, f0: 4100, f1: 750, gain: 0.6 }); tone(o, { dur: 0.05, f0: 230, f1: 75, gain: 0.35 }); }),
   flare: play((o) => { nz(o, { dur: 0.3, f0: 1200, f1: 3000, type: 'bandpass', q: 1.2, gain: 0.6 }); tone(o, { dur: 0.1, f0: 300, f1: 120, gain: 0.3 }); }),
+  carbine: play((o) => { nz(o, { dur: 0.12, f0: 3400, f1: 520, gain: 0.85 }); tone(o, { dur: 0.07, f0: 170, f1: 55, gain: 0.55 }); }),
+  vector: play((o) => { nz(o, { dur: 0.06, f0: 4600, f1: 1000, gain: 0.5 }); tone(o, { dur: 0.035, f0: 280, f1: 100, gain: 0.25 }); }),
+  slug: play((o) => { nz(o, { dur: 0.32, f0: 2000, f1: 160, gain: 1.3 }); tone(o, { dur: 0.16, f0: 95, f1: 30, gain: 1.0 }); }),
+  laser: play((o) => { tone(o, { dur: 0.09, f0: 1800, f1: 600, type: 'sawtooth', gain: 0.18 }); tone(o, { dur: 0.06, f0: 2600, f1: 1200, type: 'square', gain: 0.08 }); }),
+  harpoon: play((o) => { nz(o, { dur: 0.2, f0: 900, f1: 2600, type: 'bandpass', q: 1.5, gain: 0.6, attack: 0.01 }); tone(o, { dur: 0.12, f0: 160, f1: 70, gain: 0.5 }); }),
+  microsmg: play((o) => { nz(o, { dur: 0.07, f0: 4300, f1: 900, gain: 0.55 }); tone(o, { dur: 0.04, f0: 250, f1: 85, gain: 0.3 }); }),
+  autorev: play((o) => { nz(o, { dur: 0.2, f0: 3200, f1: 300, gain: 1.0 }); tone(o, { dur: 0.1, f0: 130, f1: 45, gain: 0.7 }); }),
+  vortex: play((o) => { tone(o, { dur: 0.6, f0: 900, f1: 60, type: 'sawtooth', gain: 0.3 }); nz(o, { dur: 0.5, f0: 3000, f1: 200, type: 'bandpass', q: 3, gain: 0.6 }); }),
   cycle: play((o) => { nz(o, { dur: 0.05, f0: 2500, type: 'highpass', gain: 0.4 }); nz(o, { dur: 0.05, f0: 1800, type: 'highpass', gain: 0.4 }); }),
 };
 sfx.dmr = play((o) => { nz(o, { dur: 0.3, f0: 3200, f1: 250, gain: 1.15 }); tone(o, { dur: 0.15, f0: 110, f1: 40, gain: 0.8 }); });

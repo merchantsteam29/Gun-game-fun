@@ -27,6 +27,8 @@ const _q = new THREE.Quaternion(), _m4 = new THREE.Matrix4();
 const UP = new THREE.Vector3(0, 1, 0);
 const FWD = new THREE.Vector3(0, 0, -1);
 const r2 = (v) => Math.round(v * 100) / 100;
+const _aE = new THREE.Vector3(), _aT = new THREE.Vector3();
+const wrapAngle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const arr = (v) => [r2(v.x), r2(v.y), r2(v.z)];
 
 export class Game {
@@ -291,7 +293,10 @@ export class Game {
   look(dx, dy, touch = false) {
     if (!this.me.alive) return;
     if (opts.invertY) dy = -dy;
-    const s = BASE_SENS * (touch ? opts.touchSens : opts.sens) * (this.camera.fov / (opts.fov * this.fovK)) * (this.ads ? opts.adsSens : 1);
+    let s = BASE_SENS * (touch ? opts.touchSens : opts.sens) * (this.camera.fov / (opts.fov * this.fovK)) * (this.ads ? opts.adsSens : 1);
+    // Aim assist "friction": aim slows down while the crosshair is on an enemy.
+    const a = this.assist;
+    if (touch && a && a.ang < a.limit) s *= 1 - 0.5 * opts.aimAssistStrength;
     this.me.yaw -= dx * s;
     this.me.pitch = clamp(this.me.pitch - dy * s, -1.5, 1.5);
     this.vm.look(dx, dy);
@@ -543,7 +548,7 @@ export class Game {
         track.kill({
           weaponType: W && W.type, head: !!m.head, mode: this.rules.mode,
           secondary: SLOTS[1].includes(m.w),
-          explosive: ['gl', 'rocket', 'frag', 'sticky', 'impact', 'flare'].includes(m.w),
+          explosive: ['gl', 'rocket', 'frag', 'sticky', 'impact', 'flare', 'vortex'].includes(m.w),
           juggernaut: this.rules.mode === 'juggernaut' && pv && pv.team === JUGG_TEAM,
         });
       }
@@ -569,6 +574,43 @@ export class Game {
         r.die(killerPos && killerPos !== r.pos ? killerPos : null);
       }
     }
+  }
+
+  // Touch aim assist: pick the visible enemy nearest the crosshair, then (scaled by strength)
+  // pull toward them while firing / aiming and snap a little when aiming starts.
+  aimAssist(dt) {
+    const me = this.me, k = opts.aimAssistStrength;
+    const cp = Math.cos(me.pitch);
+    const fx = -Math.sin(me.yaw) * cp, fy = Math.sin(me.pitch), fz = -Math.cos(me.yaw) * cp;
+    const eye = _aE.set(me.pos.x, me.pos.y + me.eye, me.pos.z);
+    let best = null;
+    for (const r of this.remotes.values()) {
+      if (!r.alive || this.isAlly(r)) continue;
+      const t = _aT.set(r.pos.x, r.pos.y + 1.15 * (1 - r.crouch * 0.2), r.pos.z);
+      const dx = t.x - eye.x, dy = t.y - eye.y, dz = t.z - eye.z;
+      const dist = Math.hypot(dx, dy, dz);
+      if (dist < 0.5 || dist > 70) continue;
+      const ang = Math.acos(clamp((dx * fx + dy * fy + dz * fz) / dist, -1, 1));
+      const limit = Math.atan(0.55 / dist) + 0.035; // roughly the target's half-width plus a bit
+      if (ang > limit * 2.6 || (best && ang / limit >= best.ang / best.limit)) continue;
+      if (!this.los(eye, t) || (this.fx.smokes.length && this.fx.blocked(eye, t))) continue;
+      best = { r, ang, limit, yaw: Math.atan2(-dx, -dz), pitch: Math.atan2(dy, Math.hypot(dx, dz)) };
+    }
+    this.assist = best;
+    const aimingNow = this.mouse.right;
+    if (best) {
+      const dYaw = wrapAngle(best.yaw - me.yaw), dPitch = best.pitch - me.pitch;
+      if (aimingNow && !this.wasAiming) {
+        me.yaw += dYaw * 0.55 * k; // snap on aim-down-sights
+        me.pitch += dPitch * 0.55 * k;
+      } else if (this.mouse.left || aimingNow) {
+        const f = Math.min(1, dt * 7 * k); // track while shooting / aiming
+        me.yaw += dYaw * f;
+        me.pitch += dPitch * f;
+      }
+      me.pitch = clamp(me.pitch, -1.5, 1.5);
+    }
+    this.wasAiming = aimingNow;
   }
 
   // Mission progress from the end-of-match result.
@@ -620,6 +662,8 @@ export class Game {
     const w = WEAPONS[this.curW];
 
     if (me.alive && !this.matchOver) this.updateMovement(dt);
+    this.assist = null;
+    if (this.touch && opts.aimAssist && me.alive && !this.matchOver) this.aimAssist(dt);
 
     // Camera
     this.recoil *= Math.exp(-dt * 9);
@@ -956,7 +1000,7 @@ export class Game {
       } else if (wh) {
         this.fx.impact(end, _n.set(wh.nx, wh.ny, wh.nz));
       }
-      this.fx.tracer(muzzle, end);
+      this.fx.tracer(muzzle, end, w.tracer);
       ends.push(arr(end));
     }
     for (const [vid, h] of hits) {
@@ -1187,7 +1231,15 @@ export class Game {
     this.scene.remove(p.mesh);
   }
 
-  boomFx(pos, radius) {
+  boomFx(pos, radius, W = null) {
+    if (W && W.pull) {
+      // Vortex: a purple implosion rather than a fireball.
+      this.fx.burst(pos, null, '#b06bff', 26, 8, 0.09, 0.55);
+      this.fx.burst(pos, null, '#e6ccff', 10, 3, 0.06, 0.8);
+      this.fx.muzzleFlash(pos);
+      this.posSound(sfx.vortex, pos, 1.1);
+      return;
+    }
     this.fx.explosion(pos, radius);
     this.posSound(sfx.explosion, pos, 1.2);
     const d = this.camera.position.distanceTo(pos);
@@ -1223,7 +1275,7 @@ export class Game {
     this.net.send({ t: 'boom', pid: p.pid, p: arr(p.pos), k: p.kind });
     if (W.smoke) { this.smokeFx(p.pos); return; }
     if (W.flash) { this.flashFx(p.pos); return; }
-    this.boomFx(p.pos, R);
+    this.boomFx(p.pos, R, W);
 
     let any = false;
     for (const rp of this.remotes.values()) {
@@ -1234,7 +1286,9 @@ export class Game {
       if (d >= R || (!stuck && !this.los(p.pos, c))) continue;
       const k = stuck ? 1 : 1 - d / R;
       const dir = c.clone().sub(p.pos).normalize();
-      const imp = [r2(dir.x * 9 * k), r2(dir.y * 9 * k + 3 * k), r2(dir.z * 9 * k)];
+      // Vortex grenades yank players toward the blast instead of throwing them away.
+      const push = W.pull ? -11 * (0.4 + k) : 9 * k;
+      const imp = [r2(dir.x * push), r2(dir.y * push * 0.3 + 3 * k), r2(dir.z * push)];
       this.net.send({ t: 'hit', v: rp.id, dmg: Math.round(W.splash * k), w: p.kind, imp });
       any = true;
     }
@@ -1247,7 +1301,7 @@ export class Game {
       if (d < R && this.los(p.pos, c)) {
         const k = 1 - d / R;
         const dir = c.sub(p.pos).normalize();
-        me.vel.addScaledVector(dir, 11 * k);
+        me.vel.addScaledVector(dir, W.pull ? -11 * (0.4 + k) : 11 * k);
         me.vel.y += 4 * k;
         me.onGround = false;
         this.net.send({ t: 'hit', v: this.myId, dmg: Math.round(W.splash * k * 0.5), w: p.kind });
@@ -1264,14 +1318,15 @@ export class Game {
     if (W.smoke) this.smokeFx(pos);
     else if (W.flash) this.flashFx(pos);
     else if (W.bolt) this.fx.blood(pos);
-    else this.boomFx(pos, W.radius);
+    else this.boomFx(pos, W.radius, W);
   }
 
   remoteShot(m) {
     const o = new THREE.Vector3(...m.o);
+    const W = WEAPONS[m.w];
     for (const e of m.e || []) {
       const end = new THREE.Vector3(...e);
-      this.fx.tracer(o, end);
+      this.fx.tracer(o, end, W && W.tracer);
       this.fx.impact(end, null);
     }
     this.fx.muzzleFlash(o);

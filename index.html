@@ -87,6 +87,16 @@
   </div>
 </div>
 
+<!-- Party chat (sits above the HUD and the pause screen) -->
+<div id="chat" class="hidden">
+  <div id="chat-log" aria-live="polite"></div>
+  <form id="chat-form" class="hidden" autocomplete="off">
+    <input id="chat-input" maxlength="100" placeholder="Message the lobby…" enterkeyhint="send">
+    <button type="submit" class="primary">Send</button>
+  </form>
+  <div id="chat-hint">Press <kbd>Enter</kbd> to chat</div>
+</div>
+
 <!-- Main menu -->
 <div id="menu" class="overlay">
   <div class="panel menu-panel">

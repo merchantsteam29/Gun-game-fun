@@ -13,6 +13,7 @@ const BUTTONS = [
   { a: 'melee', label: 'MELEE' },
   { a: 'score', label: '≡', hold: true },
   { a: 'pause', label: 'II' },
+  { a: 'chat', label: '💬' },
 ];
 const LOOK_GAIN = 1.5;
 
@@ -257,6 +258,8 @@ export class TouchControls {
         g.showScores = down;
         break;
       default:
+        // Chat opens on release: phones only raise the keyboard for focus() inside a finished tap.
+        if (a === 'chat') { if (!down && this.onChat) this.onChat(); return; }
         if (!down) return;
         if (a === 'pause') { this.onPause(); return; }
         if (!g.me.alive || g.matchOver) return;

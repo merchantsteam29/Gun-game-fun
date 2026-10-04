@@ -39,13 +39,15 @@ export class Effects {
     this.boomLT = 0;
   }
 
-  tracer(from, to) {
+  // color: optional (e.g. laser beams); beams also linger a little longer and look thicker.
+  tracer(from, to, color = null) {
     const len = from.distanceTo(to);
     if (len < 0.5) return;
     if (this.tracers.length >= MAX_TRACERS) this.tracers.shift();
     _ab.subVectors(to, from).normalize();
     this.tracers.push({
-      pos: from.clone().lerp(to, 0.5), quat: new THREE.Quaternion().setFromUnitVectors(Z, _ab), len, t: 0.07,
+      pos: from.clone().lerp(to, 0.5), quat: new THREE.Quaternion().setFromUnitVectors(Z, _ab), len,
+      t: color ? 0.12 : 0.07, life: color ? 0.12 : 0.07, w: color ? 0.035 : 0.018, col: color ? new THREE.Color(color) : TRACER_COLOR,
     });
   }
 
@@ -152,8 +154,8 @@ export class Effects {
     this.tracers = this.tracers.filter((tr) => (tr.t -= dt) > 0);
     const tm = this.tracerMesh;
     this.tracers.forEach((tr, i) => {
-      tm.setMatrixAt(i, _m.compose(tr.pos, tr.quat, _s.set(0.018, 0.018, tr.len)));
-      tm.setColorAt(i, _col.copy(TRACER_COLOR).multiplyScalar(Math.max(0, tr.t / 0.07) * 0.85));
+      tm.setMatrixAt(i, _m.compose(tr.pos, tr.quat, _s.set(tr.w, tr.w, tr.len)));
+      tm.setColorAt(i, _col.copy(tr.col).multiplyScalar(Math.max(0, tr.t / tr.life) * 0.9));
     });
     tm.count = this.tracers.length;
     tm.instanceMatrix.needsUpdate = true;

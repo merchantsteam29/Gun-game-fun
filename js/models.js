@@ -73,6 +73,10 @@ const M = {
   gray: new THREE.MeshStandardMaterial({ color: '#8d9399', roughness: 0.7 }),
   tape: new THREE.MeshStandardMaterial({ color: '#2a2d31', roughness: 0.95 }),
   zombie: new THREE.MeshStandardMaterial({ color: '#5f8f3a', roughness: 0.9 }),
+  white: new THREE.MeshStandardMaterial({ color: '#e8ecef', roughness: 0.45, metalness: 0.1 }),
+  cyan: new THREE.MeshBasicMaterial({ color: '#3fe8ff' }),
+  purple: new THREE.MeshStandardMaterial({ color: '#b06bff', emissive: '#7a2cff', emissiveIntensity: 1.2 }),
+  gold: new THREE.MeshStandardMaterial({ color: '#e8b923', roughness: 0.3, metalness: 0.8 }),
   bone: new THREE.MeshStandardMaterial({ color: '#d8cfb8', roughness: 0.6 }),
 };
 
@@ -780,6 +784,191 @@ const builders = {
     pin.add(ring);
     anchor(g, 'muzzle', 0, 0, 0);
   },
+  carbine(g) {
+    // Short M4-style carbine with a holographic sight and angled grip.
+    rbox(g, M.dark, 0.068, 0.058, 0.32, 0, 0.07, -0.05);
+    rbox(g, M.mid, 0.064, 0.05, 0.24, 0, 0.026, -0.02);
+    box(g, M.steel, 0.004, 0.02, 0.06, 0.035, 0.07, -0.02);
+    rail(g, 0.108, 0.08, -0.2);
+    rbox(g, M.olive, 0.076, 0.076, 0.2, 0, 0.055, -0.3);
+    vents(g, 0.055, -0.23, 4, 0.04, 0.039);
+    cyl(g, M.gunmetal, 0.015, 0.16, 0, 0.06, -0.48);
+    brake(g, 0.015, 0.06, -0.58, 0.05);
+    box(g, M.black, 0.03, 0.05, 0.05, 0, 0.0, -0.3, 0.6); // angled fore grip
+    const mag = grp(g, 'mag', 0, -0.02, -0.12);
+    box(mag, M.black, 0.046, 0.1, 0.07, 0, -0.04, 0, 0.12);
+    box(mag, M.black, 0.046, 0.06, 0.07, 0, -0.11, 0.012, 0.3);
+    box(g, M.dark, 0.058, 0.03, 0.085, 0, 0.0, -0.12);
+    grip(g, M.poly, 0, -0.05, 0.06);
+    trigger(g, 0.0, 0.0);
+    cyl(g, M.black, 0.017, 0.12, 0, 0.06, 0.17);
+    rbox(g, M.olive, 0.058, 0.1, 0.14, 0, 0.04, 0.25);
+    redDot(g, 0.148, -0.04, 0.108);
+    const bolt = grp(g, 'bolt', 0.043, 0.07, 0.0);
+    box(bolt, M.steel, 0.02, 0.018, 0.045, 0, 0, 0);
+    anchor(g, 'fore', 0, -0.01, -0.3);
+    anchor(g, 'muzzle', 0, 0.06, -0.61);
+    g.userData.sight = 0.148;
+  },
+  vector(g) {
+    // Boxy KRISS-style SMG: tall lower, offset barrel, folding stock.
+    rbox(g, M.black, 0.062, 0.07, 0.3, 0, 0.07, -0.06);
+    rbox(g, M.dark, 0.064, 0.16, 0.14, 0, -0.01, -0.12);
+    box(g, M.mid, 0.066, 0.01, 0.14, 0, -0.09, -0.12);
+    cyl(g, M.gunmetal, 0.014, 0.1, 0, 0.06, -0.26);
+    can(g, 0.022, 0.06, -0.33, 0.1);
+    rail(g, 0.108, 0.06, -0.18, 0.024);
+    const mag = grp(g, 'mag', 0, -0.06, -0.04);
+    box(mag, M.black, 0.04, 0.16, 0.05, 0, -0.08, 0);
+    grip(g, M.poly, 0, -0.06, 0.06, 0.11, -0.15);
+    trigger(g, 0.0, 0.0, 0.055);
+    box(g, M.dark, 0.012, 0.012, 0.18, 0, 0.06, 0.15);
+    rbox(g, M.poly, 0.05, 0.09, 0.04, 0, 0.03, 0.25);
+    irons(g, 0.13, -0.17, 0.05, 0.108);
+    const bolt = grp(g, 'bolt', 0.035, 0.08, -0.02);
+    box(bolt, M.steel, 0.018, 0.016, 0.04, 0, 0, 0);
+    anchor(g, 'fore', 0, -0.06, -0.2);
+    anchor(g, 'muzzle', 0, 0.06, -0.39);
+    g.userData.sight = 0.13;
+  },
+  slug(g) {
+    // Tactical pump shotgun with a ghost-ring sight and side saddle.
+    rbox(g, M.olive, 0.08, 0.09, 0.38, 0, 0.05, -0.08);
+    box(g, M.steel, 0.004, 0.035, 0.09, 0.041, 0.055, -0.06);
+    cyl(g, M.gunmetal, 0.026, 0.46, 0, 0.075, -0.48);
+    cyl(g, M.dark, 0.02, 0.38, 0, 0.028, -0.44);
+    brake(g, 0.026, 0.075, -0.73, 0.05);
+    const pump = grp(g, 'pump', 0, 0.02, -0.38);
+    rbox(pump, M.poly, 0.078, 0.07, 0.17, 0, 0, 0);
+    for (let i = 0; i < 4; i++) box(pump, M.black, 0.08, 0.006, 0.01, 0, -0.012, -0.05 + i * 0.033);
+    anchor(pump, 'fore', 0, -0.03, 0);
+    grip(g, M.poly, 0, -0.05, 0.08);
+    trigger(g, 0.01, 0.0);
+    rbox(g, M.olive, 0.064, 0.11, 0.24, 0, 0.02, 0.25);
+    box(g, M.black, 0.066, 0.12, 0.02, 0, 0.018, 0.37);
+    for (let i = 0; i < 4; i++) cyl(g, M.brass, 0.009, 0.05, 0.044, 0.02, -0.02 - i * 0.022, 8).rotation.set(0, 0, 0);
+    irons(g, 0.13, -0.68, 0.0, 0.11);
+    anchor(g, 'port', 0.05, 0.03, -0.1);
+    anchor(g, 'muzzle', 0, 0.075, -0.77);
+    g.userData.sight = 0.13;
+  },
+  laser(g) {
+    // White sci-fi rifle with a glowing emitter and power cell.
+    rbox(g, M.white, 0.078, 0.1, 0.48, 0, 0.05, -0.08);
+    box(g, M.black, 0.08, 0.02, 0.4, 0, 0.0, -0.08);
+    for (const s of [-1, 1]) box(g, M.cyan, 0.004, 0.012, 0.34, s * 0.04, 0.06, -0.1);
+    cyl(g, M.dark, 0.03, 0.16, 0, 0.06, -0.4, 12);
+    cyl(g, M.cyan, 0.022, 0.03, 0, 0.06, -0.49, 12);
+    for (let i = 0; i < 3; i++) cyl(g, M.black, 0.034, 0.012, 0, 0.06, -0.35 - i * 0.04, 12);
+    const mag = grp(g, 'mag', 0, -0.03, -0.08);
+    rbox(mag, M.dark, 0.05, 0.08, 0.1, 0, -0.04, 0);
+    box(mag, M.cyan, 0.052, 0.012, 0.06, 0, -0.03, 0);
+    grip(g, M.white, 0, -0.05, 0.08);
+    trigger(g, 0.02, 0.0);
+    rbox(g, M.white, 0.06, 0.1, 0.18, 0, 0.04, 0.24);
+    rail(g, 0.108, 0.04, -0.16, 0.024);
+    redDot(g, 0.15, -0.06, 0.108);
+    anchor(g, 'fore', 0, -0.01, -0.3);
+    anchor(g, 'muzzle', 0, 0.06, -0.51);
+    g.userData.sight = 0.15;
+  },
+  harpoon(g) {
+    // Speargun: long tube, rubber bands and a loaded harpoon (the 'mag').
+    cyl(g, M.dark, 0.03, 0.62, 0, 0.05, -0.2, 12);
+    cyl(g, M.black, 0.036, 0.05, 0, 0.05, -0.52, 12);
+    for (const s of [-1, 1]) box(g, M.orange, 0.012, 0.012, 0.26, s * 0.035, 0.07, -0.38, 0, s * 0.08, 0);
+    const mag = grp(g, 'mag', 0, 0.09, -0.3);
+    box(mag, M.steel, 0.01, 0.01, 0.62, 0, 0, 0);
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.06, 4), M.steel);
+    tip.rotation.x = -Math.PI / 2;
+    tip.position.z = -0.33;
+    mag.add(tip);
+    for (const s of [-1, 1]) box(mag, M.steel, 0.004, 0.03, 0.012, s * 0.012, 0, -0.29, 0, 0, s * 0.6);
+    grip(g, M.poly, 0, -0.05, 0.06, 0.13);
+    trigger(g, 0.0, -0.005);
+    rbox(g, M.olive, 0.05, 0.08, 0.16, 0, 0.03, 0.18);
+    irons(g, 0.12, -0.12, 0.06, 0.08);
+    anchor(g, 'fore', 0, -0.02, -0.32);
+    anchor(g, 'muzzle', 0, 0.09, -0.62);
+    g.userData.sight = 0.12;
+  },
+  microsmg(g) {
+    // Tiny Uzi-style SMG: grip-fed mag, folded wire stock.
+    rbox(g, M.dark, 0.05, 0.07, 0.22, 0, 0.05, -0.06);
+    cyl(g, M.gunmetal, 0.011, 0.06, 0, 0.055, -0.2);
+    box(g, M.black, 0.03, 0.04, 0.03, 0, 0.0, -0.13);
+    trigger(g, -0.02, 0.02, 0.05);
+    grip(g, M.poly, 0, -0.04, 0.02);
+    const mag = grp(g, 'mag', 0, -0.02, 0.02);
+    box(mag, M.black, 0.034, 0.18, 0.04, 0, -0.1, 0.03, -0.25);
+    for (const s of [-1, 1]) box(g, M.mid, 0.008, 0.008, 0.14, s * 0.02, 0.06, 0.1);
+    box(g, M.black, 0.014, 0.022, 0.012, 0, 0.092, -0.14);
+    box(g, M.black, 0.026, 0.012, 0.01, 0, 0.09, 0.02);
+    const slide = grp(g, 'slide', 0, 0, 0);
+    box(slide, M.steel, 0.012, 0.012, 0.03, 0, 0.092, -0.03);
+    anchor(g, 'fore', -0.04, -0.05, 0.0);
+    anchor(g, 'muzzle', 0, 0.055, -0.24);
+    g.userData.sight = 0.097;
+  },
+  autorev(g) {
+    // Mateba-style auto revolver: barrel under the cylinder axis, long top rib.
+    rbox(g, M.gunmetal, 0.042, 0.06, 0.13, 0, 0.042, -0.02);
+    cyl(g, M.black, 0.02, 0.22, 0, 0.03, -0.18, 12);
+    rbox(g, M.gunmetal, 0.03, 0.04, 0.26, 0, 0.08, -0.12);
+    box(g, M.black, 0.008, 0.02, 0.012, 0, 0.108, -0.24);
+    const c = grp(g, 'cyl', 0, 0.045, -0.04);
+    cyl(c, M.steel, 0.034, 0.066, 0, 0, 0, 12);
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      box(c, M.black, 0.006, 0.006, 0.068, Math.cos(a) * 0.034, Math.sin(a) * 0.034, 0);
+    }
+    trigger(g, 0.0, 0.015, 0.05);
+    rbox(g, M.black, 0.044, 0.12, 0.056, 0, -0.05, 0.045, -0.35);
+    box(g, M.orange, 0.046, 0.06, 0.01, 0, -0.04, 0.05, -0.35);
+    box(g, M.black, 0.026, 0.012, 0.012, 0, 0.104, 0.02);
+    anchor(g, 'fore', -0.04, -0.05, 0.02);
+    anchor(g, 'muzzle', 0, 0.03, -0.29);
+    g.userData.sight = 0.108;
+  },
+  knuckles(g) {
+    rbox(g, M.gold, 0.1, 0.035, 0.03, 0, 0.02, -0.04);
+    for (let i = 0; i < 4; i++) {
+      const r = new THREE.Mesh(new THREE.TorusGeometry(0.014, 0.006, 6, 12), M.gold);
+      r.position.set(-0.036 + i * 0.024, 0.045, -0.04);
+      g.add(r);
+    }
+    box(g, M.gold, 0.08, 0.025, 0.04, 0, -0.01, -0.03, 0.3);
+    rbox(g, M.dark, 0.08, 0.08, 0.1, 0, 0, 0.02); // fist (glove)
+    anchor(g, 'muzzle', 0, 0.03, -0.06);
+  },
+  scythe(g) {
+    rbox(g, M.woodDark, 0.034, 0.04, 0.95, 0, 0, -0.32);
+    cyl(g, M.tape, 0.024, 0.14, 0, 0, 0.06, 8);
+    box(g, M.dark, 0.05, 0.05, 0.06, 0, 0, -0.78);
+    // Curved blade from short boxes
+    for (let i = 0; i < 7; i++) {
+      const a = i * 0.16;
+      box(g, M.steel, 0.008, 0.05 - i * 0.004, 0.08, 0, 0.04 + Math.sin(a) * 0.12 + i * 0.03, -0.8 + Math.cos(a) * 0.02 + i * 0.045, -0.3 - a * 0.9);
+    }
+    anchor(g, 'fore', 0, 0, -0.35);
+    anchor(g, 'muzzle', 0, 0.2, -0.6);
+  },
+  vortex(g) {
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.05, 14, 12), M.dark);
+    g.add(s);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.058, 0.008, 6, 20), M.purple);
+    ring.rotation.x = Math.PI / 2;
+    g.add(ring);
+    const core = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 6), M.purple);
+    core.position.y = 0.05;
+    g.add(core);
+    box(g, M.mid, 0.015, 0.09, 0.015, 0.035, 0.02, 0);
+    const pin = grp(g, 'pin', -0.025, 0.075, 0);
+    const pr = new THREE.Mesh(new THREE.TorusGeometry(0.016, 0.004, 6, 12), M.steel);
+    pr.rotation.y = Math.PI / 2;
+    pin.add(pr);
+    anchor(g, 'muzzle', 0, 0, 0);
+  },
   katana(g) {
     rbox(g, M.black, 0.035, 0.04, 0.22, 0, 0, 0.04);
     for (let i = 0; i < 6; i++) box(g, M.bone, 0.037, 0.03, 0.006, 0, 0, -0.04 + i * 0.03, 0, 0, i % 2 ? 0.5 : -0.5);
@@ -963,6 +1152,13 @@ export function buildProjectile(kind) {
     const halo = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8),
       new THREE.MeshBasicMaterial({ color: '#ff8a3a', transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }));
     g.add(halo);
+  } else if (kind === 'harpoon') {
+    box(g, M.steel, 0.012, 0.012, 0.62, 0, 0, 0);
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.07, 4), M.steel);
+    tip.rotation.x = -Math.PI / 2;
+    tip.position.z = -0.34;
+    g.add(tip);
+    for (const s of [-1, 1]) box(g, M.steel, 0.004, 0.035, 0.014, s * 0.014, 0, -0.29, 0, 0, s * 0.6);
   } else if (kind === 'crossbow') {
     box(g, M.steel, 0.012, 0.012, 0.5, 0, 0, 0);
     const tip = new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.04, 4), M.steel);
