@@ -5,25 +5,25 @@ export const WEAPONS = {
   ar: {
     id: 'ar', name: 'Assault Rifle', type: 'gun', auto: true,
     rate: 0.095, dmg: 21, head: 1.7, pellets: 1, mag: 30, reload: 2.0,
-    spread: 0.012, moveSpread: 0.035, adsMul: 0.3, range: 250,
+    spread: 0.012, moveSpread: 0.035, adsMul: 0.3, range: 250, falloff: [35, 80, 0.75],
     recoil: 0.014, speedMul: 1.0, switch: 0.35, reloadStyle: 'mag',
   },
   smg: {
     id: 'smg', name: 'SMG', type: 'gun', auto: true,
-    rate: 0.065, dmg: 15, head: 1.5, pellets: 1, mag: 35, reload: 1.7,
+    rate: 0.065, dmg: 17, head: 1.5, pellets: 1, mag: 35, reload: 1.7,
     spread: 0.02, moveSpread: 0.02, adsMul: 0.45, range: 120, falloff: [15, 40, 0.6],
     recoil: 0.009, speedMul: 1.1, switch: 0.28, reloadStyle: 'mag',
   },
   burst: {
     id: 'burst', name: 'Burst Rifle', type: 'gun', auto: false, burst: 3, burstGap: 0.07,
     rate: 0.42, dmg: 27, head: 1.8, pellets: 1, mag: 24, reload: 2.1,
-    spread: 0.008, moveSpread: 0.03, adsMul: 0.25, range: 250,
+    spread: 0.008, moveSpread: 0.03, adsMul: 0.25, range: 250, falloff: [40, 90, 0.75],
     recoil: 0.016, speedMul: 1.0, switch: 0.35, reloadStyle: 'mag',
   },
   lmg: {
     id: 'lmg', name: 'LMG', type: 'gun', auto: true,
-    rate: 0.095, dmg: 20, head: 1.5, pellets: 1, mag: 100, reload: 4.2,
-    spread: 0.022, moveSpread: 0.05, adsMul: 0.35, range: 250,
+    rate: 0.1, dmg: 20, head: 1.5, pellets: 1, mag: 100, reload: 4.2,
+    spread: 0.022, moveSpread: 0.05, adsMul: 0.35, range: 250, falloff: [40, 90, 0.75],
     recoil: 0.012, speedMul: 0.82, switch: 0.6, reloadStyle: 'box',
   },
   sniper: {
@@ -67,7 +67,7 @@ export const WEAPONS = {
     id: 'doublebarrel', name: 'Double Barrel', type: 'gun', auto: false,
     rate: 0.22, dmg: 12, head: 1.3, pellets: 12, mag: 2, reload: 2.0,
     spread: 0.09, moveSpread: 0.02, adsMul: 0.8, range: 45, falloff: [6, 22, 0.25],
-    recoil: 0.07, speedMul: 1.0, switch: 0.35, reloadStyle: 'shells',
+    recoil: 0.07, speedMul: 0.95, switch: 0.35, reloadStyle: 'shells',
   },
   rocket: {
     id: 'rocket', name: 'Rocket Launcher', type: 'proj', auto: false,
@@ -88,12 +88,12 @@ export const WEAPONS = {
   br: {
     id: 'br', name: 'Battle Rifle', type: 'gun', auto: true,
     rate: 0.15, dmg: 30, head: 1.6, pellets: 1, mag: 20, reload: 2.3,
-    spread: 0.01, moveSpread: 0.04, adsMul: 0.25, range: 280,
+    spread: 0.01, moveSpread: 0.04, adsMul: 0.25, range: 280, falloff: [45, 100, 0.8],
     recoil: 0.024, speedMul: 0.92, switch: 0.42, reloadStyle: 'mag',
   },
   pdw: {
     id: 'pdw', name: 'PDW', type: 'gun', auto: true,
-    rate: 0.055, dmg: 12, head: 1.5, pellets: 1, mag: 50, reload: 2.0,
+    rate: 0.055, dmg: 15, head: 1.5, pellets: 1, mag: 50, reload: 2.0,
     spread: 0.022, moveSpread: 0.015, adsMul: 0.5, range: 100, falloff: [12, 35, 0.55],
     recoil: 0.007, speedMul: 1.12, switch: 0.26, reloadStyle: 'mag',
   },
@@ -120,13 +120,13 @@ export const WEAPONS = {
   carbine: {
     id: 'carbine', name: 'Carbine', type: 'gun', auto: true,
     rate: 0.1, dmg: 24, head: 1.6, pellets: 1, mag: 25, reload: 1.9,
-    spread: 0.011, moveSpread: 0.028, adsMul: 0.3, range: 220,
+    spread: 0.011, moveSpread: 0.028, adsMul: 0.3, range: 220, falloff: [30, 70, 0.7],
     recoil: 0.013, speedMul: 1.04, switch: 0.32, reloadStyle: 'mag',
   },
   vector: {
     id: 'vector', name: 'Vector', type: 'gun', auto: true,
-    rate: 0.048, dmg: 11, head: 1.5, pellets: 1, mag: 33, reload: 1.8,
-    spread: 0.019, moveSpread: 0.015, adsMul: 0.5, range: 90, falloff: [10, 32, 0.5],
+    rate: 0.048, dmg: 14, head: 1.5, pellets: 1, mag: 30, reload: 1.8,
+    spread: 0.019, moveSpread: 0.015, adsMul: 0.5, range: 90, falloff: [9, 28, 0.5],
     recoil: 0.006, speedMul: 1.12, switch: 0.26, reloadStyle: 'mag',
   },
   slug: {
@@ -159,13 +159,13 @@ export const WEAPONS = {
   autorev: {
     id: 'autorev', name: 'Auto Revolver', type: 'gun', auto: false,
     rate: 0.24, dmg: 37, head: 1.9, pellets: 1, mag: 6, reload: 2.0,
-    spread: 0.012, moveSpread: 0.03, adsMul: 0.3, range: 160,
+    spread: 0.012, moveSpread: 0.03, adsMul: 0.3, range: 160, falloff: [20, 50, 0.7],
     recoil: 0.04, speedMul: 1.05, switch: 0.3, reloadStyle: 'revolver',
   },
   bpistol: {
     id: 'bpistol', name: 'Burst Pistol', type: 'gun', auto: false, burst: 3, burstGap: 0.06,
     rate: 0.38, dmg: 19, head: 1.8, pellets: 1, mag: 18, reload: 1.5,
-    spread: 0.012, moveSpread: 0.025, adsMul: 0.4, range: 140,
+    spread: 0.012, moveSpread: 0.025, adsMul: 0.4, range: 140, falloff: [20, 50, 0.7],
     recoil: 0.02, speedMul: 1.05, switch: 0.25, reloadStyle: 'mag',
   },
   flare: {
@@ -179,13 +179,13 @@ export const WEAPONS = {
   pistol: {
     id: 'pistol', name: 'Pistol', type: 'gun', auto: false,
     rate: 0.15, dmg: 27, head: 2.0, pellets: 1, mag: 12, reload: 1.4,
-    spread: 0.012, moveSpread: 0.025, adsMul: 0.35, range: 150,
+    spread: 0.012, moveSpread: 0.025, adsMul: 0.35, range: 150, falloff: [20, 50, 0.7],
     recoil: 0.025, speedMul: 1.05, switch: 0.25, reloadStyle: 'mag',
   },
   revolver: {
     id: 'revolver', name: 'Revolver', type: 'gun', auto: false,
-    rate: 0.45, dmg: 50, head: 2.0, pellets: 1, mag: 6, reload: 2.2,
-    spread: 0.01, moveSpread: 0.03, adsMul: 0.3, range: 180,
+    rate: 0.45, dmg: 55, head: 2.0, pellets: 1, mag: 6, reload: 2.0,
+    spread: 0.01, moveSpread: 0.03, adsMul: 0.3, range: 180, falloff: [25, 60, 0.75],
     recoil: 0.06, speedMul: 1.05, switch: 0.3, reloadStyle: 'revolver',
   },
   mpistol: {
@@ -197,8 +197,8 @@ export const WEAPONS = {
 
   handcannon: {
     id: 'handcannon', name: 'Hand Cannon', type: 'gun', auto: false,
-    rate: 0.48, dmg: 58, head: 2.0, pellets: 1, mag: 7, reload: 1.9,
-    spread: 0.012, moveSpread: 0.04, adsMul: 0.3, range: 160,
+    rate: 0.48, dmg: 54, head: 2.0, pellets: 1, mag: 7, reload: 2.1,
+    spread: 0.012, moveSpread: 0.04, adsMul: 0.3, range: 160, falloff: [25, 60, 0.75],
     recoil: 0.07, speedMul: 1.0, switch: 0.35, reloadStyle: 'mag',
   },
   sawedoff: {
@@ -216,23 +216,23 @@ export const WEAPONS = {
   },
   axe: {
     id: 'axe', name: 'Fire Axe', type: 'melee', style: 'chop',
-    rate: 0.9, dmg: 75, backstab: 150, range: 2.9, hitDelay: 0.3,
+    rate: 0.72, dmg: 80, backstab: 150, range: 2.9, hitDelay: 0.26,
     spread: 0, moveSpread: 0, speedMul: 1.0, switch: 0.35,
   },
 
   katana: {
     id: 'katana', name: 'Katana', type: 'melee', style: 'slash',
-    rate: 0.55, dmg: 70, backstab: 150, range: 3.0, hitDelay: 0.1,
-    spread: 0, moveSpread: 0, speedMul: 1.1, switch: 0.3,
+    rate: 0.6, dmg: 70, backstab: 150, range: 3.1, hitDelay: 0.1,
+    spread: 0, moveSpread: 0, speedMul: 1.08, switch: 0.3,
   },
   bat: {
     id: 'bat', name: 'Baseball Bat', type: 'melee', style: 'chop',
-    rate: 0.7, dmg: 50, backstab: 100, range: 2.7, hitDelay: 0.28, knockback: 13,
+    rate: 0.65, dmg: 50, backstab: 100, range: 2.7, hitDelay: 0.28, knockback: 13,
     spread: 0, moveSpread: 0, speedMul: 1.05, switch: 0.3,
   },
   machete: {
     id: 'machete', name: 'Machete', type: 'melee', style: 'slash',
-    rate: 0.48, dmg: 65, backstab: 150, range: 2.7, hitDelay: 0.1,
+    rate: 0.55, dmg: 65, backstab: 150, range: 2.8, hitDelay: 0.1,
     spread: 0, moveSpread: 0, speedMul: 1.1, switch: 0.25,
   },
   sledge: {
@@ -243,11 +243,11 @@ export const WEAPONS = {
   knuckles: {
     id: 'knuckles', name: 'Brass Knuckles', type: 'melee', style: 'slash',
     rate: 0.32, dmg: 38, backstab: 120, range: 2.2, hitDelay: 0.06,
-    spread: 0, moveSpread: 0, speedMul: 1.18, switch: 0.15,
+    spread: 0, moveSpread: 0, speedMul: 1.2, switch: 0.15,
   },
   scythe: {
     id: 'scythe', name: 'Scythe', type: 'melee', style: 'chop',
-    rate: 1.0, dmg: 90, backstab: 150, range: 3.5, hitDelay: 0.34,
+    rate: 0.75, dmg: 70, backstab: 150, range: 3.5, hitDelay: 0.3,
     spread: 0, moveSpread: 0, speedMul: 1.0, switch: 0.4,
   },
   claws: {
@@ -294,7 +294,7 @@ export const WEAPONS = {
   impact: {
     id: 'impact', name: 'Impact Grenade', type: 'throw', impact: true,
     rate: 0.9, count: 2, fuse: 5, throwSpeed: 20, projGravity: 14,
-    directDmg: 60, splash: 90, radius: 4,
+    directDmg: 60, splash: 75, radius: 3.5,
     spread: 0, moveSpread: 0, speedMul: 1.05, switch: 0.25,
   },
 };
@@ -325,21 +325,62 @@ export const SHORT = {
   autorev: 'Auto-Rev', knuckles: 'Knuckles', scythe: 'Scythe', vortex: 'Vortex',
 };
 
-// Menu summary: a one-line description plus 0..1 stat bars.
+// Weapon classes, for grouping in the loadout picker (in display order per slot).
+export const CLASSES = [
+  ['Assault rifles', ['ar', 'carbine', 'br', 'burst', 'laser']],
+  ['SMGs', ['smg', 'pdw', 'vector']],
+  ['Heavy', ['lmg', 'minigun']],
+  ['Marksman & snipers', ['dmr', 'sniper', 'amr', 'railgun']],
+  ['Shotguns', ['shotgun', 'autoshot', 'slug', 'doublebarrel']],
+  ['Launchers & bows', ['gl', 'rocket', 'crossbow', 'harpoon']],
+  ['Pistols', ['pistol', 'bpistol', 'handcannon']],
+  ['Revolvers', ['revolver', 'autorev']],
+  ['Machine pistols', ['mpistol', 'microsmg']],
+  ['Special', ['sawedoff', 'flare']],
+  ['Quick', ['knuckles', 'knife', 'machete', 'katana']],
+  ['Heavy hitters', ['bat', 'axe', 'scythe', 'sledge']],
+  ['Lethal', ['frag', 'sticky', 'impact', 'tknife']],
+  ['Tactical', ['vortex', 'smoke', 'flash']],
+];
+
+// Shots (or hits) to kill a 100-health player up close, and how long that takes.
+export function killStats(id) {
+  const w = WEAPONS[id];
+  const per = w.type === 'gun' ? w.dmg * w.pellets : w.type === 'melee' ? w.dmg : Math.max(w.directDmg || 0, w.splash || 0);
+  if (!per) return null;
+  const n = Math.ceil(100 / per);
+  const nh = w.type === 'gun' ? Math.ceil(100 / (per * (w.head || 1))) : n;
+  const time = (k) => (w.burst ? Math.floor((k - 1) / w.burst) * w.rate + ((k - 1) % w.burst) * w.burstGap : (k - 1) * w.rate) + (w.spinup || 0);
+  return { shots: n, heads: nh, ttk: time(n), ttkHead: time(nh) };
+}
+
+// Menu summary: a one-line description, 0..1 stat bars and a few exact numbers.
 export function weaponInfo(id) {
   const w = WEAPONS[id];
   const tags = [];
+  const facts = [];
   let dmg = 0, rate = 0, range = 0;
+  const ks = killStats(id);
   if (w.type === 'gun') {
     tags.push(w.cycle === 'bolt' ? 'Bolt-action' : w.cycle === 'pump' ? 'Pump-action' : w.burst ? `${w.burst}-round burst` : w.auto ? 'Full-auto' : 'Semi-auto');
     tags.push(`${w.mag} rounds`);
     if (w.pellets > 1) tags.push(`${w.pellets} pellets`);
     if (w.scope) tags.push('Scoped');
     if (w.spinup) tags.push('Spins up');
-    dmg = (w.dmg * w.pellets * (w.burst || 1)) / 110;
+    // "Kill speed": faster time-to-kill = fuller bar (one-shot weapons rated by their fire rate).
+    const ttk = ks.shots > 1 ? ks.ttk : w.rate * 0.6;
+    dmg = 1 - Math.min(1, Math.max(0, (ttk - 0.25) / 1.1));
     rate = 0.06 / w.rate;
-    range = w.falloff ? w.falloff[1] / 120 : w.range / 300;
+    range = w.falloff ? w.falloff[1] / 110 : w.range / 300;
+    facts.push(['Damage', `${w.pellets > 1 ? `${w.pellets}×` : ''}${w.dmg}${w.head > 1 ? ` (${Math.round(w.dmg * w.head)} head)` : ''}`]);
+    facts.push(['Kill', ks.shots === 1 ? 'one shot' : `${ks.shots} shots · ${ks.ttk.toFixed(2)}s`]);
+    facts.push(['Headshots', ks.heads === 1 ? 'one shot' : `${ks.heads} · ${ks.ttkHead.toFixed(2)}s`]);
+    facts.push(['Fire rate', w.burst ? `${Math.round(60 / w.rate)} bursts/min` : `${Math.round(60 / w.rate)} rpm`]);
+    facts.push(['Reload', `${w.reload}s`]);
+    if (w.falloff) facts.push(['Drop-off', `${w.falloff[0]}–${w.falloff[1]}m (to ${Math.round(w.falloff[2] * 100)}%)`]);
   } else if (w.type === 'proj') {
+    facts.push(['Damage', w.directDmg >= 999 ? 'direct hit kills' : `${w.directDmg} direct${w.splash ? ` · ${w.splash} splash` : ''}`]);
+    facts.push(['Reload', `${w.reload}s`]);
     tags.push(w.bolt ? 'Bolt projectile' : 'Explosive', `${w.mag} round${w.mag > 1 ? 's' : ''}`);
     if (w.directDmg >= 999) tags.push('One-shot direct hit');
     dmg = Math.max(w.directDmg, w.splash || 0) / 110;
@@ -350,17 +391,24 @@ export function weaponInfo(id) {
     if (w.knockback) tags.push('Knockback');
     dmg = w.dmg / 110;
     rate = 0.3 / w.rate;
-    range = w.range / 3.2;
+    range = w.range / 3.6;
+    facts.push(['Damage', `${w.dmg} · backstab ${w.backstab}`]);
+    facts.push(['Kill', ks.shots === 1 ? 'one hit' : `${ks.shots} hits · ${ks.ttk.toFixed(2)}s`]);
+    facts.push(['Reach', `${w.range}m`]);
   } else {
     tags.push(w.smoke ? 'Blocks vision' : w.flash ? 'Blinds' : w.sticky ? 'Sticks to targets' : w.bolt ? 'Thrown blade' : w.impact ? 'Explodes on impact' : w.pull ? 'Pulls players in' : `${w.fuse}s fuse`, `×${w.count}`);
     dmg = (w.splash || w.directDmg || 0) / 110;
     rate = 0.3 / w.rate;
     range = w.throwSpeed / 30;
+    if (w.splash || w.directDmg) facts.push(['Damage', [w.directDmg && `${w.directDmg} direct`, w.splash && `${w.splash} blast`].filter(Boolean).join(' · ')]);
+    if (w.radius) facts.push(['Radius', `${w.radius}m`]);
+    facts.push(['Carry', `×${w.count}`]);
   }
   const c = (v) => Math.max(0.04, Math.min(1, v));
   return {
     tag: tags.join(' · '),
-    stats: [['Damage', c(dmg)], ['Fire rate', c(rate)], ['Range', c(range)], ['Mobility', c((w.speedMul - 0.6) / 0.6)]],
+    stats: [[w.type === 'gun' ? 'Kill speed' : 'Damage', c(dmg)], ['Fire rate', c(rate)], ['Range', c(range)], ['Mobility', c((w.speedMul - 0.6) / 0.6)]],
+    facts,
   };
 }
 

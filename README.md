@@ -86,7 +86,14 @@ The lobby creator gets a **Host panel** button in the pause menu (Esc):
 
 ## Loadout
 
-Pick one per slot in the menu or pause menu (applies on next spawn). Hover a weapon to see its damage, fire rate, range and mobility.
+Pick one per slot in the menu or pause menu (applies on next spawn). Weapons are grouped by class and each shows how
+many shots it takes to kill and how fast; hover (or focus with a controller) to see exact damage, headshot damage,
+fire rate, reload and damage drop-off.
+
+**Balance:** every gun is tuned around time-to-kill at 100 health. Rifles kill in about 0.38–0.48s and keep most of
+their damage at range; SMGs are faster up close (~0.33s) but fall off with distance; pistols sit a little slower
+(~0.45–0.5s) with short drop-off; snipers and slugs reward headshots; shotguns one-shot only up close. Melee weapons
+trade swing speed for reach and movement speed, and only the Sledgehammer one-shots from the front.
 
 | Slot | Options |
 |---|---|
@@ -100,11 +107,31 @@ Pick one per slot in the menu or pause menu (applies on next spawn). Hover a wea
 Press **Enter** (PC) or tap **💬** (phones/tablets) to type to everyone in the lobby. The chat box is always open on
 the pause screen. Messages fade after a few seconds; turn chat off in Settings → HUD & Audio.
 
-## Aim assist (phones & tablets)
+## Aim assist (controllers, phones & tablets)
 
-On touch screens, aim slows down while your crosshair is on an enemy, gently tracks them while you shoot or aim down
-sights, and snaps a little toward a nearby enemy when you start aiming. Toggle it or set its strength in
-Settings → Controls.
+With a controller or on a touch screen, aim slows down while your crosshair is on an enemy, gently tracks them while
+you shoot or aim down sights, and snaps a little toward a nearby enemy when you start aiming. Toggle it or set its
+strength in Settings → Controller (or Controls on touch devices).
+
+## Controller
+
+Plug in or pair any standard controller (Xbox, PlayStation, Switch Pro, most Bluetooth pads) and press a button — the
+game switches to controller mode (touching the mouse or keyboard switches back).
+
+| Input | Action |
+|---|---|
+| Left stick / right stick | Move / look |
+| RT / LT | Fire / aim down sights |
+| A / B | Jump / crouch (slide while sprinting) |
+| X / Y | Reload / switch weapon |
+| RB / LB or R3 | Grenade / quick melee |
+| L3 | Sprint |
+| D-pad ◀ ▶ / ▲ / ▼ | Previous–next weapon / melee weapon / inspect |
+| View / Menu | Scoreboard / pause |
+
+Every menu works with the controller too: D-pad or left stick moves, **A** selects, **B** goes back, **LB/RB** switch
+menu sections or settings tabs, **LT/RT** switch loadout slots, the right stick scrolls, and left/right changes sliders.
+Settings → Controller has look sensitivity, invert, dead zone, aim assist, crouch toggle, auto-sprint and vibration.
 
 The Grenade Launcher one-shots on a direct hit but slows you down while it's out.
 
@@ -132,6 +159,7 @@ Open **Settings** from the main menu or the pause menu. Everything is saved in y
 | Tab | Options |
 |---|---|
 | Controls | Mouse sensitivity (desktop) / look sensitivity (touch), aiming sensitivity, invert look, toggle aim with right mouse |
+| Controller | Look sensitivity, aiming sensitivity, invert, stick dead zone, aim assist + strength, crouch toggle, auto-sprint, vibration, button layout |
 | Video | Field of view, weapon field of view, view bobbing, graphics High/Low, FPS counter |
 | HUD & Audio | Volume, crosshair color, size and center dot |
 | Mobile | Edit button layout (drag any touch button anywhere, resize each one), button size, button opacity |

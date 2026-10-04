@@ -1,7 +1,7 @@
 import { Game } from './game.js';
 import { Net } from './net.js';
 import { initAudio } from './audio.js';
-import { WEAPONS, SLOTS, SLOT_NAMES, SHORT, validLoadout, weaponInfo } from './weapons.js';
+import { WEAPONS, SLOTS, SLOT_NAMES, SHORT, CLASSES, validLoadout, weaponInfo, killStats } from './weapons.js';
 import { MAPS, MAP_ORDER, quality } from './maps.js';
 import { TouchControls } from './touch.js';
 import { COLORS, randCode, store } from './util.js';
@@ -15,6 +15,7 @@ import { ServerBrowser, ServerAnnouncer, REGIONS, guessRegion } from './servers.
 import { Updater } from './updater.js';
 import { esc } from './util.js';
 import { Chat } from './chat.js';
+import { GamepadInput } from './gamepad.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -98,16 +99,32 @@ const loadoutTab = new WeakMap();
 function statCard(id) {
   const info = weaponInfo(id);
   return `<div class="lo-name">${WEAPONS[id].name}</div><div class="lo-tag">${info.tag}</div>` +
-    info.stats.map(([label, v]) => `<div class="lo-stat"><span>${label}</span><i><b style="width:${Math.round(v * 100)}%"></b></i></div>`).join('');
+    info.stats.map(([label, v]) => `<div class="lo-stat"><span>${label}</span><i><b style="width:${Math.round(v * 100)}%"></b></i></div>`).join('') +
+    (info.facts.length ? `<dl class="lo-facts">${info.facts.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>` : '');
+}
+
+// One-line summary under each weapon in the picker.
+function weaponBlurb(id) {
+  const w = WEAPONS[id], k = killStats(id);
+  if (w.type === 'throw') return `×${w.count}${w.splash ? ` · ${w.splash} dmg` : ''}`;
+  if (!k) return '';
+  if (w.type === 'melee') return k.shots === 1 ? 'one hit' : `${k.shots} hits · ${k.ttk.toFixed(2)}s`;
+  if (k.shots === 1) return w.type === 'proj' ? 'one-hit' : 'one shot';
+  return `${k.shots} shots · ${k.ttk.toFixed(2)}s`;
 }
 
 function renderLoadout(el) {
   const open = loadoutTab.get(el) || 0;
   const tabs = SLOTS.map((_, slot) =>
     `<button class="lo-tab ${slot === open ? 'sel' : ''}" data-tab="${slot}"><small>${slot + 1} · ${SLOT_NAMES[slot]}</small>${WEAPONS[settings.loadout[slot]].name}</button>`).join('');
-  const chips = SLOTS[open].map((id) =>
-    `<button class="${settings.loadout[open] === id ? 'sel' : ''}" data-w="${id}" title="${WEAPONS[id].name}">${SHORT[id]}</button>`).join('');
-  el.innerHTML = `<div class="lo-tabs">${tabs}</div><div class="lo-body"><div class="lo-grid">${chips}</div><div class="lo-card">${statCard(settings.loadout[open])}</div></div>`;
+  // Group the slot's weapons by class (anything unlisted goes under "Other").
+  const ids = SLOTS[open];
+  const groups = CLASSES.map(([name, list]) => [name, list.filter((id) => ids.includes(id))]).filter(([, l]) => l.length);
+  const rest = ids.filter((id) => !groups.some(([, l]) => l.includes(id)));
+  if (rest.length) groups.push(['Other', rest]);
+  const list = groups.map(([name, l]) => `<div class="lo-group"><h4>${name}</h4><div class="lo-grid">${l.map((id) =>
+    `<button class="${settings.loadout[open] === id ? 'sel' : ''}" data-w="${id}"><b>${WEAPONS[id].name}</b><small>${weaponBlurb(id)}</small></button>`).join('')}</div></div>`).join('');
+  el.innerHTML = `<div class="lo-tabs">${tabs}</div><div class="lo-body"><div class="lo-list">${list}</div><div class="lo-card">${statCard(settings.loadout[open])}</div></div>`;
   const card = el.querySelector('.lo-card');
   el.querySelectorAll('[data-tab]').forEach((b) => {
     b.onclick = () => { loadoutTab.set(el, Number(b.dataset.tab)); renderLoadout(el); };
@@ -257,10 +274,19 @@ function setPublic(v) {
 }
 
 // Menu sections. Phones show the section buttons as a bottom bar.
+const PANE_INFO = {
+  play: ['Servers', 'Join friends with a code, browse public servers, or start your own.'],
+  loadout: ['Loadout', 'One weapon per slot. Changes apply the next time you spawn.'],
+  character: ['Character', 'Your callsign, color and cosmetics. Earn tokens from missions to unlock more.'],
+  missions: ['Missions', 'Complete missions in any match to earn tokens.'],
+};
 let menuPane = store.get('menuPane', 'play');
 function showPane(name) {
+  if (!PANE_INFO[name]) name = 'play';
   menuPane = name;
   store.set('menuPane', name);
+  $('pane-title').textContent = PANE_INFO[name][0];
+  $('pane-sub').textContent = PANE_INFO[name][1];
   document.querySelectorAll('#menu-nav [data-pane]').forEach((b) => b.classList.toggle('sel', b.dataset.pane === name));
   document.querySelectorAll('.menu-pane').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== name));
   if (name === 'character') { if (settingsUI) settingsUI.tryOn = null; renderCharacter(); }
@@ -311,7 +337,7 @@ function enterGame() {
   $('pause-code').textContent = net.code;
   $('pause-title').textContent = net.isHost ? 'SERVER CREATED' : 'JOINED SERVER';
   $('pause-vis').textContent = 'Code';
-  $('btn-resume').textContent = 'Click to play';
+  $('btn-resume').textContent = game.padMode ? 'Press Ⓐ to play' : 'Click to play';
   history.replaceState(null, '', '?lobby=' + net.code);
   showPause();
 }
@@ -404,7 +430,7 @@ $('btn-resume').onclick = () => {
   $('pause').classList.add('hidden');
   chat.setPaused(false);
   game.lock();
-  if (mobile) {
+  if (mobile && !game.padMode) {
     touch.show(true);
     const el = document.documentElement;
     // Phones are locked to landscape; tablets can play either way.
@@ -475,7 +501,8 @@ $('btn-copy').onclick = async () => {
   setTimeout(() => { $('btn-copy').textContent = 'Copy invite'; }, 1500);
 };
 $('game').addEventListener('click', () => {
-  if (!mobile && game.active && !game.locked && $('pause').classList.contains('hidden')) game.lock();
+  // Also grabs the mouse when switching from a controller back to mouse mid-match.
+  if (!mobile && game.active && $('pause').classList.contains('hidden') && (!game.locked || !document.pointerLockElement)) game.lock();
 });
 
 game.onUnlock = () => {
@@ -489,3 +516,25 @@ window.addEventListener('beforeunload', () => { if (hosting) announcer.stop(); i
 // New releases: pop-up + self-refresh (never mid-match without asking).
 const updater = new Updater({ inLobby: () => !!net });
 updater.start();
+
+// Controllers: play and navigate every menu with a gamepad.
+const gamepad = new GamepadInput(game, {
+  pause: () => {
+    touch.show(false);
+    if (document.pointerLockElement) document.exitPointerLock(); // pointerlockchange shows the pause menu
+    else { game.setLocked(false); game.onUnlock(); }
+  },
+  resume: () => $('btn-resume').click(),
+  back: (root) => {
+    if (root.id === 'settings') settingsUI.close();
+    else if (root.id === 'host-panel') hostPanel.close();
+    else if (root.id === 'pause') $('btn-resume').click();
+    else if (root.id === 'update-pop') { if (!$('upd-later').classList.contains('hidden')) $('upd-later').click(); }
+    else if (root.id === 'menu' && !$('create-card').classList.contains('hidden')) showCreate(false);
+  },
+});
+window.gamepad = gamepad; // debugging
+gamepad.onActive = (v) => {
+  const b = $('btn-resume');
+  if (/to play/i.test(b.textContent)) b.textContent = v ? 'Press Ⓐ to play' : 'Click to play';
+};

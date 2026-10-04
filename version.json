@@ -1,13 +1,13 @@
 {
-  "version": "2026.10.04.3",
+  "version": "2026.10.04.4",
   "notes": [
-    "Remade gun models, and scopes you can actually see through (no more black blob when aiming the DMR, Sniper or AMR)",
-    "Better headshots: accurate head hitboxes, gold hitmarker and sound, HEADSHOT pop-up, hats fly off",
-    "Smoother movement: slide (crouch while sprinting), no bouncing down stairs, jump buffering and ledge forgiveness"
+    "Controller support: play and use every menu with an Xbox, PlayStation or other gamepad (Settings, Controller)",
+    "New menus: full-screen main menu, grouped loadout picker with exact weapon stats, redesigned settings",
+    "Full weapon balance pass: SMGs faster up close, rifles and pistols lose damage at range, melee reworked"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json",
-    "js/audio.js", "js/bot.js", "js/chat.js", "js/cosmetics.js", "js/effects.js", "js/game.js", "js/guns.js", "js/host.js",
+    "js/audio.js", "js/bot.js", "js/chat.js", "js/cosmetics.js", "js/effects.js", "js/game.js", "js/gamepad.js", "js/guns.js", "js/host.js",
     "js/hostpanel.js", "js/hud.js", "js/main.js", "js/maps.js", "js/missions.js", "js/modelkit.js", "js/models.js", "js/nav.js",
     "js/net.js", "js/physics.js", "js/remote.js", "js/rig.js", "js/servers.js", "js/settings.js", "js/settingsui.js",
     "js/touch.js", "js/updater.js", "js/util.js", "js/version.js", "js/viewmodel.js", "js/weapons.js"

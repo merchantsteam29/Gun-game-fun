@@ -20,6 +20,19 @@ const TABS = [
     { key: 'invertY', label: 'Invert look up / down', type: 'check' },
     { key: 'aimToggle', label: 'Toggle aim with right mouse', hint: 'Click once to aim, again to stop (instead of holding)', type: 'check', only: 'desktop' },
   ] },
+  { name: 'Controller', rows: [
+    { special: 'padinfo' },
+    { key: 'padSens', label: 'Look sensitivity', type: 'range', min: 0.2, max: 3, step: 0.05, fmt: mul },
+    { key: 'adsSens', label: 'Aiming sensitivity', hint: 'Multiplier while aiming down sights (shared with mouse / touch)', type: 'range', min: 0.2, max: 1.5, step: 0.05, fmt: mul },
+    { key: 'padInvertY', label: 'Invert look up / down', type: 'check' },
+    { key: 'padDeadzone', label: 'Stick dead zone', hint: 'Raise it if your view drifts on its own', type: 'range', min: 0.04, max: 0.35, step: 0.01, fmt: pct },
+    { key: 'aimAssist', label: 'Aim assist', hint: 'Slows your aim on enemies and helps track them while you shoot or aim (controller and touch)', type: 'check' },
+    { key: 'aimAssistStrength', label: 'Aim assist strength', type: 'range', min: 0.1, max: 1, step: 0.05, fmt: pct },
+    { key: 'padCrouchToggle', label: 'Crouch toggles', hint: 'Off: hold B to stay crouched', type: 'check' },
+    { key: 'padAutoSprint', label: 'Auto-sprint', hint: 'Sprint whenever the left stick is pushed all the way forward', type: 'check' },
+    { key: 'padVibration', label: 'Vibration', hint: 'When you get hit and when you fire (if your controller and browser support it)', type: 'check' },
+    { special: 'padmap' },
+  ] },
   { name: 'Video', rows: [
     { key: 'fov', label: 'Field of view', type: 'range', min: 60, max: 110, step: 1, fmt: deg },
     { key: 'vmFov', label: 'Weapon field of view', hint: 'How large your gun and arms look', type: 'range', min: 50, max: 90, step: 1, fmt: deg },
@@ -206,6 +219,20 @@ export class SettingsUI {
       note.className = 'cz-note';
       note.textContent = 'Tap anything to preview it. Earn tokens from Missions and spend them on whatever you like. Other players see what you wear.';
       slots.appendChild(note);
+    } else if (kind === 'padinfo') {
+      const pads = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : [];
+      el.innerHTML = `<div class="set-label">Controller<small>${pads.length
+        ? `Connected: ${esc(pads[0].id.replace(/\(.*?\)/g, '').trim().slice(0, 60))}`
+        : 'No controller detected. Plug one in or pair it over Bluetooth, then press any button.'}</small></div>`;
+    } else if (kind === 'padmap') {
+      const map = [
+        ['L stick', 'Move'], ['R stick', 'Look'], ['RT', 'Fire'], ['LT', 'Aim'], ['A', 'Jump'], ['B', 'Crouch / slide'],
+        ['X', 'Reload'], ['Y', 'Switch weapon'], ['RB', 'Grenade'], ['LB / R3', 'Melee'], ['L3', 'Sprint'],
+        ['D-pad ◀ ▶', 'Prev / next weapon'], ['D-pad ▲', 'Melee weapon'], ['D-pad ▼', 'Inspect'], ['View', 'Scoreboard'], ['Menu', 'Pause'],
+      ];
+      el.className = 'set-row pad-row';
+      el.innerHTML = `<div class="set-label">Button layout<small>In menus: D-pad or left stick to move, A select, B back, LB / RB switch sections.</small>
+        <div class="pad-map">${map.map(([b, a]) => `<span><kbd>${b}</kbd>${a}</span>`).join('')}</div></div>`;
     } else if (kind === 'layout') {
       if (this.mobile) {
         el.innerHTML = `<div class="set-label">Button layout<small>Drag your touch buttons wherever you like and resize them one by one</small></div>

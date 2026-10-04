@@ -22,6 +22,13 @@ const DEFAULTS = {
   btnOpacity: 1,      // touch button opacity
   layout: {},         // touch button positions: { action: { x, y, s } } in % of the screen
   uiMode: 'auto',     // auto | phone | tablet | desktop (applies after reload)
+  // Controller
+  padSens: 1,         // look speed
+  padInvertY: false,
+  padDeadzone: 0.14,
+  padAutoSprint: false, // sprint when the left stick is pushed all the way forward
+  padCrouchToggle: true, // B toggles crouch (off = hold)
+  padVibration: true,
 };
 
 export const opts = { ...DEFAULTS, ...store.get('opts', {}) };

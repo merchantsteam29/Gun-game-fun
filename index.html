@@ -78,7 +78,7 @@
     <div class="big">ELIMINATED</div>
     <div id="death-by"></div>
     <div id="death-timer"></div>
-    <div class="small">Press <kbd>Esc</kbd> to change your loadout</div>
+    <div class="small"><span class="kbm-only">Press <kbd>Esc</kbd> to change your loadout</span><span class="pad-only">Press <kbd>Menu</kbd> to change your loadout</span></div>
   </div>
 
   <div id="endscreen" class="hidden">
@@ -102,6 +102,8 @@
   </div>
 </div>
 <div id="updated-toast" class="hidden"><b></b><span></span></div>
+<div id="pad-hints" class="hidden"></div>
+<div id="pad-toast" class="hidden"></div>
 
 <!-- Party chat (sits above the HUD and the pause screen) -->
 <div id="chat" class="hidden">
@@ -116,18 +118,38 @@
 <!-- Main menu -->
 <div id="menu" class="overlay">
   <div class="panel menu-panel">
-    <header class="brand">
-      <h1>WAREHOUSE <span>FFA</span></h1>
-      <button id="player-chip" class="player-chip" title="Edit your character"><i id="chip-dot"></i><span id="chip-name"></span><em id="chip-tokens"></em></button>
-    </header>
-    <nav class="menu-nav" id="menu-nav">
-      <button data-pane="play" class="sel"><span class="ic">▶</span>Servers</button>
-      <button data-pane="loadout"><span class="ic">⌖</span>Loadout</button>
-      <button data-pane="character"><span class="ic">☺</span>Character</button>
-      <button data-pane="missions"><span class="ic">★</span>Missions<b id="nav-missions-count"></b></button>
-      <button id="btn-settings-menu"><span class="ic">⚙</span>Settings</button>
-    </nav>
-    <div class="menu-body">
+    <aside class="menu-rail">
+      <header class="brand">
+        <h1>WAREHOUSE <span>FFA</span></h1>
+        <button id="player-chip" class="player-chip" title="Edit your character"><i id="chip-dot"></i><span id="chip-name"></span><em id="chip-tokens"></em></button>
+      </header>
+      <nav class="menu-nav" id="menu-nav">
+        <button data-pane="play" class="sel"><span class="ic">▶</span><span class="lbl">Servers<small>Join or create a match</small></span></button>
+        <button data-pane="loadout"><span class="ic">⌖</span><span class="lbl">Loadout<small>Pick your weapons</small></span></button>
+        <button data-pane="character"><span class="ic">☺</span><span class="lbl">Character<small>Name, color, cosmetics</small></span></button>
+        <button data-pane="missions"><span class="ic">★</span><span class="lbl">Missions<small>Earn tokens</small></span><b id="nav-missions-count"></b></button>
+        <button id="btn-settings-menu"><span class="ic">⚙</span><span class="lbl">Settings<small>Controls, video, audio</small></span></button>
+      </nav>
+      <div class="rail-foot">
+        <details class="controls">
+          <summary>Keyboard &amp; mouse</summary>
+          <div class="grid">
+            <span><kbd>WASD</kbd> move</span><span><kbd>Mouse</kbd> aim</span>
+            <span><kbd>LMB</kbd> fire</span><span><kbd>RMB</kbd> aim down sights</span>
+            <span><kbd>Space</kbd> jump</span><span><kbd>Shift</kbd> sprint</span>
+            <span><kbd>Ctrl</kbd>/<kbd>C</kbd> crouch · slide</span><span><kbd>R</kbd> reload</span>
+            <span><kbd>1-4</kbd> / wheel switch</span><span><kbd>Q</kbd> last weapon</span>
+            <span><kbd>G</kbd> quick throw</span><span><kbd>F</kbd> quick melee</span>
+            <span><kbd>T</kbd> inspect</span><span><kbd>Tab</kbd> scoreboard</span>
+            <span><kbd>Esc</kbd> pause</span><span><kbd>Enter</kbd> chat</span>
+          </div>
+        </details>
+        <div class="pad-status" id="pad-status"></div>
+      </div>
+    </aside>
+    <main class="menu-main">
+      <div class="pane-head"><h2 id="pane-title">Servers</h2><p id="pane-sub"></p></div>
+      <div class="menu-body">
       <!-- Play -->
       <section class="menu-pane" data-pane="play">
         <!-- Join by code -->
@@ -199,7 +221,6 @@
       </section>
       <!-- Loadout -->
       <section class="menu-pane hidden" data-pane="loadout">
-        <p class="note">Pick one weapon per slot. Changes apply the next time you spawn.</p>
         <div id="menu-loadout" class="loadout"></div>
       </section>
       <!-- Character -->
@@ -220,20 +241,8 @@
       <section class="menu-pane hidden" data-pane="missions">
         <div id="menu-missions"></div>
       </section>
-    </div>
-    <details class="controls">
-      <summary>Controls</summary>
-      <div class="grid">
-        <span><kbd>WASD</kbd> move</span><span><kbd>Mouse</kbd> aim</span>
-        <span><kbd>LMB</kbd> fire</span><span><kbd>RMB</kbd> aim down sights</span>
-        <span><kbd>Space</kbd> jump</span><span><kbd>Shift</kbd> sprint</span>
-        <span><kbd>Ctrl</kbd>/<kbd>C</kbd> crouch (slide while sprinting)</span><span><kbd>R</kbd> reload</span>
-        <span><kbd>1-4</kbd> / wheel switch</span><span><kbd>Q</kbd> last weapon</span>
-        <span><kbd>G</kbd> quick throw</span><span><kbd>F</kbd> quick melee</span>
-        <span><kbd>T</kbd> inspect</span><span><kbd>Tab</kbd> scoreboard</span>
-        <span><kbd>Esc</kbd> loadout / pause</span>
       </div>
-    </details>
+    </main>
   </div>
 </div>
 

@@ -41,6 +41,7 @@ export class Game {
     this.touch = mobile;
     this.tablet = tablet;
     this.joy = { x: 0, y: 0 };
+    this.padMode = false; // a controller is driving the game (set by GamepadInput)
     this.mobile = mobile;
     // Low graphics: no shadows, lower resolution. Turned on automatically (and remembered)
     // if the device ever loses its graphics context; ?lowgfx / ?highgfx force it.
@@ -266,7 +267,8 @@ export class Game {
       if (e.code === 'Tab') this.showScores = false;
     });
     document.addEventListener('mousemove', (e) => {
-      if (!this.locked || this.touch) return;
+      // Without pointer lock (e.g. a controller resumed the game) stray mouse moves don't turn you.
+      if (!this.locked || this.touch || document.pointerLockElement !== this.canvas) return;
       this.look(clamp(e.movementX, -250, 250), clamp(e.movementY, -250, 250));
     });
     this.canvas.addEventListener('mousedown', (e) => {
@@ -310,6 +312,20 @@ export class Game {
     this.vm.look(dx, dy);
   }
 
+  // Controller right stick: x/y are -1..1 after the dead zone and response curve; turns at a
+  // rate (radians per second) instead of by distance like a mouse.
+  padLook(x, y, dt) {
+    if (!this.me.alive || (!x && !y)) return;
+    if (opts.padInvertY) y = -y;
+    let rate = 3.6 * opts.padSens * (this.camera.fov / (opts.fov * this.fovK)) * (this.ads ? opts.adsSens : 1);
+    const a = this.assist;
+    if (opts.aimAssist && a && a.ang < a.limit) rate *= 1 - 0.45 * opts.aimAssistStrength; // friction on target
+    const dx = x * rate * dt, dy = y * rate * 0.72 * dt;
+    this.me.yaw -= dx;
+    this.me.pitch = clamp(this.me.pitch - dy, -1.5, 1.5);
+    this.vm.look(dx / BASE_SENS, dy / BASE_SENS);
+  }
+
   cycleSlot(dir) {
     const n = this.loadout.length;
     for (let i = 1; i <= n; i++) {
@@ -324,7 +340,8 @@ export class Game {
   }
 
   lock() {
-    if (this.touch) { this.setLocked(true); return; }
+    // Touch and controllers don't need the mouse captured (and a gamepad press can't request it).
+    if (this.touch || this.padMode) { this.setLocked(true); return; }
     try {
       const p = this.canvas.requestPointerLock({ unadjustedMovement: true });
       if (p && p.catch) {
@@ -702,7 +719,7 @@ export class Game {
 
     if (me.alive && !this.matchOver) this.updateMovement(dt);
     this.assist = null;
-    if (this.touch && opts.aimAssist && me.alive && !this.matchOver) this.aimAssist(dt);
+    if ((this.touch || this.padMode) && opts.aimAssist && me.alive && !this.matchOver) this.aimAssist(dt);
 
     // Camera
     this.recoil *= Math.exp(-dt * 9);
@@ -792,7 +809,7 @@ export class Game {
     let f = (k.has('KeyW') ? 1 : 0) - (k.has('KeyS') ? 1 : 0);
     let s = (k.has('KeyD') ? 1 : 0) - (k.has('KeyA') ? 1 : 0);
     let analog = 1;
-    if (this.touch && (this.joy.x || this.joy.y)) {
+    if (this.joy.x || this.joy.y) { // touch joystick or controller left stick
       f = -this.joy.y; s = this.joy.x;
       analog = Math.min(1, Math.hypot(f, s));
     }
@@ -820,7 +837,7 @@ export class Game {
     else if (!wantCrouch && !sliding && me.crouch && !overlap(me.pos.x, me.pos.y, me.pos.z, PLAYER_R, STAND_H)) { me.crouch = false; me.h = STAND_H; }
     me.eye += ((me.crouch ? (sliding ? EYE_CROUCH - 0.12 : EYE_CROUCH) : EYE_STAND) - me.eye) * Math.min(1, dt * 14);
 
-    const touchSprint = this.touch && f > 0.9 && Math.abs(s) < 0.45;
+    const touchSprint = (this.touch || (this.padMode && opts.padAutoSprint)) && f > 0.9 && Math.abs(s) < 0.45;
     this.sprinting = (k.has('ShiftLeft') || touchSprint) && f > 0 && !me.crouch && !this.ads && !this.mouse.left && this.reloadT <= 0;
     const speed = WALK * this.rules.moveSpeed * w.speedMul * (this.sprinting ? SPRINT : 1) * (me.crouch ? CROUCH_SPD : 1) * (this.ads ? 0.7 : 1);
     const sy = Math.sin(me.yaw), cy = Math.cos(me.yaw);
