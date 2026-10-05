@@ -45,6 +45,7 @@
   <div id="dmg-dir"></div>
 
   <div id="lobby-tag"></div>
+  <div id="voice-hud" class="hidden"></div>
   <div id="fps" class="hidden"></div>
   <div id="mission-toast"></div>
   <div id="match-info"><div id="timer">10:00</div><div id="mode-bar"></div><div id="leader"></div></div>
@@ -263,6 +264,12 @@
               <div id="pt-empty" class="note">Invite an online friend to start a party. Your party can chat here — and in matches by starting a message with <kbd>/p</kbd> — and jump into the leader's games.</div>
               <div id="pt-box" class="hidden">
                 <div id="pt-members" class="pt-members"></div>
+                <div class="vc-row">
+                  <button id="vc-join" class="vc-join">🎤 Join voice</button>
+                  <button id="vc-mute" class="hidden">Mute</button>
+                  <button id="vc-leave" class="danger hidden">Leave voice</button>
+                  <span id="vc-status" class="vc-status"></span>
+                </div>
                 <button id="pt-follow" class="primary hidden">Join the party leader's match</button>
                 <div id="pt-log" class="pt-log"></div>
                 <form id="pt-form" class="pt-form" autocomplete="off">

@@ -196,6 +196,10 @@ whatever capitals they use) and you only get one. In **Friends**:
 - **Invite to party** starts a party (you lead it). The party chats together in the Friends screen, and in matches
   by starting a message with `/p`. When the leader starts or joins a match, party members get a
   **Join the party leader's match** button.
+- **Voice chat:** in the party card press **🎤 Join voice** (allow the microphone). Everyone in the party who joined voice
+  can hear each other, in the menu and in matches. Mute any time; turn on **Push to talk** (hold **V**) and set the voice
+  volume in Settings → HUD & Audio. In matches, the top-left shows who's talking. Voice goes straight between players
+  (peer-to-peer); only party members can connect.
 
 This runs over the same free public relays as the server list (no account or server of our own). Every request,
 message and status update is signed with a key stored on your device, so nobody can send things as you. Clearing the

@@ -26,6 +26,7 @@ export const TAG_RULES = '3–16 letters, numbers or _';
 const CLAIM_EXPIRE = 120 * 864e5;
 const PRES_MS = 30000, ONLINE_MS = 75000;
 const ALG = { name: 'ECDSA', namedCurve: 'P-256' }, SIG = { name: 'ECDSA', hash: 'SHA-256' };
+const PARTY_TOPICS = ['state', 'join', 'leave', 'chat', 'voice'];
 
 const low = (t) => String(t || '').toLowerCase();
 const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -293,11 +294,17 @@ export class Social {
   }
 
   subscribeParty(id) {
-    for (const t of ['state', 'join', 'leave', 'chat']) this.relay.subscribe(P + `party/${id}/${t}`);
+    for (const t of PARTY_TOPICS) this.relay.subscribe(P + `party/${id}/${t}`);
   }
 
   unsubscribeParty(id) {
-    for (const t of ['state', 'join', 'leave', 'chat']) this.relay.unsubscribe(P + `party/${id}/${t}`);
+    for (const t of PARTY_TOPICS) this.relay.unsubscribe(P + `party/${id}/${t}`);
+    if (this.onPartyGone) this.onPartyGone(id);
+  }
+
+  // Voice: "I'm in voice / I left voice" to the party (voice.js listens via onVoice).
+  sendVoice(inVoice) {
+    if (this.party) this.send(P + `party/${this.party.id}/voice`, { in: !!inVoice, n: randId(3) });
   }
 
   publishPartyState(disband = false) {
@@ -457,6 +464,9 @@ export class Social {
         const before = p.members.length;
         p.members = p.members.filter((m) => low(m) !== from);
         if (p.members.length !== before) { this.logParty(null, `${b.from} left the party`); this.publishPartyState(); }
+      } else if (sub === 'voice') {
+        if (from === this.me || !p.members.some((m) => low(m) === from)) return;
+        if (this.onVoice) this.onVoice(b.from, b.in !== false);
       } else if (sub === 'chat') {
         if (!p.members.some((m) => low(m) === from) || from === this.me) return;
         if (this.seenChat(String(b.id || ''))) return;

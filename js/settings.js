@@ -29,6 +29,9 @@ const DEFAULTS = {
   padAutoSprint: false, // sprint when the left stick is pushed all the way forward
   padCrouchToggle: true, // B toggles crouch (off = hold)
   padVibration: true,
+  // Party voice chat
+  voiceVolume: 1,
+  voicePtt: false,    // push-to-talk: hold V
 };
 
 export const opts = { ...DEFAULTS, ...store.get('opts', {}) };

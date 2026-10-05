@@ -17,6 +17,7 @@ import { esc } from './util.js';
 import { Chat } from './chat.js';
 import { GamepadInput } from './gamepad.js';
 import { Social, TAG_RULES, validTag } from './social.js';
+import { Voice } from './voice.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -278,7 +279,19 @@ function renderFriends() {
   $('pt-empty').classList.toggle('hidden', !!p);
   $('pt-box').classList.toggle('hidden', !p);
   if (p) {
-    $('pt-members').innerHTML = p.members.map((m) => `<span class="pt-chip">${m.toLowerCase() === p.leader.toLowerCase() ? '♛ ' : ''}${esc(m)}</span>`).join('');
+    const inVc = (k) => (k === social.me ? voice.active : voice.inVoice.has(k));
+    $('pt-members').innerHTML = p.members.map((m) => {
+      const k = m.toLowerCase();
+      return `<span class="pt-chip ${inVc(k) ? 'vc' : ''} ${voice.speaking.has(k) ? 'talk' : ''}">${k === p.leader.toLowerCase() ? '♛ ' : ''}${esc(m)}</span>`;
+    }).join('');
+    $('vc-join').classList.toggle('hidden', voice.active);
+    $('vc-mute').classList.toggle('hidden', !voice.active);
+    $('vc-leave').classList.toggle('hidden', !voice.active);
+    $('vc-mute').textContent = voice.muted ? 'Unmute' : 'Mute';
+    if (!$('vc-status').classList.contains('err')) {
+      $('vc-status').textContent = !voice.active ? (voice.inVoice.size ? `${voice.inVoice.size} in voice` : '')
+        : voice.muted ? 'Muted' : opts.voicePtt ? 'Hold V to talk' : 'Mic on';
+    }
     const canFollow = !social.isLeader && p.lobby && !net;
     $('pt-follow').classList.toggle('hidden', !canFollow);
     $('pt-follow').dataset.code = p.lobby || '';
@@ -327,6 +340,31 @@ $('pt-form').onsubmit = (e) => {
 };
 $('pt-input').addEventListener('keydown', (e) => e.stopPropagation());
 $('pt-leave').onclick = () => social.leaveParty();
+
+// ---------- Party voice chat ----------
+const voice = new Voice(social);
+$('vc-join').onclick = async () => {
+  const st = $('vc-status');
+  st.className = 'vc-status';
+  st.textContent = 'Starting voice…';
+  initAudio();
+  try { await voice.join(); } catch (err) { st.className = 'vc-status err'; st.textContent = err.message; setTimeout(() => st.classList.remove('err'), 6000); }
+  renderFriends();
+};
+$('vc-mute').onclick = () => voice.setMuted(!voice.muted);
+$('vc-leave').onclick = () => voice.leave();
+// Who's talking, shown in matches.
+function renderVoiceHud() {
+  const el = $('voice-hud');
+  el.classList.toggle('hidden', !voice.active);
+  if (!voice.active) return;
+  const mine = voice.muted ? '🔇 Voice muted' : opts.voicePtt ? (voice.pttDown ? '🎤 Talking' : '🎤 Hold V to talk') : '🎤 Mic on';
+  el.innerHTML = `<div class="me">${mine}</div>` + voice.talkers().filter((t) => t !== social.tag).map((t) => `<div class="t">🔊 ${esc(t)}</div>`).join('');
+}
+voice.onChange = () => { renderFriends(); renderVoiceHud(); };
+window.addEventListener('keydown', (e) => { if (e.code === 'KeyV') setTimeout(renderVoiceHud, 0); });
+window.addEventListener('keyup', (e) => { if (e.code === 'KeyV') setTimeout(renderVoiceHud, 0); });
+window.voice = voice; // debugging
 $('pt-follow').onclick = () => { if ($('pt-follow').dataset.code) { $('join-code').value = $('pt-follow').dataset.code; joinLobby(); } };
 
 social.onChange = () => { renderFriends(); applyGamertag(); };
