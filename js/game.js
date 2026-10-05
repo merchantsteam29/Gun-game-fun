@@ -5,7 +5,7 @@ import { MODES, TEAM_COLORS, ZOMBIE_COLOR, JUGG_COLOR, JUGG_TEAM, defaultSetting
 import { WEAPONS, DEFAULT_LOADOUT, GUNGAME_LADDER, SLOTS } from './weapons.js';
 import { track, onMissionComplete } from './missions.js';
 import { Viewmodel } from './viewmodel.js';
-import { RemotePlayer } from './remote.js';
+import { RemotePlayer, netClock } from './remote.js';
 import { Effects } from './effects.js';
 import { Hud } from './hud.js';
 import { sfx } from './audio.js';
@@ -383,6 +383,8 @@ export class Game {
     this.tagData = null;
     this.rot = null;
     this.flagData = null;
+    this.lastSnapTm = 0; // a new host has a different clock
+    this.clockInit = false;
     this.updateTags(0); // removes any dog tags left in the scene
     this.updateFlags(0); // and CTF flags
     this.hud.show(false);
@@ -463,6 +465,15 @@ export class Game {
         break;
       }
       case 'snap':
+        if (m.tm) {
+          if (this.lastSnapTm && m.tm <= this.lastSnapTm) break; // arrived out of order: older news
+          this.lastSnapTm = m.tm;
+          // Clock offset = the smallest (arrival − send) seen, i.e. the least-delayed packet;
+          // creeps upward slowly in case the connection got permanently slower.
+          const off = Date.now() - m.tm;
+          netClock.off = this.clockInit ? (off < netClock.off ? off : netClock.off + (off - netClock.off) * 0.01) : off;
+          this.clockInit = true;
+        }
         this.timeLeft = m.tl;
         this.teamScore = m.ts || null;
         this.zone = m.z || null;
@@ -479,7 +490,7 @@ export class Game {
             if (pl.team !== a[12]) { pl.team = a[12]; teamsChanged = true; }
           }
           if (id === this.myId) { if (this.me.alive) this.me.hp = a[8]; }
-          else { const r = this.remotes.get(id); if (r) r.setState(a); }
+          else { const r = this.remotes.get(id); if (r) r.setState(a, m.tm || 0); }
         }
         if (teamsChanged) this.refreshColors();
         break;
@@ -765,7 +776,8 @@ export class Game {
     if (this.sendAcc >= SEND_INTERVAL && me.alive) {
       this.sendAcc = 0;
       const a = (this.reloadT > 0 ? 1 : 0) | (this.sprinting ? 2 : 0) | (me.onGround ? 0 : 4);
-      this.net.send({ t: 'st', p: arr(me.pos), y: r2(me.yaw), pi: r2(me.pitch), w: this.curW, c: me.crouch ? 1 : 0, a });
+      this.stSeq = (this.stSeq || 0) + 1;
+      this.net.send({ t: 'st', q: this.stSeq, p: arr(me.pos), y: r2(me.yaw), pi: r2(me.pitch), w: this.curW, c: me.crouch ? 1 : 0, a });
     }
 
     for (const r of this.remotes.values()) {

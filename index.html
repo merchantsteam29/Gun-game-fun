@@ -128,10 +128,10 @@
         <button data-pane="loadout"><span class="ic">⌖</span><span class="lbl">Loadout<small>Pick your weapons</small></span></button>
         <button data-pane="character"><span class="ic">☺</span><span class="lbl">Character<small>Name, color, cosmetics</small></span></button>
         <button data-pane="missions"><span class="ic">★</span><span class="lbl">Missions<small>Earn tokens</small></span><b id="nav-missions-count"></b></button>
+        <button data-pane="friends"><span class="ic">☻</span><span class="lbl">Friends<small>Gamertags &amp; party chat</small></span><b id="nav-friends-count" class="alert"></b></button>
         <button id="btn-settings-menu"><span class="ic">⚙</span><span class="lbl">Settings<small>Controls, video, audio</small></span></button>
       </nav>
       <div class="rail-foot">
-        <button id="acct-prompt" class="acct-prompt hidden"><span><b>Sign in</b> or create an account</span><small>Keep your tokens &amp; cosmetics on every device</small></button>
         <details class="controls">
           <summary>Keyboard &amp; mouse</summary>
           <div class="grid">
@@ -226,10 +226,9 @@
       </section>
       <!-- Character -->
       <section class="menu-pane hidden" data-pane="character">
-        <div id="acct-card" class="acct-card hidden"></div>
         <div class="field two">
           <div class="field">
-            <label for="name">Callsign</label>
+            <label for="name" id="name-label">Callsign</label>
             <input id="name" maxlength="16" autocomplete="off" spellcheck="false">
           </div>
           <div class="field">
@@ -243,10 +242,60 @@
       <section class="menu-pane hidden" data-pane="missions">
         <div id="menu-missions"></div>
       </section>
+      <!-- Friends & party -->
+      <section class="menu-pane hidden" data-pane="friends">
+        <div id="menu-friends" class="friends">
+          <div class="card fr-top">
+            <div id="fr-me" class="fr-me"></div>
+            <form id="fr-add" class="fr-add" autocomplete="off">
+              <input id="fr-tag" maxlength="16" placeholder="Friend's gamertag" spellcheck="false" autocapitalize="off">
+              <button class="primary" type="submit">Send friend request</button>
+            </form>
+            <div id="fr-msg" class="note"></div>
+          </div>
+          <div class="fr-cols">
+            <div>
+              <div id="fr-requests-card" class="card hidden"><h3>Requests &amp; invites</h3><div id="fr-requests"></div></div>
+              <div class="card"><h3>Friends <span id="fr-count" class="muted"></span></h3><div id="fr-list"></div></div>
+            </div>
+            <div class="card party-card">
+              <h3>Party chat</h3>
+              <div id="pt-empty" class="note">Invite an online friend to start a party. Your party can chat here — and in matches by starting a message with <kbd>/p</kbd> — and jump into the leader's games.</div>
+              <div id="pt-box" class="hidden">
+                <div id="pt-members" class="pt-members"></div>
+                <button id="pt-follow" class="primary hidden">Join the party leader's match</button>
+                <div id="pt-log" class="pt-log"></div>
+                <form id="pt-form" class="pt-form" autocomplete="off">
+                  <input id="pt-input" maxlength="160" placeholder="Message your party…">
+                  <button class="primary" type="submit">Send</button>
+                </form>
+                <button id="pt-leave" class="danger">Leave party</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
       </div>
     </main>
   </div>
 </div>
+
+<!-- Choose your gamertag (once) -->
+<div id="tag-pop" class="overlay hidden">
+  <div class="panel tag-panel">
+    <h2>Choose your gamertag</h2>
+    <p class="note">It's your name in every match and how friends find you. Every gamertag is unique and <b>you only get one</b>, so pick a good one.</p>
+    <form id="tag-form" autocomplete="off">
+      <input id="tag-input" maxlength="16" spellcheck="false" autocapitalize="off" placeholder="Gamertag">
+      <div id="tag-msg" class="tag-msg"></div>
+      <div class="tag-btns">
+        <button id="tag-claim" class="primary big" type="submit">Claim gamertag</button>
+        <button id="tag-later" class="ghost" type="button">Later</button>
+      </div>
+    </form>
+  </div>
+</div>
+<div id="toast" class="hidden"></div>
 
 <!-- Pause / click-to-play -->
 <div id="pause" class="overlay hidden">

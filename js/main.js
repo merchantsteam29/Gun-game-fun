@@ -16,7 +16,7 @@ import { Updater } from './updater.js';
 import { esc } from './util.js';
 import { Chat } from './chat.js';
 import { GamepadInput } from './gamepad.js';
-import { Account, TAG_RULES } from './account.js';
+import { Social, TAG_RULES, validTag } from './social.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -27,8 +27,9 @@ const settings = {
   map: store.get('map', 'warehouse'),
   mode: store.get('mode', 'ffa'),
 };
-// Optional gamertag + password account (Firebase). Signed in, your gamertag is your name.
-const account = new Account();
+// Gamertag (one per player, unique), friends and party chat over the public relays.
+const social = new Social();
+if (social.tag) settings.name = social.tag;
 if (!MAPS[settings.map]) settings.map = 'warehouse';
 if (!MODES[settings.mode]) settings.mode = 'ffa';
 
@@ -57,7 +58,20 @@ window.game = game; // handy for debugging from the console
 let net = null;
 let busy = false;
 let settingsUI = null; // created further down; the Character / Missions sections reuse its views
-const chat = new Chat({ send: (text) => { if (net) net.send({ t: 'chat', text }); }, mobile });
+const chat = new Chat({
+  send: (text) => {
+    // "/p hello" goes to your party instead of the lobby.
+    const m = text.match(/^\/p\s+(.+)/i);
+    if (m) {
+      if (!social.party) { chat.system('You\'re not in a party. Invite friends from the Friends menu.'); return; }
+      social.sayParty(m[1]);
+      chat.add(`[Party] ${social.tag}`, '#c9a2ff', m[1], true);
+      return;
+    }
+    if (net) net.send({ t: 'chat', text });
+  },
+  mobile,
+});
 
 function renderCharacter() {
   if (!settingsUI) return;
@@ -90,7 +104,7 @@ function renderColors() {
 
 // Header chip: your name and color; tap to edit your character.
 function renderChip() {
-  $('chip-name').innerHTML = esc(settings.name || 'Player') + (account.signedIn ? ' <span class="acct-badge" title="Signed in">✓</span>' : '');
+  $('chip-name').innerHTML = esc(settings.name || 'Player') + (social.tag ? ' <span class="acct-badge" title="Your gamertag">✓</span>' : '');
   $('chip-dot').style.background = settings.color;
   $('chip-tokens').textContent = '🪙 ' + getTokens();
 }
@@ -160,64 +174,169 @@ function setBusy(v) {
 $('name').value = settings.name;
 $('name').addEventListener('input', () => { settings.name = $('name').value.trim(); store.set('name', settings.name); renderChip(); });
 
-// ---------- Account card (Character section) ----------
-function applyAccountName() {
-  const locked = account.signedIn && account.tag;
-  if (locked && settings.name !== account.tag) { settings.name = account.tag; store.set('name', account.tag); }
-  if (locked) $('name').value = account.tag;
-  $('name').disabled = !!locked;
-  $('name').title = locked ? 'Signed in: your gamertag is your name' : '';
+// ---------- Gamertag, friends & party ----------
+// Your gamertag is your name everywhere; until you pick one you play under a guest callsign.
+function applyGamertag() {
+  if (social.tag) {
+    settings.name = social.tag;
+    store.set('name', social.tag);
+    $('name').value = social.tag;
+  }
+  $('name').disabled = !!social.tag;
+  $('name').title = social.tag ? 'Your gamertag (you only get one)' : '';
+  $('name-label').textContent = social.tag ? 'Gamertag' : 'Callsign (guest)';
   renderChip();
 }
 
-function renderAccount() {
-  const card = $('acct-card');
-  $('acct-prompt').classList.toggle('hidden', !account.enabled || account.signedIn || account.status !== 'ready');
-  card.classList.toggle('hidden', !account.enabled);
-  if (!account.enabled) { applyAccountName(); return; }
-  if (account.status === 'loading') {
-    card.innerHTML = '<h3>Account</h3><p class="note">Connecting…</p>';
-  } else if (account.status === 'error') {
-    card.innerHTML = '<h3>Account</h3><p class="note">Couldn\'t reach the account service right now. You can still play as a guest.</p>';
-  } else if (account.signedIn) {
-    card.innerHTML = `<div class="acct-in"><div class="who"><b>${esc(account.tag || '')}</b><span class="acct-badge">✓</span></div>
-      <p class="note">Signed in. Your tokens, cosmetics, missions, loadout and settings are saved to your account.</p>
-      <button id="acct-out">Sign out</button></div>`;
-    $('acct-out').onclick = () => { $('acct-out').disabled = true; account.signOut(); };
-  } else {
-    card.innerHTML = `<h3>Account</h3>
-      <p class="note">Optional. Sign in to keep your progress on every device and claim your gamertag. Signing in replaces this device's guest progress with your account's.</p>
-      <form class="acct-form" id="acct-form" autocomplete="on">
-        <div class="field"><label for="acct-tag">Gamertag</label><input id="acct-tag" maxlength="16" autocomplete="username" spellcheck="false" autocapitalize="off" placeholder="${TAG_RULES}"></div>
-        <div class="field"><label for="acct-pw">Password</label><input id="acct-pw" type="password" maxlength="64" autocomplete="current-password" placeholder="6+ characters"></div>
-        <button type="submit" class="primary">Sign in</button>
-        <button type="button" id="acct-new">Create account</button>
-      </form>
-      <div class="acct-err" id="acct-err"></div>`;
-    const go = async (kind) => {
-      const tag = $('acct-tag').value.trim(), pw = $('acct-pw').value;
-      const btns = card.querySelectorAll('button');
-      btns.forEach((b) => { b.disabled = true; });
-      $('acct-err').className = 'acct-err ok';
-      $('acct-err').textContent = kind === 'new' ? 'Creating your account…' : 'Signing in…';
-      try {
-        if (kind === 'new') await account.signUp(tag, pw);
-        else await account.signIn(tag, pw); // loads your progress (the page may reload)
-      } catch (e) {
-        btns.forEach((b) => { b.disabled = false; });
-        $('acct-err').className = 'acct-err';
-        $('acct-err').textContent = e.message;
-      }
-    };
-    $('acct-form').onsubmit = (e) => { e.preventDefault(); go('in'); };
-    $('acct-new').onclick = () => go('new');
-  }
-  applyAccountName();
+function toast(text) {
+  if (game.active && !$('hud').classList.contains('hidden')) { game.hud.say(text); return; }
+  const el = $('toast');
+  el.textContent = text;
+  el.classList.remove('hidden');
+  clearTimeout(toast.t);
+  toast.t = setTimeout(() => el.classList.add('hidden'), 3500);
 }
-account.onChange = renderAccount;
-renderAccount();
-window.account = account; // debugging
-$('acct-prompt').onclick = () => { showPane('character'); setTimeout(() => { const t = $('acct-tag'); if (t) t.focus(); }, 30); };
+
+// "Choose your gamertag" pop-up (first visit, or from Friends / Character).
+function openTagPop() {
+  if (social.tag) return;
+  $('tag-pop').classList.remove('hidden');
+  const input = $('tag-input');
+  if (!input.value && validTag(settings.name)) input.value = settings.name;
+  checkTag();
+  setTimeout(() => input.focus(), 30);
+}
+let tagCheckT = null;
+function checkTag() {
+  clearTimeout(tagCheckT);
+  const tag = $('tag-input').value.trim(), msg = $('tag-msg');
+  msg.className = 'tag-msg';
+  if (!tag) { msg.textContent = TAG_RULES; return; }
+  if (!validTag(tag)) { msg.textContent = `Use ${TAG_RULES}.`; msg.classList.add('bad'); return; }
+  msg.textContent = 'Checking…';
+  tagCheckT = setTimeout(async () => {
+    const r = await social.available(tag);
+    if ($('tag-input').value.trim() !== tag) return;
+    msg.textContent = r.ok ? `${tag} is available!` : r.error;
+    msg.classList.add(r.ok ? 'good' : 'bad');
+  }, 450);
+}
+$('tag-input').addEventListener('input', checkTag);
+$('tag-form').onsubmit = async (e) => {
+  e.preventDefault();
+  const btn = $('tag-claim'), msg = $('tag-msg');
+  btn.disabled = true;
+  msg.className = 'tag-msg';
+  msg.textContent = 'Claiming…';
+  try {
+    await social.claim($('tag-input').value.trim());
+    $('tag-pop').classList.add('hidden');
+    applyGamertag();
+    toast(`Welcome, ${social.tag}!`);
+  } catch (err) {
+    msg.textContent = err.message;
+    msg.classList.add('bad');
+  }
+  btn.disabled = false;
+};
+$('tag-later').onclick = () => { $('tag-pop').classList.add('hidden'); sessionStorage.setItem('tagLater', '1'); };
+
+function renderFriends() {
+  const n = social.pendingCount;
+  $('nav-friends-count').textContent = n ? String(n) : '';
+  $('fr-me').innerHTML = social.tag
+    ? `Your gamertag: <b>${esc(social.tag)}</b> <span class="sv-status ${social.status}">${social.status === 'online' ? '● Online' : social.status === 'connecting' ? 'Connecting…' : 'Offline'}</span>`
+    : 'Pick a gamertag so friends can find you. <button id="fr-pick" class="primary">Choose gamertag</button>';
+  if ($('fr-pick')) $('fr-pick').onclick = openTagPop;
+  $('fr-add').classList.toggle('hidden', !social.tag);
+
+  // Requests and invites
+  const rows = [];
+  for (const [k, tag] of social.incoming) rows.push(`<div class="fr-row"><span class="fr-name">${esc(tag)}</span><small>wants to be friends</small><button class="primary" data-acc="${k}">Accept</button><button data-dec="${k}">Decline</button></div>`);
+  for (const [id, inv] of social.invites) rows.push(`<div class="fr-row"><span class="fr-name">${esc(inv.from)}</span><small>invited you to their party</small><button class="primary" data-pjoin="${id}">Join party</button><button data-pno="${id}">No thanks</button></div>`);
+  for (const [k, tag] of social.outgoing) rows.push(`<div class="fr-row out"><span class="fr-name">${esc(tag)}</span><small>request sent</small><button data-cancel="${k}">Cancel</button></div>`);
+  $('fr-requests').innerHTML = rows.join('');
+  $('fr-requests-card').classList.toggle('hidden', !rows.length);
+
+  // Friends list: online first
+  const friends = [...social.friends.entries()].sort(([, a], [, b]) => social.isOnline(b) - social.isOnline(a) || a.tag.localeCompare(b.tag));
+  const inParty = (t) => social.party && social.party.members.some((m) => m.toLowerCase() === t.toLowerCase());
+  $('fr-count').textContent = friends.length ? `(${friends.filter(([, f]) => social.isOnline(f)).length} online)` : '';
+  $('fr-list').innerHTML = friends.length ? friends.map(([k, f]) => {
+    const on = social.isOnline(f), p = f.pres || {};
+    const where = !on ? 'Offline' : p.mode === 'lobby' ? 'In a match' : 'In the menu';
+    const canInvite = on && !inParty(f.tag) && (!social.party || social.isLeader);
+    const canJoin = on && p.lobby && !net;
+    return `<div class="fr-row"><i class="fr-dot ${on ? 'on' : ''}"></i><span class="fr-name">${esc(f.tag)}${inParty(f.tag) ? ' <em>party</em>' : ''}</span><small>${where}</small>
+      ${canJoin ? `<button class="primary" data-joingame="${p.lobby}">Join game</button>` : ''}
+      ${canInvite ? `<button data-inv="${k}">Invite to party</button>` : ''}
+      <button class="ghost fr-x" data-rm="${k}" title="Remove friend">✕</button></div>`;
+  }).join('') : `<div class="sv-empty">${social.tag ? 'No friends yet. Add someone by their gamertag above.' : 'Choose a gamertag to add friends.'}</div>`;
+
+  // Party
+  const p = social.party;
+  $('pt-empty').classList.toggle('hidden', !!p);
+  $('pt-box').classList.toggle('hidden', !p);
+  if (p) {
+    $('pt-members').innerHTML = p.members.map((m) => `<span class="pt-chip">${m.toLowerCase() === p.leader.toLowerCase() ? '♛ ' : ''}${esc(m)}</span>`).join('');
+    const canFollow = !social.isLeader && p.lobby && !net;
+    $('pt-follow').classList.toggle('hidden', !canFollow);
+    $('pt-follow').dataset.code = p.lobby || '';
+    $('pt-log').innerHTML = social.partyLog.map((l) => (l.from
+      ? `<div class="cl"><b style="color:${l.mine ? 'var(--accent)' : '#c9a2ff'}">${esc(l.from)}:</b> ${esc(l.text)}</div>`
+      : `<div class="cl sys">${esc(l.text)}</div>`)).join('') || '<div class="cl sys">Say hi to your party!</div>';
+    $('pt-log').scrollTop = $('pt-log').scrollHeight;
+  }
+}
+
+$('fr-add').onsubmit = async (e) => {
+  e.preventDefault();
+  const tag = $('fr-tag').value.trim(), msg = $('fr-msg');
+  if (!tag) return;
+  msg.className = 'note';
+  msg.textContent = 'Sending…';
+  try {
+    const r = await social.addFriend(tag);
+    msg.textContent = r === 'accepted' ? 'You\'re now friends!' : `Friend request sent to ${tag}. They need to accept it.`;
+    $('fr-tag').value = '';
+  } catch (err) {
+    msg.textContent = err.message;
+    msg.classList.add('err');
+  }
+};
+$('menu-friends').addEventListener('click', async (e) => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  const d = b.dataset;
+  try {
+    if (d.acc) await social.accept(d.acc);
+    else if (d.dec) social.decline(d.dec);
+    else if (d.cancel) social.cancel(d.cancel);
+    else if (d.pjoin) await social.acceptInvite(d.pjoin);
+    else if (d.pno) social.declineInvite(d.pno);
+    else if (d.inv) await social.invite(d.inv);
+    else if (d.rm) { const f = social.friends.get(d.rm); if (f && confirm(`Remove ${f.tag} from your friends?`)) await social.removeFriend(d.rm); }
+    else if (d.joingame) { $('join-code').value = d.joingame; joinLobby(); }
+  } catch (err) { toast(err.message); }
+});
+$('pt-form').onsubmit = (e) => {
+  e.preventDefault();
+  const text = $('pt-input').value.trim();
+  if (text) social.sayParty(text);
+  $('pt-input').value = '';
+};
+$('pt-input').addEventListener('keydown', (e) => e.stopPropagation());
+$('pt-leave').onclick = () => social.leaveParty();
+$('pt-follow').onclick = () => { if ($('pt-follow').dataset.code) { $('join-code').value = $('pt-follow').dataset.code; joinLobby(); } };
+
+social.onChange = () => { renderFriends(); applyGamertag(); };
+social.onNotice = (text) => toast(text);
+// Party chat also shows up in the match chat; "/p message" in match chat talks to your party.
+social.onPartyChat = ({ from, text, mine }) => { if (from && net && !mine) chat.add(`[Party] ${from}`, '#c9a2ff', text); };
+applyGamertag();
+renderFriends();
+window.social = social; // debugging
+social.ready.then(() => { if (!social.tag && !sessionStorage.getItem('tagLater')) openTagPop(); });
 
 // Mode and map pickers are tap targets rather than dropdowns (much easier on touch screens).
 const MAP_BLURB = {
@@ -295,7 +414,7 @@ function renderServers() {
   const el = $('sv-list');
   if (st === 'offline') {
     el.innerHTML = '<div class="sv-empty">Couldn\'t reach the server list right now. You can still join with a code or create a server. <button id="sv-retry">Retry</button></div>';
-    $('sv-retry').onclick = () => { browser.client = null; browser.start(); };
+    $('sv-retry').onclick = () => browser.retry();
     return;
   }
   if (!list.length) {
@@ -341,6 +460,7 @@ const PANE_INFO = {
   loadout: ['Loadout', 'One weapon per slot. Changes apply the next time you spawn.'],
   character: ['Character', 'Your callsign, color and cosmetics. Earn tokens from missions to unlock more.'],
   missions: ['Missions', 'Complete missions in any match to earn tokens.'],
+  friends: ['Friends', 'Add friends by gamertag, see who\'s online, party up and chat.'],
 };
 let menuPane = store.get('menuPane', 'play');
 function showPane(name) {
@@ -355,6 +475,7 @@ function showPane(name) {
   renderChip();
   if (name === 'missions') renderMissions();
   if (name === 'play') { browser.start(); renderServers(); }
+  if (name === 'friends') renderFriends();
   document.querySelector('.menu-body').scrollTop = 0;
 }
 document.querySelectorAll('#menu-nav [data-pane]').forEach((b) => { b.onclick = () => showPane(b.dataset.pane); });
@@ -396,6 +517,7 @@ function newNet() {
 
 function enterGame() {
   $('menu').classList.add('hidden');
+  social.setWhere('lobby', net.code); // friends see you're in a match and can join
   $('pause-code').textContent = net.code;
   $('pause-title').textContent = net.isHost ? 'SERVER CREATED' : 'JOINED SERVER';
   $('pause-vis').textContent = 'Code';
@@ -474,6 +596,7 @@ function leave(reason) {
   $('host-panel').classList.add('hidden');
   $('menu').classList.remove('hidden');
   history.replaceState(null, '', location.pathname);
+  social.setWhere('menu');
   showPane(reason ? 'play' : menuPane); // refreshes missions / unlocks earned in that match
   updateMissionCount();
   status(reason || '', !!reason);
@@ -591,6 +714,7 @@ const gamepad = new GamepadInput(game, {
     if (root.id === 'settings') settingsUI.close();
     else if (root.id === 'host-panel') hostPanel.close();
     else if (root.id === 'pause') $('btn-resume').click();
+    else if (root.id === 'tag-pop') $('tag-later').click();
     else if (root.id === 'update-pop') { if (!$('upd-later').classList.contains('hidden')) $('upd-later').click(); }
     else if (root.id === 'menu' && !$('create-card').classList.contains('hidden')) showCreate(false);
   },

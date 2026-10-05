@@ -12,7 +12,13 @@ export class Net {
     this.isHost = false;
     this.logic = null;
     this.conns = new Map(); // host side: player id -> DataConnection
+    // Positions (snapshots one way, player state the other) go over a second, unordered channel:
+    // on the reliable ordered one, a single lost packet holds back everything behind it, so
+    // players froze and then jumped. Old snapshots that arrive late are simply ignored.
+    this.stateConns = new Map(); // host side: player id -> unordered DataConnection
+    this.peerToGid = new Map();
     this.hostConn = null;   // client side
+    this.stateConn = null;  // client side
     this.code = null;
     this.onMessage = () => {};
     this.onClose = () => {};
@@ -52,6 +58,7 @@ export class Net {
   }
 
   accept(conn) {
+    if (conn.label === 'state') { this.acceptState(conn); return; }
     conn.lastSeen = Date.now();
     conn.on('data', (m) => {
       conn.lastSeen = Date.now();
@@ -64,15 +71,38 @@ export class Net {
         }
         conn.gid = 'p' + this.nextId++;
         this.conns.set(conn.gid, conn);
+        this.peerToGid.set(conn.peer, conn.gid);
         this.logic.addPlayer(conn.gid, m.name, m.color, m.cos);
       } else if (conn.gid) this.logic.handle(conn.gid, m);
     });
     const drop = () => {
       if (conn.gid && this.conns.get(conn.gid) === conn) {
         this.conns.delete(conn.gid);
+        this.peerToGid.delete(conn.peer);
+        const sc = this.stateConns.get(conn.gid);
+        if (sc) { this.stateConns.delete(conn.gid); sc.close(); }
         this.logic.removePlayer(conn.gid);
       }
     };
+    conn.on('close', drop);
+    conn.on('error', drop);
+  }
+
+  // The unordered position channel from a client (only 'st' messages are taken from it).
+  acceptState(conn) {
+    conn.on('open', () => {
+      const gid = this.peerToGid.get(conn.peer);
+      if (gid) this.stateConns.set(gid, conn);
+    });
+    conn.on('data', (m) => {
+      const gid = this.peerToGid.get(conn.peer);
+      if (!gid || !m || m.t !== 'st') return;
+      if (this.stateConns.get(gid) !== conn) this.stateConns.set(gid, conn);
+      const main = this.conns.get(gid);
+      if (main) main.lastSeen = Date.now();
+      this.logic.handle(gid, m);
+    });
+    const drop = () => { for (const [g, c] of this.stateConns) if (c === conn) this.stateConns.delete(g); };
     conn.on('close', drop);
     conn.on('error', drop);
   }
@@ -93,6 +123,17 @@ export class Net {
           this.code = code;
           conn.send({ t: 'hello', name, color, cos });
           this.lastHostMsg = Date.now();
+          // Second channel for positions (falls back to the main one until/unless it opens).
+          setTimeout(() => {
+            if (this.closed) return;
+            try {
+              const sc = peer.connect(PREFIX + code, { reliable: false, serialization: 'json', label: 'state' });
+              sc.on('open', () => { this.stateConn = sc; });
+              sc.on('data', (m) => { this.lastHostMsg = Date.now(); if (m && m.t === 'snap') this.onMessage(m); });
+              sc.on('close', () => { if (this.stateConn === sc) this.stateConn = null; });
+              sc.on('error', () => { if (this.stateConn === sc) this.stateConn = null; });
+            } catch { /* stay on the main channel */ }
+          }, 300);
           this.pinger = setInterval(() => {
             if (conn.open) conn.send({ t: 'ping' });
             if (Date.now() - this.lastHostMsg > TIMEOUT_MS && !this.closed) this.onClose('Lost connection to the host.');
@@ -120,13 +161,20 @@ export class Net {
   }
 
   broadcast(m, except) {
-    for (const [id, c] of this.conns) if (id !== except && c.open) c.send(m);
+    const snap = m.t === 'snap';
+    for (const [id, c] of this.conns) {
+      if (id === except) continue;
+      const sc = snap && this.stateConns.get(id);
+      if (sc && sc.open) sc.send(m);
+      else if (c.open) c.send(m);
+    }
     if (except !== 'host') queueMicrotask(() => this.onMessage(m));
   }
 
   // Local player -> host.
   send(m) {
     if (this.isHost) this.logic.handle('host', m);
+    else if (m.t === 'st' && this.stateConn && this.stateConn.open) this.stateConn.send(m);
     else if (this.hostConn && this.hostConn.open) this.hostConn.send(m);
   }
 

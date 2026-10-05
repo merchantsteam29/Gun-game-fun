@@ -186,27 +186,21 @@ re-downloads every file (a hard refresh) — automatically after 5 seconds in th
 **Releasing:** bump the version in both `js/version.js` and `version.json` (same string), update the notes,
 and add any new files to the `files` list in `version.json`.
 
-## Accounts (Firebase setup)
+## Gamertag, friends & party chat
 
-Players can optionally sign in with a **gamertag + password**; their tokens, cosmetics, missions, loadout and settings sync to every device. Until `js/firebase-config.js` is filled in, everyone plays as a guest. One-time setup:
+On your first visit you pick a **gamertag**: it's your name in every match, it's unique (no one else can have it,
+whatever capitals they use) and you only get one. In **Friends**:
 
-1. https://console.firebase.google.com → **Add project** (Analytics off is fine).
-2. **Build → Authentication → Get started → Sign-in method → Email/Password → Enable**.
-3. **Authentication → Settings → Authorized domains → Add** `merchantsteam29.github.io`.
-4. **Build → Firestore Database → Create database** (production mode).
-5. **Firestore → Rules**, paste and **Publish**:
-   ```
-   rules_version = '2';
-   service cloud.firestore {
-     match /databases/{database}/documents {
-       match /players/{uid} { allow read, write: if request.auth != null && request.auth.uid == uid; }
-     }
-   }
-   ```
-6. **Project settings → Your apps → Web (</>)** → register → copy the `firebaseConfig` object into `js/firebase-config.js` (replace `null`), commit and push.
+- Type someone's gamertag and **Send friend request**; they accept or decline it (requests wait for them if they're
+  offline). Friends show as online / in the menu / in a match, with **Join game** when they're playing.
+- **Invite to party** starts a party (you lead it). The party chats together in the Friends screen, and in matches
+  by starting a message with `/p`. When the leader starts or joins a match, party members get a
+  **Join the party leader's match** button.
 
-There's no email, so a forgotten password can't be reset.
-
+This runs over the same free public relays as the server list (no account or server of our own). Every request,
+message and status update is signed with a key stored on your device, so nobody can send things as you. Clearing the
+browser's site data loses that key (and with it your gamertag on that device). A gamertag nobody uses for 120 days
+becomes free again.
 ## Run locally
 
 `node serve.js` → http://localhost:8080

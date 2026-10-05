@@ -1,30 +1,20 @@
-// Public server list over a free public MQTT relay (no backend of our own).
-// Hosts of public servers publish a small retained "listing" message; everyone browsing
-// subscribes to all listings. A last-will message clears the listing if the host's tab dies.
-// Listings are public data: everything read back is validated and only ever shown as text.
+import { Relay } from './relay.js';
 
-const BROKERS = ['wss://broker.emqx.io:8084/mqtt', 'wss://broker.hivemq.com:8884/mqtt'];
+// Public server list over the public relays (see relay.js).
+// Hosts of public servers publish a small retained "listing" every 15 s on every relay;
+// everyone browsing subscribes to all listings. A last-will message clears the listing if the
+// host's tab dies. Listings are public data: everything read back is validated and only ever
+// shown as text.
+
 const PREFIX = 'whffa/v1/servers/';
-const LIB = 'https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js';
 const REFRESH_MS = 15000;
-const STALE_MS = 2 * 60 * 1000;
+// A listing disappears if we haven't heard it refreshed for this long (by OUR clock: the host's
+// clock may be wrong, which used to hide perfectly good servers).
+const SEEN_MS = 40000;
+// Retained listings older than this (by the host's clock, generous for clock drift) are leftovers.
+const RETAINED_MAX_AGE = 10 * 60 * 1000;
 const CODE_RE = /^[A-Z0-9]{5}$/;
 export const REGIONS = ['NA', 'SA', 'EU', 'Asia', 'OCE', 'AF'];
-
-let libPromise = null;
-function loadLib() {
-  if (window.mqtt) return Promise.resolve(window.mqtt);
-  if (!libPromise) {
-    libPromise = new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      s.src = LIB;
-      s.onload = () => (window.mqtt ? resolve(window.mqtt) : reject(new Error('relay library missing')));
-      s.onerror = () => { libPromise = null; reject(new Error('could not load relay library')); };
-      document.head.appendChild(s);
-    });
-  }
-  return libPromise;
-}
 
 // Rough region from the browser's time zone (P2P has no real regions; it's a hint for players).
 export function guessRegion() {
@@ -58,53 +48,40 @@ function clean(code, raw) {
   };
 }
 
-async function connect(opts, onFail) {
-  const mqtt = await loadLib();
-  for (const url of BROKERS) {
-    try {
-      const client = await new Promise((resolve, reject) => {
-        const c = mqtt.connect(url, { clean: true, connectTimeout: 6000, reconnectPeriod: 4000, keepalive: 30, ...opts });
-        const fail = () => { c.end(true); reject(new Error('relay unreachable')); };
-        const t = setTimeout(fail, 7000);
-        c.once('connect', () => { clearTimeout(t); resolve(c); });
-        c.once('error', () => { clearTimeout(t); fail(); });
-      });
-      return client;
-    } catch { /* try the next relay */ }
-  }
-  if (onFail) onFail();
-  throw new Error('server list unavailable');
-}
-
 // Browsing: keeps a live map of public servers.
 export class ServerBrowser {
   constructor() {
     this.servers = new Map();
-    this.status = 'idle'; // idle | connecting | online | offline
     this.onChange = () => {};
-    this.client = null;
+    this.relay = null;
+  }
+
+  get status() {
+    if (!this.relay) return 'idle';
+    return this.relay.status;
   }
 
   async start() {
-    if (this.client || this.status === 'connecting') return;
-    this.status = 'connecting';
+    if (this.relay) { if (this.relay.status === 'offline') this.relay.start(); return; }
+    this.relay = new Relay();
+    this.relay.onStatus = () => this.onChange();
+    this.relay.onMessage((topic, payload, packet) => this.receive(topic, payload, packet));
+    this.relay.subscribe(PREFIX + '+');
     this.onChange();
-    try {
-      this.client = await connect({});
-      this.client.on('message', (topic, payload, packet) => this.receive(topic, payload, packet));
-      this.client.on('offline', () => { this.status = 'offline'; this.onChange(); });
-      this.client.on('connect', () => { this.status = 'online'; this.client.subscribe(PREFIX + '+'); this.onChange(); });
-      this.client.subscribe(PREFIX + '+');
-      this.status = 'online';
-    } catch {
-      this.status = 'offline';
-    }
+    await this.relay.start();
     this.onChange();
     clearInterval(this.pruneT);
     this.pruneT = setInterval(() => this.onChange(), 10000); // re-render so stale entries drop off
   }
 
+  retry() {
+    if (this.relay) this.relay.end();
+    this.relay = null;
+    this.start();
+  }
+
   receive(topic, payload, packet) {
+    if (!topic.startsWith(PREFIX)) return;
     const code = topic.slice(PREFIX.length);
     const text = payload ? payload.toString() : '';
     if (!text) { this.servers.delete(code); this.onChange(); return; }
@@ -112,8 +89,8 @@ export class ServerBrowser {
     try { raw = JSON.parse(text); } catch { return; }
     const s = clean(code, raw);
     if (!s) return;
+    if (packet && packet.retain && Math.abs(Date.now() - s.ts) > RETAINED_MAX_AGE) return; // a dead host's leftover
     s.seen = Date.now();
-    s.retained = !!(packet && packet.retain);
     this.servers.set(code, s);
     this.onChange();
   }
@@ -122,47 +99,39 @@ export class ServerBrowser {
   list() {
     const now = Date.now();
     return [...this.servers.values()]
-      .filter((s) => (s.retained ? now - s.ts < STALE_MS : now - s.seen < STALE_MS))
+      .filter((s) => now - s.seen < SEEN_MS)
       .sort((a, b) => b.players - a.players || a.name.localeCompare(b.name));
   }
 }
 
 // Hosting a public server: publish its listing until stopped (or the tab goes away).
 export class ServerAnnouncer {
-  constructor() { this.client = null; this.code = null; }
+  constructor() { this.relay = null; this.code = null; }
 
   async start(code, getInfo) {
     this.stop();
     this.code = code;
     this.getInfo = getInfo;
     const topic = PREFIX + code;
-    try {
-      this.client = await connect({ will: { topic, payload: '', retain: true, qos: 0 } });
-    } catch {
-      return false;
-    }
-    if (this.code !== code) { this.client.end(true); return false; } // stopped while connecting
-    this.client.on('connect', () => this.publish()); // re-announce after reconnects
-    this.publish();
+    const relay = new Relay({ will: { topic, payload: '', retain: true, qos: 0 } });
+    this.relay = relay;
+    relay.onConnect = () => this.publish(); // (re)announce on every relay as it connects
+    const ok = await relay.start();
+    if (this.relay !== relay) return false; // stopped while connecting
     this.timer = setInterval(() => this.publish(), REFRESH_MS);
-    return true;
+    return ok;
   }
 
   publish() {
-    if (!this.client || !this.code) return;
+    if (!this.relay || !this.code) return;
     const info = { v: 1, ...this.getInfo(), ts: Date.now() };
-    this.client.publish(PREFIX + this.code, JSON.stringify(info), { retain: true, qos: 0 });
+    this.relay.publish(PREFIX + this.code, JSON.stringify(info), { retain: true });
   }
 
   stop() {
     clearInterval(this.timer);
-    if (this.client) {
-      const c = this.client;
-      if (this.code) c.publish(PREFIX + this.code, '', { retain: true, qos: 0 }, () => c.end());
-      else c.end();
-      setTimeout(() => c.end(true), 1500);
-    }
-    this.client = null;
+    if (this.relay) this.relay.end(this.code ? PREFIX + this.code : null, '', true);
+    this.relay = null;
     this.code = null;
   }
 }

@@ -39,6 +39,24 @@ export const MODE_ORDER = ['ffa', 'tdm', 'gungame', 'koth', 'infection', 'ctf', 
   'instagib', 'headshots', 'hardcore', 'bighead', 'rotation', 'snipers', 'shotguns', 'sidearms', 'blades', 'boom', 'roulette', 'vampire', 'moon'];
 const FLAG_RETURN_MS = 20000;
 
+// Runs fn every ms. Browsers slow main-thread timers to once a second in background tabs, which
+// made everyone in a lobby freeze and teleport whenever the host switched tabs or apps; a worker's
+// timer keeps the 20 Hz game tick going.
+function startTicker(fn, ms) {
+  try {
+    const src = `let t; onmessage = (e) => { clearInterval(t); if (e.data > 0) t = setInterval(() => postMessage(0), e.data); };`;
+    const url = URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
+    const w = new Worker(url);
+    URL.revokeObjectURL(url);
+    w.onmessage = () => fn();
+    w.postMessage(ms);
+    return () => { w.postMessage(0); w.terminate(); };
+  } catch {
+    const t = setInterval(fn, ms);
+    return () => clearInterval(t);
+  }
+}
+
 // Largest damage a single hit message can carry for a weapon (all pellets on the head, backstabs, direct hits).
 function maxHitDmg(w) {
   if (!w) return 999;
@@ -86,10 +104,10 @@ export class HostLogic {
     this.loadMap(this.s.map);
     this.beginMatchState();
     this.last = Date.now();
-    this.timer = setInterval(() => this.tick(), TICK_MS);
+    this.stopTicker = startTicker(() => this.tick(), TICK_MS);
   }
 
-  destroy() { clearInterval(this.timer); }
+  destroy() { this.stopTicker(); }
 
   get mode() { return MODES[this.s.mode]; }
 
@@ -370,6 +388,8 @@ export class HostLogic {
     if (!p) return;
     switch (m.t) {
       case 'st':
+        // q is a counter: the position channel is unordered, so ignore anything older than we have.
+        if (typeof m.q === 'number') { if (m.q <= (p.lastQ || 0)) break; p.lastQ = m.q; }
         if (p.alive && Array.isArray(m.p)) p.st = [m.p[0], m.p[1], m.p[2], m.y, m.pi, m.w, m.c ? 1 : 0, m.a | 0];
         break;
       case 'shot': case 'proj': case 'boom': case 'fx':
@@ -691,7 +711,7 @@ export class HostLogic {
       s[p.id] = [r2(st[0]), r2(st[1]), r2(st[2]), r2(st[3]), r2(st[4]), st[5], st[6], p.alive ? 1 : 0,
         Math.ceil(p.hp), p.kills, p.deaths, st[7], p.team, Math.floor(p.score)];
     }
-    const msg = { t: 'snap', s, tl: this.phase === 'playing' ? Math.max(0, Math.ceil((this.endsAt - now) / 1000)) : 0 };
+    const msg = { t: 'snap', tm: now, s, tl:this.phase === 'playing' ? Math.max(0, Math.ceil((this.endsAt - now) / 1000)) : 0 };
     if (this.mode.redBlue) msg.ts = [Math.floor(this.teamScore[1]), Math.floor(this.teamScore[2])];
     if (this.s.mode === 'infection') msg.inf = this.infected ? 0 : Math.max(0, Math.ceil((this.infectAt - now) / 1000));
     if (this.s.mode === 'killconfirmed') msg.tg = this.tags.map((t) => [t.id, r2(t.x), r2(t.y), r2(t.z), t.team]);

@@ -11,7 +11,7 @@ import { opts } from './settings.js';
 const B = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, LT: 6, RT: 7, VIEW: 8, MENU: 9, L3: 10, R3: 11, UP: 12, DOWN: 13, LEFT: 14, RIGHT: 15 };
 const FOCUSABLE = 'button, input, select, summary, a[href], [tabindex]:not([tabindex="-1"])';
 // Overlays in front-to-back order: the first visible one gets the controller.
-const OVERLAYS = ['#sys-msg', '#update-pop', '#settings', '#host-panel', '#pause', '#menu'];
+const OVERLAYS = ['#sys-msg', '#update-pop', '#tag-pop', '#settings', '#host-panel', '#pause', '#menu'];
 
 const stick = (x, y, dz) => {
   const m = Math.hypot(x, y);

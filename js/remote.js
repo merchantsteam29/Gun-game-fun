@@ -26,6 +26,11 @@ const HIP_Y = 0.94;
 
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _m = new THREE.Vector3(), _e = new THREE.Vector3();
 const _pole = new THREE.Vector3(), _q = new THREE.Quaternion(), _axis = new THREE.Vector3(), _hb = new THREE.Vector3();
+
+// Other players are drawn slightly in the past so there are always two snapshots to blend between.
+const INTERP_MS = 110, EXTRAP_MS = 120;
+// Estimated (local clock − host clock), kept up to date by Game from snapshot timestamps.
+export const netClock = { off: 0 };
 const YAXIS = new THREE.Vector3(0, 1, 0);
 
 function mesh(geo, mat, x, y, z, parent) {
@@ -67,6 +72,7 @@ export class RemotePlayer {
     this.tpos = new THREE.Vector3(0, -100, 0);
     this.prev = new THREE.Vector3();
     this.vel = new THREE.Vector3();
+    this.buf = []; // recent snapshots { t (host ms), p, yaw, pitch }
     this.yaw = 0; this.tyaw = 0;
     this.pitch = 0; this.tpitch = 0;
     this.crouch = 0; this.tcrouch = 0;
@@ -201,7 +207,8 @@ export class RemotePlayer {
   }
 
   // a = [x, y, z, yaw, pitch, weapon, crouch, alive, hp, kills, deaths, flags]
-  setState(a) {
+  // tm = the host's clock when it sent this snapshot (for smooth interpolation).
+  setState(a, tm = 0) {
     const alive = !!a[7];
     this.tpos.set(a[0], a[1], a[2]);
     this.tyaw = a[3];
@@ -209,17 +216,51 @@ export class RemotePlayer {
     this.tcrouch = a[6] ? 1 : 0;
     this.flags = a[11] || 0;
     this.setWeapon(a[5]);
-    if (alive && (!this.alive || !this.hasState || this.pos.distanceTo(this.tpos) > 6)) {
+    const jump = !this.alive || !this.hasState || this.tpos.distanceTo(this.buf.length ? this.buf[this.buf.length - 1].p : this.pos) > 6;
+    if (alive && jump) { // spawned / respawned / teleported: no sliding across the map
       this.pos.copy(this.tpos);
       this.prev.copy(this.tpos);
       this.yaw = this.tyaw;
       this.deathT = 0;
       this.root.quaternion.identity();
       this.restoreHat();
+      this.buf.length = 0;
+    }
+    if (tm) {
+      const last = this.buf[this.buf.length - 1];
+      if (!last || tm > last.t) {
+        this.buf.push({ t: tm, p: this.tpos.clone(), yaw: this.tyaw, pitch: this.tpitch });
+        if (this.buf.length > 40) this.buf.shift();
+      }
     }
     if (!alive && this.alive && this.deathT === 0) this.die(null);
     this.alive = alive;
     this.hasState = true;
+  }
+
+  // Shows where the player was INTERP_MS ago (in host time), blending between the two snapshots
+  // around that moment. Late, bunched-up or missing packets then don't make anyone jump around.
+  interpolate() {
+    const b = this.buf;
+    const rt = Date.now() - netClock.off - INTERP_MS;
+    while (b.length > 2 && b[1].t <= rt) b.shift(); // keep one snapshot before the render time
+    const a = b[0], c = b[1];
+    if (!c || rt <= a.t) { // only one snapshot, or not caught up to the oldest: hold it
+      this.pos.copy(a.p); this.yaw = a.yaw; this.pitch = a.pitch;
+      return;
+    }
+    if (rt <= c.t) {
+      const k = (rt - a.t) / (c.t - a.t);
+      this.pos.lerpVectors(a.p, c.p, k);
+      this.yaw = angLerp(a.yaw, c.yaw, k);
+      this.pitch = a.pitch + (c.pitch - a.pitch) * k;
+      return;
+    }
+    // Ran past the newest snapshot (packets late): keep moving a little, then hold.
+    const over = Math.min(rt - c.t, EXTRAP_MS) / Math.max(1, c.t - a.t);
+    this.pos.lerpVectors(a.p, c.p, 1 + over);
+    this.yaw = c.yaw;
+    this.pitch = c.pitch;
   }
 
   fire() { this.recoil = 1; }
@@ -279,9 +320,12 @@ export class RemotePlayer {
     this.stepped = false;
     this.prev.copy(this.pos);
     if (this.alive) {
-      this.pos.lerp(this.tpos, 1 - Math.exp(-dt * 16));
-      this.yaw = angLerp(this.yaw, this.tyaw, 1 - Math.exp(-dt * 20));
-      this.pitch += (this.tpitch - this.pitch) * (1 - Math.exp(-dt * 20));
+      if (this.buf.length) this.interpolate();
+      else {
+        this.pos.lerp(this.tpos, 1 - Math.exp(-dt * 16));
+        this.yaw = angLerp(this.yaw, this.tyaw, 1 - Math.exp(-dt * 20));
+        this.pitch += (this.tpitch - this.pitch) * (1 - Math.exp(-dt * 20));
+      }
     }
     const k = Math.min(1, dt * 10);
     this.crouch += (this.tcrouch - this.crouch) * Math.min(1, dt * 12);
