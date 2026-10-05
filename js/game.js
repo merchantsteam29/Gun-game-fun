@@ -387,6 +387,8 @@ export class Game {
     this.clockInit = false;
     this.updateTags(0); // removes any dog tags left in the scene
     this.updateFlags(0); // and CTF flags
+    this.domData = null;
+    this.updateDom(0); // and Domination zones
     this.hud.show(false);
     this.hud.death(false);
     this.hud.end(false);
@@ -481,6 +483,7 @@ export class Game {
         this.tagData = m.tg || null;
         this.rot = m.rot || null;
         this.flagData = m.fl || null;
+        this.domData = m.dom || null;
         let teamsChanged = false;
         for (const id in m.s) {
           const a = m.s[id];
@@ -789,6 +792,7 @@ export class Game {
     this.updateZone(now);
     this.updateTags(now);
     this.updateFlags(now);
+    this.updateDom(now);
 
     this.vm.update(dt, {
       speed: hs, strafe, vy: me.vel.y, ads: this.ads, sprint: this.sprinting, onGround: me.onGround,
@@ -1497,6 +1501,60 @@ export class Game {
     this.zoneWall.material.opacity = 0.12 + Math.sin(now * 0.004) * 0.05;
   }
 
+  // Domination: three zones, each a ring + light wall in its owner's color, a letter above it
+  // and an arc showing capture progress.
+  updateDom(now) {
+    const data = this.domData;
+    if (!data) {
+      if (this.domObjs) { for (const o of this.domObjs) this.scene.remove(o.g); this.domObjs = null; }
+      return;
+    }
+    if (!this.domObjs) {
+      this.domObjs = data.map(([name]) => {
+        const g = new THREE.Group();
+        const wall = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 40, 1, true),
+          new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false }));
+        const ring = new THREE.Mesh(new THREE.RingGeometry(0.93, 1, 48), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false }));
+        ring.rotation.x = -Math.PI / 2;
+        const arc = new THREE.Mesh(new THREE.RingGeometry(0.78, 0.9, 48, 1), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false }));
+        arc.rotation.x = -Math.PI / 2;
+        arc.position.y = 0.01;
+        const c = document.createElement('canvas');
+        c.width = c.height = 128;
+        const x = c.getContext('2d');
+        x.fillStyle = 'rgba(8,10,14,0.65)'; x.beginPath(); x.arc(64, 64, 58, 0, 7); x.fill();
+        x.fillStyle = '#ffffff'; x.font = 'bold 76px Chakra Petch, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(name, 64, 70);
+        const tex = new THREE.CanvasTexture(c);
+        const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
+        label.scale.set(1.1, 1.1, 1);
+        label.renderOrder = 5;
+        g.add(wall, ring, arc, label);
+        this.scene.add(g);
+        return { g, wall, ring, arc, label };
+      });
+    }
+    data.forEach(([, x, y, z, r, owner, prog, contested], i) => {
+      const o = this.domObjs[i];
+      if (!o) return;
+      o.g.position.set(x, y + 0.02, z);
+      o.wall.scale.set(r, 2.5, r);
+      o.wall.position.y = 1.25;
+      o.ring.scale.set(r, r, 1);
+      o.arc.scale.set(r, r, 1);
+      const color = contested ? (Math.sin(now * 0.012) > 0 ? '#ffb020' : '#ffffff') : owner ? TEAM_COLORS[owner] : '#d8dde2';
+      o.wall.material.color.set(color);
+      o.ring.material.color.set(color);
+      o.label.material.color.set(owner ? TEAM_COLORS[owner] : '#ffffff');
+      o.wall.material.opacity = 0.1 + Math.sin(now * 0.004 + i) * 0.04;
+      // Progress arc: red fills one way, blue the other.
+      const p = Math.abs(prog) / 100;
+      o.arc.visible = p > 0.01 && p < 0.999;
+      o.arc.material.color.set(prog < 0 ? TEAM_COLORS[1] : TEAM_COLORS[2]);
+      o.arc.geometry.setDrawRange(0, Math.round(48 * p) * 6);
+      o.label.position.y = 2.9 + Math.sin(now * 0.003 + i) * 0.08;
+    });
+  }
+
   // Kill Confirmed dog tags: spinning, bobbing tags in the dropping team's color.
   updateTags(now) {
     const want = new Set();
@@ -1578,6 +1636,10 @@ export class Game {
       if (mode === 'ctf' && this.flagData) {
         const st = (t) => { const f = this.flagData.find((d) => d[0] === t); return !f ? '' : f[5] === 1 ? (f[4] === this.myId ? 'YOU HAVE IT' : 'TAKEN') : f[5] === 2 ? 'DROPPED' : 'HOME'; };
         bar += `<span class="lim"> · <span class="red">RED FLAG ${st(1)}</span> · <span class="blue">BLUE FLAG ${st(2)}</span></span>`;
+      }
+      if (mode === 'dom' && this.domData) {
+        bar += '<span class="lim"> · ' + this.domData.map(([n, , , , , owner, , contested]) =>
+          `<span class="${owner === 1 ? 'red' : owner === 2 ? 'blue' : ''}">${n}${contested ? '!' : ''}</span>`).join(' ') + '</span>';
       }
       if (mode === 'hardpoint' && this.zone) {
         const [, , , , state, holder, secs] = this.zone;

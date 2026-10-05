@@ -5,7 +5,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 // These arrays are mutated in place when the map changes so importers keep valid references.
 export const boxes = [];
 export const spawns = [];
-export const MAP_ORDER = ['warehouse', 'yard', 'town', 'pit', 'outpost', 'office', 'ruins', 'docks', 'arena', 'compound', 'rooftops', 'station', 'canyon', 'construction', 'ship', 'trains', 'lake', 'castle', 'hangar', 'mall'];
+export const MAP_ORDER = ['warehouse', 'yard', 'town', 'pit', 'outpost', 'office', 'ruins', 'docks', 'arena', 'compound', 'rooftops', 'station', 'canyon', 'construction', 'ship', 'trains', 'lake', 'castle', 'hangar', 'mall', 'temple', 'oilrig', 'subway'];
 // Render quality (lowered on mobile before any map is built).
 export const quality = { shadowSize: 2048, pointLights: true };
 
@@ -1079,6 +1079,186 @@ export const MAPS = {
     },
   },
 
+  temple: {
+    name: 'Jungle Temple',
+    theme: { sky: '#a8c8a0', fog: [35, 120], hemi: ['#f0ffe8', '#3f5a30', 2.1], sun: ['#fff0c8', 2.6, [24, 40, -16]] },
+    bounds: 30,
+    hills: [[0, 4.5, 0, 2.4], [-19, 0, -19, 3], [19, 0, 19, 3], [-19, 0, 19, 3], [19, 0, -19, 3]],
+    build({ add, add4, spawn4, stairs }) {
+      add(-30, -1, -30, 30, 0, 30, 'grass');
+      add4(-30, 0, -30, 30, 3, -29.5, 'mossDark');
+      // Stepped pyramid with a stair run up every side and a shrine on top
+      add(-8, 0, -8, 8, 1.5, 8, 'sandstone');
+      add(-5.5, 1.5, -5.5, 5.5, 3, 5.5, 'sandstoneDark');
+      add(-3, 3, -3, 3, 4.5, 3, 'sandstone');
+      stairs(-1.2, -11, 1.2, -8, 0, 1.5, '+z', 'sandstone', add4);
+      stairs(-1.2, -8, 1.2, -5.5, 1.5, 3, '+z', 'sandstoneDark', add4);
+      stairs(-1.2, -5.5, 1.2, -3, 3, 4.5, '+z', 'sandstone', add4);
+      add4(-3, 4.5, -3, -2.4, 7, -2.4, 'sandstoneDark'); // shrine pillars
+      add(-3.2, 7, -3.2, 3.2, 7.4, 3.2, 'sandstoneDark');
+      // Plaza: pillars, low walls, an altar on each side
+      add4(-12.5, 0, -12.5, -11.5, 4, -11.5, 'sandstone');
+      add4(-18, 0, -5, -17, 1.2, 5, 'sandstoneDark');
+      add4(-5, 0, -15.5, -3.5, 1, -14, 'sandstone');
+      // L-shaped ruins in the corners
+      add4(-23, 0, -23, -16, 3, -22, 'mossDark');
+      add4(-23, 0, -22, -22, 3, -16, 'mossDark');
+      add4(-21, 0, -14, -19.5, 2, -12.5, 'moss');
+      spawn4(-26, 0, -10);
+      spawn4(-14, 0, -21);
+      spawn4(-6.5, 1.5, -7);
+      spawn4(-25, 0, -26);
+    },
+    decor(g, M) {
+      const trunks = [], leaves = [], torches = [];
+      for (let i = 0; i < 4; i++) {
+        for (const [px, pz] of [[-27, -14], [-27, 4], [-8, -27], [10, -27]]) {
+          const a = (i * Math.PI) / 2, c = Math.cos(a), s = Math.sin(a);
+          const x = px * c - pz * s, z = px * s + pz * c;
+          trunks.push(new THREE.CylinderGeometry(0.25, 0.35, 6, 7).translate(x, 3, z));
+          leaves.push(new THREE.SphereGeometry(2.2, 8, 6).translate(x, 6.6, z), new THREE.SphereGeometry(1.6, 8, 6).translate(x + 0.8, 7.8, z - 0.5));
+        }
+        const a = (i * Math.PI) / 2, c = Math.cos(a), s = Math.sin(a);
+        for (const sx of [-1.8, 1.8]) {
+          const x = sx * c - -11.2 * s, z = sx * s + -11.2 * c;
+          torches.push(new THREE.BoxGeometry(0.18, 0.28, 0.18).translate(x, 1.5, z));
+        }
+      }
+      addMerged(g, trunks, M.steel);
+      addMerged(g, leaves, M.jungle, true);
+      addMerged(g, torches, M.lamp);
+      // Vines down the pyramid
+      const vines = [];
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2;
+        vines.push(new THREE.BoxGeometry(0.12, 1.4 + (i % 3) * 0.5, 0.05).translate(Math.cos(a) * 7.9, 0.8, Math.sin(a) * 7.9));
+      }
+      addMerged(g, vines, M.leaf);
+    },
+  },
+
+  oilrig: {
+    name: 'Oil Rig',
+    theme: { sky: '#9cc3dc', fog: [50, 170], hemi: ['#eef6ff', '#4d6070', 2.1], sun: ['#fff4e0', 2.7, [-30, 38, 20]] },
+    bounds: 26,
+    hills: [[0, 1.2, 0, 2.6], [14, 4.4, -9, 3], [-14, 4.4, 9, 3], [-14, 0, -6, 3], [14, 0, 6, 3]],
+    build({ add, add2, crate2, spawn2, stairs }) {
+      add(-22, -1, -15, 22, 0, 15, 'metalFloor');
+      // Railings, and invisible walls so nobody goes overboard
+      add(-22, 0, 14.7, 22, 1.1, 15, 'rail');
+      add(-22, 0, -15, 22, 1.1, -14.7, 'rail');
+      add(21.7, 0, -14.7, 22, 1.1, 14.7, 'rail');
+      add(-22, 0, -14.7, -21.7, 1.1, 14.7, 'rail');
+      add(-22, 1.1, 14.7, 22, 9, 15, 'invisible');
+      add(-22, 1.1, -15, 22, 9, -14.7, 'invisible');
+      add(21.7, 1.1, -14.7, 22, 9, 14.7, 'invisible');
+      add(-22, 1.1, -14.7, -21.7, 9, 14.7, 'invisible');
+      // Upper decks (one per side) on legs, with a stair run up to each
+      add2(6, 4, -15, 22, 4.4, -3, 'grate');
+      for (const [x, z] of [[6.2, -3.2], [6.2, -14.8], [13, -3.2]]) add2(x - 0.2, 0, z - 0.2, x + 0.2, 4, z + 0.2, 'steelDark');
+      add2(6, 4.4, -3.1, 7.8, 5.4, -3, 'rail');
+      add2(10.2, 4.4, -3.1, 22, 5.4, -3, 'rail');
+      add2(6, 4.4, -15, 6.1, 5.4, -3, 'rail');
+      stairs(8, -2.95, 10, 4.6, 0, 4, '-z', 'stairs', add2);
+      // Drilling platform in the middle
+      add(-3, 0, -3, 3, 1.2, 3, 'steelDark');
+      stairs(-1, -5.4, 1, -3, 0, 1.2, '+z', 'stairs');
+      stairs(-1, 3, 1, 5.4, 0, 1.2, '-z', 'stairs');
+      // Containers, pipe runs, tanks, crates
+      add2(-17, 0, -12.5, -11, 2.6, -10, 'containerOrange');
+      add2(-14, 0, 6, -11.5, 2.6, 12, 'containerBlue');
+      add2(-20, 0, -2, -9, 0.8, -1.2, 'pipe');
+      add2(-6, 0, 9, -4, 2.2, 11, 'tank');
+      crate2(-7, -8); crate2(-7, -8, 1.2); crate2(-5.8, -8);
+      crate2(-18, 4);
+      for (const [x, y, z] of [[-18.5, 0, -12], [-18, 0, 7], [-6, 0, -11.5], [10, 4.4, -12], [-2, 0, 9], [16, 0, 6], [19, 0, -8]]) spawn2(x, y, z);
+    },
+    decor(g, M) {
+      // Ocean all around
+      const sea = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), M.ocean);
+      sea.rotation.x = -Math.PI / 2;
+      sea.position.y = -3;
+      g.add(sea);
+      const legs = [];
+      for (const [x, z] of [[-20, -13], [20, -13], [-20, 13], [20, 13], [0, -13], [0, 13]]) legs.push(new THREE.CylinderGeometry(0.9, 1.1, 8, 10).translate(x, -5, z));
+      addMerged(g, legs, M.craneYellow);
+      // Derrick: a tapering lattice tower over the drilling platform
+      const der = [];
+      for (let i = 0; i < 4; i++) {
+        const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+        for (let k = 0; k < 6; k++) {
+          const r0 = 2.6 - k * 0.38;
+          der.push(new THREE.BoxGeometry(0.16, 2.6, 0.16).translate(Math.cos(a) * r0, 2.5 + k * 2.6, Math.sin(a) * r0));
+        }
+      }
+      for (let k = 0; k < 7; k++) {
+        const r0 = 2.6 - k * 0.38, y = 1.3 + k * 2.6;
+        for (const s of [-1, 1]) {
+          der.push(new THREE.BoxGeometry(r0 * 1.42, 0.12, 0.12).translate(0, y, s * r0 * 0.71));
+          der.push(new THREE.BoxGeometry(0.12, 0.12, r0 * 1.42).translate(s * r0 * 0.71, y, 0));
+        }
+      }
+      addMerged(g, der, M.steel, true);
+      // Helipad marking on the upper deck and a flare stack
+      const h = [];
+      h.push(new THREE.BoxGeometry(0.4, 0.02, 4).translate(12.5, 4.41, -9), new THREE.BoxGeometry(0.4, 0.02, 4).translate(15.5, 4.41, -9), new THREE.BoxGeometry(3, 0.02, 0.4).translate(14, 4.41, -9));
+      addMerged(g, h, M.roadLine);
+      addMerged(g, [new THREE.CylinderGeometry(0.3, 0.4, 14, 8).translate(-21, 7, -14)], M.steel);
+      addMerged(g, [new THREE.SphereGeometry(0.7, 8, 6).translate(-21, 14.6, -14)], M.lamp);
+    },
+  },
+
+  subway: {
+    name: 'Subway',
+    theme: { sky: '#151a24', fog: [25, 90], hemi: ['#e8eef6', '#5a5046', 2.2], sun: ['#fff1d8', 0.7, [10, 40, 12]], night: true },
+    bounds: 30,
+    hills: [[0, 3.9, 0, 1.8], [-15, 0, 8, 3], [15, 0, -8, 3], [-24, -1.2, 0, 2.5], [24, -1.2, 0, 2.5]],
+    build({ add, add2, spawn2, stairs }) {
+      // Track pit (lower) between two platforms
+      add(-30, -2, -18, 30, -1.2, 18, 'gravel');
+      add2(-30, -1.2, 4, 30, 0, 18, 'platform');
+      add(-30, -2, 17.7, 30, 6, 18, 'brick');
+      add(-30, -2, -18, 30, 6, -17.7, 'brick');
+      add(29.7, -2, -17.7, 30, 6, 17.7, 'brick');
+      add(-30, -2, -17.7, -29.7, 6, 17.7, 'brick');
+      add(-30, 6, -18, 30, 6.4, 18, 'ceiling');
+      // Steps out of the pit at both ends of each platform
+      stairs(-27, 1.8, -25, 4, -1.2, 0, '+z', 'stairs', add2);
+      stairs(25, 1.8, 27, 4, -1.2, 0, '+z', 'stairs', add2);
+      // Parked trains with a gap in the middle to cross the tracks
+      add2(-20, -1.2, -1.6, -2.2, 1.8, 1.6, 'carBlue');
+      // Footbridge over the tracks
+      add(-2, 3.5, -6, 2, 3.9, 6, 'grate');
+      add(-2, 3.9, -6, -1.9, 4.9, 6, 'rail');
+      add(1.9, 3.9, -6, 2, 4.9, 6, 'rail');
+      stairs(-2, 6, 2, 10.5, 0, 3.5, '-z', 'stairs', add2);
+      // Platform furniture
+      for (const x of [-24, -14, 10, 20]) add2(x - 0.4, 0, 10, x + 0.4, 6, 10.8, 'pillar');
+      add2(-17, 0, 13, -15, 0.6, 13.6, 'bench');
+      add2(-9, 0, 13, -7, 0.6, 13.6, 'bench');
+      add2(-6.5, 0, 14.5, -3, 2.5, 17.7, 'kiosk');
+      add2(14, 0, 5, 15.2, 1.1, 6.2, 'crate');
+      for (const [x, y, z] of [[-26, 0, 12], [-11, 0, 16], [6, 0, 8], [-23, -1.2, -2.5], [22, 0, 13], [-18, 0, 6]]) spawn2(x, y, z);
+    },
+    decor(g, M) {
+      const rails = [], lights = [], signs = [], tunnels = [];
+      for (const z of [-0.75, 0.75]) rails.push(new THREE.BoxGeometry(60, 0.12, 0.1).translate(0, -1.14, z));
+      for (let x = -28; x <= 28; x += 1.2) rails.push(new THREE.BoxGeometry(0.25, 0.06, 2.2).translate(x, -1.18, 0));
+      for (let x = -26; x <= 26; x += 6.5) for (const z of [-11, 11]) lights.push(new THREE.BoxGeometry(3, 0.08, 0.4).translate(x, 5.95, z));
+      for (const s of [-1, 1]) {
+        signs.push(new THREE.BoxGeometry(6, 0.9, 0.05).translate(s * 8, 3.2, s * 17.65));
+        tunnels.push(new THREE.BoxGeometry(0.05, 3.2, 4).translate(s * 29.65, 0.4, 0));
+      }
+      addMerged(g, rails, M.steel);
+      addMerged(g, lights, M.lightPanel);
+      addMerged(g, signs, M.windowLit);
+      addMerged(g, tunnels, M.tunnel);
+      const stripe = [];
+      for (const s of [-1, 1]) stripe.push(new THREE.BoxGeometry(60, 0.02, 0.35).translate(0, 0.011, s * 4.25));
+      addMerged(g, stripe, M.roadLine);
+    },
+  },
+
   rooftops: {
     name: 'Rooftops',
     theme: { sky: '#141a2e', fog: [30, 95], hemi: ['#8090c8', '#2a2430', 1.7], sun: ['#c8d2ff', 1.2, [-18, 40, 14]], night: true },
@@ -1504,6 +1684,8 @@ const DECOR_MATS = {
   iceHole: new THREE.MeshBasicMaterial({ color: '#1b3a55' }),
   merlon: new THREE.MeshStandardMaterial({ color: '#b9b2a6', roughness: 0.95 }),
   roadLine: new THREE.MeshBasicMaterial({ color: '#e8d24a' }),
+  ocean: new THREE.MeshStandardMaterial({ color: '#1d4e6e', roughness: 0.15, metalness: 0.4 }),
+  tunnel: new THREE.MeshBasicMaterial({ color: '#05070a' }),
   fountainJet: new THREE.MeshStandardMaterial({ color: '#9fd8ff', transparent: true, opacity: 0.6, emissive: '#3a8acc', emissiveIntensity: 0.6 }),
 };
 

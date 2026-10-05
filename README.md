@@ -48,6 +48,10 @@ If the relay is down you can still create servers and join with codes.
 | Bounty Hunter | The leader carries a bounty (gold). Killing them is worth 3 points, anyone else 1. First to 30 |
 | Headshots Only | Guns only hurt on headshots; melee and explosives still work. First to 20 |
 | Big Heads | Everyone's head is huge — and so is the head hitbox. First to 25 |
+| Domination | Red vs Blue over three zones A, B, C. Stand in a zone with only your team to capture it; each zone you own scores a point per second. First to 200 |
+| Tank Battle | 250 health, slower movement, LMG + Hand Cannon + Sledgehammer + frags. First to 20 |
+| Speed Demons | Everyone runs and jumps much faster, own loadouts. First to 25 |
+| Railgun Arena | Railguns, katanas and vortex grenades in lighter gravity. First to 20 |
 
 ## Host panel
 
@@ -83,6 +87,9 @@ The lobby creator gets a **Host panel** button in the pause menu (Esc):
 | Castle | Walled courtyard with four gates, a central keep with a rooftop, rampart walkways and corner towers |
 | Airplane Hangar | A parked plane inside a big open hangar, side catwalks, and tarmac with fuel trucks out both doors |
 | Shopping Mall | Two floors of shops around an atrium with a fountain, escalators and a skylight |
+| Jungle Temple | A stepped pyramid with a shrine on top and stairs on every side, a pillared plaza and mossy corner ruins |
+| Oil Rig | Offshore platform: drilling derrick in the middle, two raised decks (one with a helipad), containers and pipes |
+| Subway | Two platforms either side of a sunken track with parked trains, a footbridge over the tracks and steps down at the ends |
 
 ## Loadout
 

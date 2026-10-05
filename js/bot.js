@@ -131,7 +131,9 @@ export class Bot {
       else if (mine.dropped || mine.carrier) flagGoal = mine.pos;
       else flagGoal = theirs.pos;
     }
+    const dz = L.dom && !this.target ? L.domGoal(p) : null;
     if (flagGoal && (!this.target || L.flags[p.team === 1 ? 2 : 1].carrier === p.id)) goal = flagGoal;
+    else if (dz && Math.random() < 0.995) goal = { x: dz.x + (Math.random() - 0.5) * dz.r, y: dz.y, z: dz.z + (Math.random() - 0.5) * dz.r };
     else if (this.target && melee) goal = this.lastSeen;
     else if (tag) goal = { x: tag.x, y: tag.y, z: tag.z };
     else if (!this.target && this.lastSeen && this.lastSeenT > 0) goal = this.lastSeen;

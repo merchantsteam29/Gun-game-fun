@@ -1,7 +1,8 @@
 {
-  "version": "2026.10.04.8",
+  "version": "2026.10.04.9",
   "notes": [
-    "Back by request: Battle Rifle, Vector, Double Barrel, Railgun, Hand Cannon, Sawed-Off, Fire Axe, Sledgehammer, Throwing Knives, Vortex Grenade"
+    "New modes: Domination, Tank Battle, Speed Demons, Railgun Arena",
+    "New maps: Jungle Temple, Oil Rig, Subway"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json",

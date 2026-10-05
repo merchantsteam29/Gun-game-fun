@@ -384,6 +384,7 @@ const MAP_BLURB = {
   station: 'Sci-fi · reactor', canyon: 'Mesas · bridge', construction: 'Floors · crane',
   ship: 'Deck · containers', trains: 'Cars · footbridge', lake: 'Ice · huts',
   castle: 'Keep · ramparts', hangar: 'Plane · catwalks', mall: 'Shops · 2 floors',
+  temple: 'Pyramid · jungle', oilrig: 'Decks · derrick', subway: 'Tracks · platforms',
 };
 function renderModes() {
   $('mode-tiles').innerHTML = MODE_ORDER.map((id) =>

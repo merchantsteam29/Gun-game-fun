@@ -34,9 +34,13 @@ export const MODES = {
   bounty: { name: 'Bounty Hunter', short: 'BOUNTY', teams: false, score: 30, time: 10, desc: 'Free-for-all. Whoever is in the lead has a bounty (shown in gold): killing them is worth 3 points.' },
   headshots: { name: 'Headshots Only', short: 'HEADSHOTS', teams: false, score: 20, time: 10, preset: { headshotsOnly: true }, desc: 'Guns only hurt on headshots. Melee and explosives still work.' },
   bighead: { name: 'Big Heads', short: 'BIG HEADS', teams: false, score: 25, time: 10, bigHead: true, desc: 'Everyone has a giant head, with a giant headshot hitbox to match.' },
+  dom: { name: 'Domination', short: 'DOMINATION', teams: true, redBlue: true, dom: true, score: 200, time: 10, desc: 'Red vs Blue over three zones (A, B, C). Stand in a zone with only your team to capture it; every zone you own scores a point per second.' },
+  tank: { name: 'Tank Battle', short: 'TANKS', teams: false, score: 20, time: 10, loadout: ['lmg', 'handcannon', 'sledge', 'frag'], preset: { health: 250, moveSpeed: 0.85 }, desc: '250 health, heavy weapons, slow and steady. Most kills wins.' },
+  speed: { name: 'Speed Demons', short: 'SPEED', teams: false, score: 25, time: 8, preset: { moveSpeed: 1.45, jump: 1.25 }, desc: 'Everyone runs and jumps way faster. Bring your own loadout.' },
+  railarena: { name: 'Railgun Arena', short: 'RAILGUNS', teams: false, score: 20, time: 8, loadout: ['railgun', 'handcannon', 'katana', 'vortex'], preset: { gravity: 0.6, jump: 1.2 }, desc: 'Railguns, katanas and vortex grenades in lighter gravity.' },
 };
-export const MODE_ORDER = ['ffa', 'tdm', 'gungame', 'koth', 'infection', 'ctf', 'hardpoint', 'killconfirmed', 'juggernaut', 'bounty', 'lms', 'oitc',
-  'instagib', 'headshots', 'hardcore', 'bighead', 'rotation', 'snipers', 'shotguns', 'sidearms', 'blades', 'boom', 'roulette', 'vampire', 'moon'];
+export const MODE_ORDER = ['ffa', 'tdm', 'gungame', 'koth', 'infection', 'ctf', 'dom', 'hardpoint', 'killconfirmed', 'juggernaut', 'bounty', 'lms', 'oitc',
+  'instagib', 'headshots', 'hardcore', 'bighead', 'tank', 'speed', 'rotation', 'snipers', 'railarena', 'shotguns', 'sidearms', 'blades', 'boom', 'roulette', 'vampire', 'moon'];
 const FLAG_RETURN_MS = 20000;
 
 // Runs fn every ms. Browsers slow main-thread timers to once a second in background tabs, which
@@ -144,6 +148,8 @@ export class HostLogic {
     this.tagId = 0;
     this.bountyId = null;
     this.flags = this.s.mode === 'ctf' ? this.makeFlags() : null;
+    this.dom = this.mode.dom ? this.makeDomZones() : null;
+    this.domAcc = 0;
     if (this.s.mode === 'rotation') { this.rotW = this.pickRotation(); this.rotUntil = Date.now() + ROTATION_SECONDS * 1000; }
   }
 
@@ -455,7 +461,8 @@ export class HostLogic {
         attacker.score = attacker.kills;
         if (this.teamScore[attacker.team] >= this.s.scoreLimit) this.endMatch();
         break;
-      case 'hardpoint': // personal score is kills; the team score comes from the zone
+      case 'dom':
+      case 'hardpoint': // personal score is kills; the team score comes from the zone(s)
         attacker.score = attacker.kills;
         break;
       case 'ctf': // captures win; kills still count for personal score
@@ -589,6 +596,60 @@ export class HostLogic {
 
   // ---------- Modes ----------
 
+  // Domination: the map's main hill plus the two hills furthest apart, lettered from the red
+  // side (-x) to the blue side (+x).
+  makeDomZones() {
+    const hills = MAPS[this.s.map].hills;
+    let pick = hills.slice(0, 3);
+    if (hills.length > 3) {
+      let best = null, bestD = -1;
+      for (let i = 1; i < hills.length; i++) for (let j = i + 1; j < hills.length; j++) {
+        const d = Math.hypot(hills[i][0] - hills[j][0], hills[i][2] - hills[j][2]);
+        if (d > bestD) { bestD = d; best = [hills[i], hills[j]]; }
+      }
+      pick = [hills[0], ...best];
+    }
+    pick.sort((a, b) => a[0] - b[0] || a[2] - b[2]);
+    return pick.map(([x, y, z, r], i) => ({ name: 'ABC'[i], x, y, z, r: Math.max(2.6, Math.min(4, r)), owner: 0, prog: 0 }));
+  }
+
+  tickDom(dt) {
+    const CAPTURE_S = 5; // seconds for one player to flip a zone from neutral
+    for (const zn of this.dom) {
+      const inside = [...this.players.values()].filter((p) => p.alive && (p.team === 1 || p.team === 2) &&
+        Math.hypot(p.st[0] - zn.x, p.st[2] - zn.z) <= zn.r && p.st[1] >= zn.y - 0.6 && p.st[1] <= zn.y + 2.5);
+      const teams = new Set(inside.map((p) => p.team));
+      zn.contested = teams.size > 1;
+      if (teams.size !== 1) continue;
+      const t = inside[0].team, dir = t === 1 ? -1 : 1;
+      const speed = Math.min(2, 1 + 0.5 * (inside.length - 1)) * dt / CAPTURE_S;
+      zn.prog = Math.max(-1, Math.min(1, zn.prog + dir * speed));
+      if (zn.owner && zn.owner !== t && zn.prog * (zn.owner === 1 ? -1 : 1) <= 0) zn.owner = 0; // neutralised
+      if (!zn.owner && Math.abs(zn.prog) >= 1) {
+        zn.owner = t;
+        for (const p of inside) p.score += 5;
+        this.broadcast({ t: 'notice', text: `${t === 1 ? 'RED' : 'BLUE'} CAPTURED ${zn.name}` });
+      }
+    }
+    // Every owned zone scores one point per second.
+    this.domAcc += dt;
+    while (this.domAcc >= 1) {
+      this.domAcc -= 1;
+      for (const zn of this.dom) if (zn.owner) this.teamScore[zn.owner] += 1;
+    }
+    if (this.teamScore[1] >= this.s.scoreLimit || this.teamScore[2] >= this.s.scoreLimit) this.endMatch();
+  }
+
+  // Domination goal for a bot: the nearest zone its team doesn't own yet (or a random one).
+  domGoal(p) {
+    if (!this.dom) return null;
+    const want = this.dom.filter((z) => z.owner !== p.team || z.contested);
+    const pool = want.length ? want : this.dom;
+    let best = null, bestD = Infinity;
+    for (const z of pool) { const d = Math.hypot(z.x - p.st[0], z.z - p.st[2]); if (d < bestD) { bestD = d; best = z; } }
+    return best;
+  }
+
   currentHill() {
     if (!this.mode.hill) return null;
     const hills = MAPS[this.s.map].hills;
@@ -700,6 +761,7 @@ export class HostLogic {
       if (this.s.mode === 'killconfirmed') this.tickTags(now);
       if (this.s.mode === 'rotation') this.tickRotation(now);
       if (this.flags) this.tickFlags(now);
+      if (this.dom && this.phase === 'playing') this.tickDom(rdt);
       for (const p of this.players.values()) if (p.bot) p.bot.update(dt);
     } else if (now >= this.restartAt) {
       this.startMatch();
@@ -718,8 +780,10 @@ export class HostLogic {
     if (this.s.mode === 'rotation') msg.rot = [this.rotW, Math.max(0, Math.ceil((this.rotUntil - now) / 1000))];
     // CTF: [team, x, y, z, carrierId, state (0 home / 1 carried / 2 dropped), homeX, homeY, homeZ]
     if (this.flags) msg.fl = [1, 2].map((t) => { const f = this.flags[t]; return [t, r2(f.pos.x), r2(f.pos.y), r2(f.pos.z), f.carrier, f.carrier ? 1 : f.dropped ? 2 : 0, r2(f.home.x), r2(f.home.y), r2(f.home.z)]; });
+    // Domination: [name, x, y, z, r, owner (0 none / 1 red / 2 blue), progress -100 (red)..100 (blue), contested]
+    if (this.dom) msg.dom = this.dom.map((z) => [z.name, r2(z.x), r2(z.y), r2(z.z), z.r, z.owner, Math.round(z.prog * 100), z.contested ? 1 : 0]);
     const hill = this.currentHill();
-    if (hill) msg.z = [...hill, this.hillState, this.hillHolder, Math.max(0, Math.ceil((this.hillUntil - now) / 1000))];
+    if (hill) msg.z =[...hill, this.hillState, this.hillHolder, Math.max(0, Math.ceil((this.hillUntil - now) / 1000))];
     this.broadcast(msg);
   }
 
