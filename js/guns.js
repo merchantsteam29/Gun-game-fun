@@ -417,4 +417,105 @@ export const GUNS = {
     anchor(g, 'muzzle', 0, 0.05, -0.34);
     g.userData.sight = 0.09;
   },
+  br(g) {
+    // Battle rifle: steel receiver, walnut furniture, big 20-round mag, aperture irons.
+    rbox(g, M.gunmetal, 0.07, 0.06, 0.42, 0, 0.072, -0.07);
+    rbox(g, M.woodDark, 0.074, 0.06, 0.34, 0, 0.03, -0.05);
+    box(g, M.steel, 0.003, 0.024, 0.075, 0.036, 0.076, -0.04);
+    rbox(g, M.woodDark, 0.078, 0.07, 0.3, 0, 0.045, -0.37);
+    vents(g, 0.06, -0.27, 4, 0.06, 0.04, 0.012, 0.03);
+    box(g, M.gunmetal, 0.04, 0.012, 0.26, 0, 0.087, -0.37); // heat shield
+    for (let i = 0; i < 6; i++) box(g, M.black, 0.03, 0.004, 0.012, 0, 0.094, -0.27 - i * 0.04);
+    cyl(g, M.gunmetal, 0.014, 0.26, 0, 0.068, -0.62, 10, 0.016);
+    cyl(g, M.dark, 0.008, 0.2, 0, 0.042, -0.6, 8); // gas tube
+    box(g, M.dark, 0.026, 0.05, 0.02, 0, 0.055, -0.6); // gas block
+    brake(g, 0.016, 0.068, -0.765, 0.07);
+    irons(g, 0.13, -0.68, 0.07, 0.1);
+    const mag = grp(g, 'mag', 0, -0.02, -0.15);
+    box(mag, M.black, 0.052, 0.13, 0.08, 0, -0.06, 0, 0.08);
+    box(mag, M.dark, 0.056, 0.012, 0.086, 0, -0.125, 0.006, 0.08);
+    for (const s of [-1, 1]) box(mag, M.dark, 0.002, 0.09, 0.02, s * 0.027, -0.06, -0.02, 0.08);
+    grip(g, M.woodDark, 0, -0.05, 0.06);
+    trigger(g, 0.0, 0.0);
+    rbox(g, M.woodDark, 0.064, 0.105, 0.3, 0, 0.03, 0.27);
+    box(g, M.woodDark, 0.056, 0.03, 0.18, 0, 0.088, 0.24); // comb
+    box(g, M.rubber, 0.066, 0.118, 0.02, 0, 0.028, 0.425);
+    swivel(g, 0.035, -0.005, 0.32);
+    const bolt = grp(g, 'bolt', 0.046, 0.075, -0.02);
+    box(bolt, M.steel, 0.022, 0.02, 0.05, 0, 0, 0);
+    box(bolt, M.steel, 0.016, 0.012, 0.012, 0.014, 0, -0.02);
+    anchor(g, 'fore', 0, 0.0, -0.36);
+    anchor(g, 'muzzle', 0, 0.068, -0.8);
+    g.userData.sight = 0.13;
+  },
+  vector(g) {
+    // KRISS-style: tall angular lower, offset barrel shroud, folding stock, flip-up irons.
+    rbox(g, M.black, 0.062, 0.07, 0.3, 0, 0.07, -0.06);
+    rbox(g, M.dark, 0.064, 0.15, 0.13, 0, -0.005, -0.12, -0.12);
+    box(g, M.mid, 0.066, 0.01, 0.12, 0, -0.08, -0.13, -0.12);
+    box(g, M.black, 0.066, 0.06, 0.14, 0, 0.05, -0.25); // shroud
+    vents(g, 0.05, -0.2, 3, 0.04, 0.034, 0.02, 0.02);
+    cyl(g, M.gunmetal, 0.013, 0.06, 0, 0.06, -0.33);
+    can(g, 0.022, 0.06, -0.41, 0.12);
+    rail(g, 0.108, 0.06, -0.18, 0.024);
+    const mag = grp(g, 'mag', 0, -0.06, -0.04);
+    box(mag, M.black, 0.038, 0.17, 0.05, 0, -0.085, 0);
+    box(mag, M.dark, 0.042, 0.012, 0.054, 0, -0.17, 0);
+    grip(g, M.poly, 0, -0.06, 0.06, 0.11, -0.15);
+    trigger(g, 0.0, 0.0, 0.055);
+    box(g, M.dark, 0.012, 0.012, 0.18, 0, 0.06, 0.15);
+    box(g, M.dark, 0.012, 0.012, 0.16, 0, 0.0, 0.16, -0.32);
+    rbox(g, M.rubber, 0.05, 0.09, 0.03, 0, 0.03, 0.25);
+    irons(g, 0.13, -0.17, 0.05, 0.108);
+    const bolt = grp(g, 'bolt', 0.035, 0.08, -0.02);
+    box(bolt, M.steel, 0.018, 0.016, 0.04, 0, 0, 0);
+    anchor(g, 'fore', 0, -0.06, -0.2);
+    anchor(g, 'muzzle', 0, 0.06, -0.47);
+    g.userData.sight = 0.13;
+  },
+  doublebarrel(g) {
+    // Side-by-side: steel action, engraved wood, two hammers.
+    cyl(g, M.gunmetal, 0.021, 0.55, -0.022, 0.06, -0.42, 12);
+    cyl(g, M.gunmetal, 0.021, 0.55, 0.022, 0.06, -0.42, 12);
+    for (const s of [-1, 1]) cyl(g, M.black, 0.016, 0.004, s * 0.022, 0.06, -0.697, 10);
+    box(g, M.dark, 0.016, 0.01, 0.55, 0, 0.083, -0.42); // rib
+    rbox(g, M.steel, 0.08, 0.07, 0.14, 0, 0.04, -0.08);
+    for (const s of [-1, 1]) box(g, M.gunmetal, 0.002, 0.04, 0.08, s * 0.041, 0.04, -0.08);
+    box(g, M.gunmetal, 0.082, 0.04, 0.06, 0, 0.03, -0.06);
+    rbox(g, M.wood, 0.07, 0.06, 0.2, 0, 0.02, -0.3);
+    for (let i = 0; i < 5; i++) box(g, M.woodDark, 0.072, 0.004, 0.012, 0, 0.0, -0.24 - i * 0.025);
+    trigger(g, -0.0, 0.0, 0.06);
+    grip(g, M.wood, 0, -0.05, 0.03, 0.12, -0.3);
+    rbox(g, M.wood, 0.066, 0.11, 0.28, 0, 0.0, 0.2);
+    box(g, M.rubber, 0.068, 0.12, 0.02, 0, -0.002, 0.34);
+    for (const s of [-1, 1]) box(g, M.steel, 0.012, 0.02, 0.025, s * 0.012, 0.085, -0.04, 0.5); // hammers
+    sphere(g, M.brass, 0.005, 0, 0.093, -0.68, 6, 4);
+    anchor(g, 'fore', 0, -0.02, -0.3);
+    anchor(g, 'port', 0, 0.06, -0.14);
+    anchor(g, 'muzzle', 0, 0.06, -0.7);
+    g.userData.sight = 0.1;
+  },
+  railgun(g) {
+    // Sci-fi coil gun: twin rails with glowing coils, capacitor stock.
+    rbox(g, M.black, 0.08, 0.1, 0.42, 0, 0.05, -0.05);
+    for (const s of [-1, 1]) {
+      box(g, M.gunmetal, 0.014, 0.04, 0.56, s * 0.026, 0.07, -0.5);
+      box(g, M.glow, 0.002, 0.006, 0.5, s * 0.034, 0.08, -0.5);
+    }
+    for (let i = 0; i < 6; i++) ring(g, M.glow, 0.045, 0.008, 0, 0.07, -0.3 - i * 0.07, 16);
+    box(g, M.glow, 0.004, 0.01, 0.5, 0, 0.07, -0.5);
+    rbox(g, M.mid, 0.07, 0.07, 0.2, 0, -0.02, -0.2);
+    const mag = grp(g, 'mag', 0, -0.03, -0.12);
+    rbox(mag, M.dark, 0.06, 0.1, 0.07, 0, -0.04, 0);
+    box(mag, M.glow, 0.062, 0.01, 0.02, 0, -0.02, -0.02);
+    grip(g, M.poly, 0, -0.06, 0.07);
+    trigger(g, 0.01, -0.005);
+    rbox(g, M.black, 0.066, 0.12, 0.26, 0, 0.03, 0.27);
+    for (let i = 0; i < 3; i++) box(g, M.glow, 0.068, 0.008, 0.02, 0, 0.05, 0.2 + i * 0.05);
+    rail(g, 0.1, 0.08, -0.14, 0.026);
+    microDot(g, 0.16, -0.05, 0.1, 0.024);
+    anchor(g, 'fore', 0, -0.02, -0.24);
+    anchor(g, 'muzzle', 0, 0.07, -0.79);
+    g.userData.sight = 0.16;
+  },
 };

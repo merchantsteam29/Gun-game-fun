@@ -97,10 +97,10 @@ trade swing speed for reach and movement speed, and only the Sledgehammer one-sh
 
 | Slot | Options |
 |---|---|
-| Primary | Assault Rifle, Burst Rifle, SMG, LMG, DMR, Sniper Rifle (scoped), Shotgun, Rocket Launcher |
-| Secondary | Pistol, Revolver, Machine Pistol |
-| Melee | Combat Knife, Katana, Baseball Bat (knockback) — backstabs one-shot |
-| Utility | Frag, Sticky, Smoke, Flashbang |
+| Primary | Assault Rifle, Burst Rifle, Battle Rifle, SMG, Vector, LMG, DMR, Sniper Rifle (scoped), Railgun, Shotgun, Double Barrel, Rocket Launcher |
+| Secondary | Pistol, Revolver, Machine Pistol, Hand Cannon, Sawed-Off |
+| Melee | Combat Knife, Katana, Baseball Bat (knockback), Fire Axe, Sledgehammer (one-shot, knockback) — backstabs one-shot |
+| Utility | Frag, Sticky, Throwing Knives, Smoke, Flashbang, Vortex (pulls players in) |
 
 ## Party chat
 

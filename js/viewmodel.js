@@ -167,7 +167,7 @@ export class Viewmodel {
 
   fire(w) {
     this.inspectT = -1;
-    const big = w.type === 'proj' || ['shotgun', 'sniper', 'revolver', 'sawedoff', 'handcannon', 'dmr'].includes(w.id);
+    const big = w.type === 'proj' || ['shotgun', 'sniper', 'revolver', 'sawedoff', 'handcannon', 'dmr', 'doublebarrel', 'railgun'].includes(w.id);
     this.kick = Math.min(1.4, this.kick + (big ? 1 : 0.45));
     this.kickYaw = (Math.random() - 0.5) * (big ? 0.12 : 0.05);
     this.flashT = 0.05;
@@ -175,7 +175,7 @@ export class Viewmodel {
     if (w.id === 'revolver') this.cylTarget += Math.PI / 3;
     if (w.id === 'gl') this.cylTarget += Math.PI / 2;
     if (w.cycle) this.cycleAnim = { name: w.cycle, t: -0.12, dur: w.cycle === 'bolt' ? 0.8 : 0.45 };
-    else if (w.type === 'gun' && !['revolver', 'sawedoff'].includes(w.id)) this.eject();
+    else if (w.type === 'gun' && !['revolver', 'doublebarrel', 'sawedoff'].includes(w.id)) this.eject();
   }
 
   eject() {

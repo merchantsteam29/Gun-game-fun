@@ -419,7 +419,7 @@ export class HostLogic {
     const v = this.players.get(m.v);
     if (!v || !v.alive) return;
     const w = WEAPONS[m.w];
-    const explosive = ['gl', 'frag', 'sticky', 'rocket', 'tknife'].includes(m.w);
+    const explosive = ['gl', 'frag', 'sticky', 'rocket', 'tknife', 'vortex'].includes(m.w);
     if (!attacker.alive && !explosive) return;
     if (v !== attacker && !this.hostile(attacker, v) && !(this.s.friendlyFire && this.mode.redBlue)) return;
     if (this.s.headshotsOnly && w && w.type === 'gun' && !m.head && v !== attacker) return;

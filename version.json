@@ -1,7 +1,7 @@
 {
-  "version": "2026.10.04.7",
+  "version": "2026.10.04.8",
   "notes": [
-    "Party voice chat: join voice in your party (Friends), mute or push-to-talk with V"
+    "Back by request: Battle Rifle, Vector, Double Barrel, Railgun, Hand Cannon, Sawed-Off, Fire Axe, Sledgehammer, Throwing Knives, Vortex Grenade"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json",

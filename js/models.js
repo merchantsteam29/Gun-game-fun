@@ -194,6 +194,30 @@ const builders = {
     pin.add(ring);
     anchor(g, 'muzzle', 0, 0, 0);
   },
+  sledge(g) {
+    rbox(g, M.wood, 0.034, 0.04, 0.75, 0, 0, -0.26);
+    cyl(g, M.tape, 0.023, 0.18, 0, 0, 0.02, 8);
+    rbox(g, M.gunmetal, 0.09, 0.09, 0.2, 0, 0.0, -0.64, 0, Math.PI / 2, 0);
+    for (const s of [-1, 1]) box(g, M.steel, 0.095, 0.095, 0.012, s * 0.1, 0.0, -0.64, 0, Math.PI / 2, 0);
+    anchor(g, 'fore', 0, 0, -0.25);
+    anchor(g, 'muzzle', 0, 0, -0.64);
+  },
+  vortex(g) {
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.05, 14, 12), M.dark);
+    g.add(s);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.058, 0.008, 6, 20), M.purple);
+    ring.rotation.x = Math.PI / 2;
+    g.add(ring);
+    const core = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 6), M.purple);
+    core.position.y = 0.05;
+    g.add(core);
+    box(g, M.mid, 0.015, 0.09, 0.015, 0.035, 0.02, 0);
+    const pin = grp(g, 'pin', -0.025, 0.075, 0);
+    const pr = new THREE.Mesh(new THREE.TorusGeometry(0.016, 0.004, 6, 12), M.steel);
+    pr.rotation.y = Math.PI / 2;
+    pin.add(pr);
+    anchor(g, 'muzzle', 0, 0, 0);
+  },
 };
 
 export function buildGun(id) {

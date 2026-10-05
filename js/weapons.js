@@ -164,16 +164,51 @@ export const WEAPONS = {
     smokeTime: 11, radius: 5.5,
     spread: 0, moveSpread: 0, speedMul: 1.05, switch: 0.25,
   },
+  // ---------- Returning weapons ----------
+  br: {
+    id: 'br', name: 'Battle Rifle', type: 'gun', auto: true,
+    rate: 0.15, dmg: 30, head: 1.6, pellets: 1, mag: 20, reload: 2.3,
+    spread: 0.01, moveSpread: 0.04, adsMul: 0.25, range: 280, falloff: [45, 100, 0.8],
+    recoil: 0.024, speedMul: 0.92, switch: 0.42, reloadStyle: 'mag',
+  },
+  vector: {
+    id: 'vector', name: 'Vector', type: 'gun', auto: true,
+    rate: 0.048, dmg: 14, head: 1.5, pellets: 1, mag: 30, reload: 1.8,
+    spread: 0.019, moveSpread: 0.015, adsMul: 0.5, range: 90, falloff: [9, 28, 0.5],
+    recoil: 0.006, speedMul: 1.12, switch: 0.26, reloadStyle: 'mag',
+  },
+  doublebarrel: {
+    id: 'doublebarrel', name: 'Double Barrel', type: 'gun', auto: false,
+    rate: 0.22, dmg: 12, head: 1.3, pellets: 12, mag: 2, reload: 2.0,
+    spread: 0.09, moveSpread: 0.02, adsMul: 0.8, range: 45, falloff: [6, 22, 0.25],
+    recoil: 0.07, speedMul: 0.95, switch: 0.35, reloadStyle: 'shells',
+  },
+  railgun: {
+    id: 'railgun', name: 'Railgun', type: 'gun', auto: false,
+    rate: 1.3, dmg: 90, head: 1.6, pellets: 1, mag: 4, reload: 2.8,
+    spread: 0.03, moveSpread: 0.02, adsMul: 0, range: 400, adsFov: 38,
+    recoil: 0.07, speedMul: 0.9, switch: 0.55, reloadStyle: 'mag',
+  },
+  sledge: {
+    id: 'sledge', name: 'Sledgehammer', type: 'melee', style: 'chop',
+    rate: 1.2, dmg: 100, backstab: 150, range: 3.0, hitDelay: 0.4, knockback: 17,
+    spread: 0, moveSpread: 0, speedMul: 0.95, switch: 0.45,
+  },
+  vortex: {
+    id: 'vortex', name: 'Vortex Grenade', type: 'throw', pull: true,
+    rate: 0.9, count: 2, fuse: 1.8, throwSpeed: 17,
+    splash: 45, radius: 6.5,
+    spread: 0, moveSpread: 0, speedMul: 1.05, switch: 0.25,
+  },
 };
 
 // What players can pick. A few more weapons exist only inside modes that hand them out:
-// Minigun (Juggernaut), Hand Cannon (Sidearms), Sawed-Off (Shotgun Brawl), Axe + Throwing Knives
-// (Blade Party), Grenade Launcher (Boom Town) and Zombie Claws (Infection).
+// Minigun (Juggernaut), Grenade Launcher (Boom Town) and Zombie Claws (Infection).
 export const SLOTS = [
-  ['ar', 'burst', 'smg', 'lmg', 'dmr', 'sniper', 'shotgun', 'rocket'],
-  ['pistol', 'revolver', 'mpistol'],
-  ['knife', 'katana', 'bat'],
-  ['frag', 'sticky', 'smoke', 'flash'],
+  ['ar', 'burst', 'br', 'smg', 'vector', 'lmg', 'dmr', 'sniper', 'railgun', 'shotgun', 'doublebarrel', 'rocket'],
+  ['pistol', 'revolver', 'mpistol', 'handcannon', 'sawedoff'],
+  ['knife', 'katana', 'bat', 'axe', 'sledge'],
+  ['frag', 'sticky', 'tknife', 'smoke', 'flash', 'vortex'],
 ];
 export const SLOT_NAMES = ['Primary', 'Secondary', 'Melee', 'Utility'];
 export const DEFAULT_LOADOUT = ['ar', 'pistol', 'knife', 'frag'];
@@ -188,21 +223,24 @@ export const SHORT = {
   ar: 'AR', smg: 'SMG', burst: 'Burst', lmg: 'LMG', sniper: 'Sniper', shotgun: 'Shotgun', gl: 'Launcher',
   pistol: 'Pistol', revolver: 'Revolver', mpistol: 'M-Pistol', knife: 'Knife', axe: 'Axe',
   frag: 'Frag', sticky: 'Sticky', smoke: 'Smoke', claws: 'Claws',
-  dmr: 'DMR', minigun: 'Minigun', rocket: 'Rocket',
+  dmr: 'DMR', minigun: 'Minigun', rocket: 'Rocket', br: 'Battle', vector: 'Vector', doublebarrel: 'Dbl Barrel',
+  railgun: 'Railgun', sledge: 'Sledge', vortex: 'Vortex',
   handcannon: 'H-Cannon', sawedoff: 'Sawed-Off', katana: 'Katana', bat: 'Bat', flash: 'Flash', tknife: 'T-Knives',
 };
 
 // Weapon classes, for grouping in the loadout picker (in display order per slot).
 export const CLASSES = [
-  ['Rifles', ['ar', 'burst']],
-  ['SMG & LMG', ['smg', 'lmg']],
-  ['Long range', ['dmr', 'sniper']],
-  ['Close range', ['shotgun']],
+  ['Rifles', ['ar', 'burst', 'br']],
+  ['SMG & LMG', ['smg', 'vector', 'lmg']],
+  ['Long range', ['dmr', 'sniper', 'railgun']],
+  ['Close range', ['shotgun', 'doublebarrel']],
   ['Explosive', ['rocket']],
-  ['Pistols', ['pistol', 'revolver', 'mpistol']],
-  ['Melee', ['knife', 'katana', 'bat']],
-  ['Lethal', ['frag', 'sticky']],
-  ['Tactical', ['smoke', 'flash']],
+  ['Pistols', ['pistol', 'revolver', 'mpistol', 'handcannon']],
+  ['Special', ['sawedoff']],
+  ['Quick', ['knife', 'katana']],
+  ['Heavy', ['bat', 'axe', 'sledge']],
+  ['Lethal', ['frag', 'sticky', 'tknife']],
+  ['Tactical', ['smoke', 'flash', 'vortex']],
 ];
 
 // Shots (or hits) to kill a 100-health player up close, and how long that takes.

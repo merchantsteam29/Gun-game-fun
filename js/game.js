@@ -613,7 +613,7 @@ export class Game {
         track.kill({
           weapon: m.w, weaponType: W && W.type, head: !!m.head, mode: this.rules.mode,
           secondary: SLOTS[1].includes(m.w),
-          explosive: ['gl', 'rocket', 'frag', 'sticky'].includes(m.w),
+          explosive: ['gl', 'rocket', 'frag', 'sticky', 'vortex'].includes(m.w),
           juggernaut: this.rules.mode === 'juggernaut' && pv && pv.team === JUGG_TEAM,
         });
       }
