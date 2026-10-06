@@ -37,6 +37,7 @@ export class Net {
         this.code = code;
         this.maxPlayers = Math.max(2, Math.min(MAX_PLAYERS, opts.maxPlayers || MAX_PLAYERS));
         this.logic = new HostLogic((id, m) => this.sendTo(id, m), (m, except) => this.broadcast(m, except), opts);
+        this.logic.code = code; // staff proofs are tied to this lobby
         this.logic.onKick = (id) => { const c = this.conns.get(id); if (c) setTimeout(() => c.close(), 300); };
         peer.on('connection', (conn) => this.accept(conn));
         // WebRTC can take a long time to notice a closed tab, so drop silent players.

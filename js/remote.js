@@ -41,22 +41,31 @@ function mesh(geo, mat, x, y, z, parent) {
   return m;
 }
 
-function nameTag(name, color) {
+// Staff get a colored role line above their name (see roles.js).
+const TAG_ROLES = { owner: ['♛ OWNER', '#ffd23f'], mod: ['🛡 MOD', '#4fc3ff'] };
+function nameTag(name, color, role = null) {
   const c = document.createElement('canvas');
-  c.width = 256; c.height = 64;
+  c.width = 256; c.height = 96;
   const g = c.getContext('2d');
-  g.font = '600 30px Chakra Petch, sans-serif';
   g.textAlign = 'center';
   g.textBaseline = 'middle';
   g.lineWidth = 6;
   g.strokeStyle = 'rgba(0,0,0,0.8)';
-  g.strokeText(name, 128, 32);
-  g.fillStyle = color;
-  g.fillText(name, 128, 32);
+  const r = TAG_ROLES[role];
+  if (r) {
+    g.font = '800 22px Chakra Petch, sans-serif';
+    g.strokeText(r[0], 128, 30);
+    g.fillStyle = r[1];
+    g.fillText(r[0], 128, 30);
+  }
+  g.font = '600 30px Chakra Petch, sans-serif';
+  g.strokeText(name, 128, 64);
+  g.fillStyle = r ? r[1] : color;
+  g.fillText(name, 128, 64);
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
-  s.scale.set(1.4, 0.35, 1);
+  s.scale.set(1.4, 0.525, 1);
   return s;
 }
 
@@ -160,8 +169,21 @@ export class RemotePlayer {
     this.lookColor = color;
     this.ally = ally;
     this.bodyMat.color.set(color);
+    this.rebuildTag();
+  }
+
+  // New name and/or staff role (proved to the host mid-lobby, or an impostor renamed).
+  setIdentity(name, role) {
+    if (name === this.name && role === this.role) return;
+    this.name = name;
+    this.role = role;
+    this.rebuildTag();
+  }
+
+  rebuildTag() {
+    const ally = this.ally, color = this.lookColor || this.color;
     const old = this.tag;
-    this.tag = nameTag(this.name, color);
+    this.tag = nameTag(this.name, color, this.role);
     this.tag.position.copy(old.position); // keeps Big Heads height
     this.tag.material.depthTest = !ally;
     this.tag.renderOrder = ally ? 10 : 0;

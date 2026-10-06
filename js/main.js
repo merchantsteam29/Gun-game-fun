@@ -17,6 +17,7 @@ import { esc } from './util.js';
 import { Chat } from './chat.js';
 import { GamepadInput } from './gamepad.js';
 import { Social, TAG_RULES, validTag } from './social.js';
+import { roles, OWNER, badge, ROLE_INFO } from './roles.js';
 import { Voice } from './voice.js';
 import { Showroom } from './showroom.js';
 import { MODS, MOD_SLOTS, MOD_SLOT_NAMES, modOptions, hasMods, cleanMods, cleanModMap, statsFor } from './mods.js';
@@ -112,6 +113,7 @@ function renderColors() {
 // Header chip: your name and color; tap to edit your character.
 function renderChip() {
   $('chip-name').innerHTML = esc(settings.name || 'Player') + (social.tag ? ' <span class="acct-badge" title="Your gamertag">✓</span>' : '');
+  $('chip-name').innerHTML += badge(roles.myRole(), true);
   $('chip-dot').style.background = settings.color;
   $('chip-tokens').textContent = '🪙 ' + getTokens();
 }
@@ -281,7 +283,7 @@ function renderFriends() {
   const n = social.pendingCount;
   $('nav-friends-count').textContent = n ? String(n) : '';
   $('fr-me').innerHTML = social.tag
-    ? `Your gamertag: <b>${esc(social.tag)}</b> <span class="sv-status ${social.status}">${social.status === 'online' ? '● Online' : social.status === 'connecting' ? 'Connecting…' : 'Offline'}</span>`
+    ? `Your gamertag: <b>${esc(social.tag)}</b>${badge(roles.myRole(), true)} <span class="sv-status ${social.status}">${social.status === 'online' ? '● Online' : social.status === 'connecting' ? 'Connecting…' : 'Offline'}</span>`
     : 'Pick a gamertag so friends can find you. <button id="fr-pick" class="primary">Choose gamertag</button>';
   if ($('fr-pick')) $('fr-pick').onclick = openTagPop;
   $('fr-add').classList.toggle('hidden', !social.tag);
@@ -303,7 +305,7 @@ function renderFriends() {
     const where = !on ? 'Offline' : p.mode === 'lobby' ? 'In a match' : 'In the menu';
     const canInvite = on && !inParty(f.tag) && (!social.party || social.isLeader);
     const canJoin = on && p.lobby && !net;
-    return `<div class="fr-row"><i class="fr-dot ${on ? 'on' : ''}"></i><span class="fr-name">${esc(f.tag)}${inParty(f.tag) ? ' <em>party</em>' : ''}</span><small>${where}</small>
+    return `<div class="fr-row"><i class="fr-dot ${on ? 'on' : ''}"></i><span class="fr-name">${esc(f.tag)}${badge(roles.roleOfTag(f.tag), true)}${inParty(f.tag) ? ' <em>party</em>' : ''}</span><small>${where}</small>
       ${canJoin ? `<button class="primary" data-joingame="${p.lobby}">Join game</button>` : ''}
       ${canInvite ? `<button data-inv="${k}">Invite to party</button>` : ''}
       <button class="ghost fr-x" data-rm="${k}" title="Remove friend">✕</button></div>`;
@@ -574,7 +576,8 @@ if (typeof Peer === 'undefined') status('Networking library failed to load. Chec
 function chatOnNet(m) {
   const colorOf = (id, fallback) => { const p = game.players.get(id); return p ? game.colorFor(p) : fallback; };
   if (m.t === 'welcome') { chat.setLobby(true); chat.system(`Joined lobby ${net ? net.code : ''}. Say hi!`); }
-  else if (m.t === 'chat') chat.add(m.name, colorOf(m.id, m.color), m.text, m.id === game.myId);
+  else if (m.t === 'chat') chat.add((ROLE_INFO[m.role] ? ROLE_INFO[m.role].icon + ' ' : '') + m.name, colorOf(m.id, m.color), m.text, m.id === game.myId);
+  else if (m.t === 'prole' || m.t === 'pmute' || m.t === 'pname' || m.t === 'pjoin' || m.t === 'pleave') renderModList();
   else if (m.t === 'pjoin' && !m.bot) chat.system(`${m.name} joined`);
   else if (m.t === 'pleave' && !String(m.name).startsWith('[BOT]')) chat.system(`${m.name} left`);
   // Keep a public listing's player count / mode / map current.
@@ -604,8 +607,71 @@ function showPause() {
   chat.setPaused(true);
   renderLoadout($('pause-loadout'));
   $('btn-hostpanel').classList.toggle('hidden', !(net && net.isHost));
+  renderModList();
   $('pause').classList.remove('hidden');
 }
+
+// ---------- Staff ----------
+
+// Staff prove who they are to the host when they join (it checks the signature, then everyone
+// sees the badge).
+game.onWelcome = async () => {
+  const proof = await roles.proof(net && net.code, game.myId);
+  if (proof && net) net.send({ t: 'staff', proof });
+};
+
+// Pause-menu moderation: shown once the host has verified you as staff.
+function renderModList() {
+  const me = game.players.get(game.myId);
+  const mine = me && me.role;
+  $('pause-mod').classList.toggle('hidden', !net || !mine);
+  if (!net || !mine) return;
+  const rank = (r) => (r === 'owner' ? 2 : r === 'mod' ? 1 : 0);
+  const rows = [...game.players.values()].filter((p) => p.id !== game.myId && !p.bot);
+  $('mod-list').innerHTML = rows.length ? rows.map((p) => {
+    const can = rank(mine) > rank(p.role);
+    return `<div class="mod-row"><span class="mod-name">${esc(p.name)}${badge(p.role, true)}${p.muted ? ' <em>muted</em>' : ''}</span>
+      ${can ? `<button data-mute="${p.id}">${p.muted ? 'Unmute' : 'Mute'}</button>${p.id !== 'host' ? `<button class="danger" data-mkick="${p.id}">Kick</button>` : '<small>host</small>'}` : '<small>staff</small>'}</div>`;
+  }).join('') : '<div class="note">No other players here yet.</div>';
+  $('mod-list').querySelectorAll('[data-mute]').forEach((b) => { b.onclick = () => net.send({ t: 'modmute', id: b.dataset.mute }); });
+  $('mod-list').querySelectorAll('[data-mkick]').forEach((b) => {
+    b.onclick = () => {
+      const p = game.players.get(b.dataset.mkick);
+      if (p && confirm(`Kick ${p.name} from this match?`)) net.send({ t: 'modkick', id: p.id });
+    };
+  });
+}
+
+// Friends tab: the staff list for everyone; the owner can appoint and remove moderators.
+function renderStaff() {
+  const owner = roles.isOwner();
+  const mods = [...roles.mods.values()].sort((a, b) => a.tag.localeCompare(b.tag));
+  $('staff-list').innerHTML = `<div class="fr-row"><span class="fr-name">${esc(OWNER.tag)}</span>${badge('owner')}</div>` +
+    mods.map((m) => `<div class="fr-row"><span class="fr-name">${esc(m.tag)}</span>${badge('mod')}${owner ? `<button class="ghost fr-x" data-unmod="${esc(m.tag)}" title="Remove moderator">✕</button>` : ''}</div>`).join('') +
+    (mods.length ? '' : '<div class="note">No moderators yet.</div>');
+  $('staff-add').classList.toggle('hidden', !owner);
+  $('staff-list').querySelectorAll('[data-unmod]').forEach((b) => {
+    b.onclick = async () => {
+      if (!confirm(`Remove ${b.dataset.unmod} as a moderator?`)) return;
+      try { await roles.remove(b.dataset.unmod); $('staff-msg').textContent = `${b.dataset.unmod} is no longer a moderator.`; } catch (e) { $('staff-msg').textContent = e.message; }
+    };
+  });
+}
+$('staff-add').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const tag = $('staff-tag').value.trim();
+  if (!validTag(tag)) { $('staff-msg').textContent = `Gamertags are ${TAG_RULES}.`; return; }
+  $('staff-msg').textContent = 'Looking up…';
+  try {
+    const t = await roles.appoint(tag);
+    $('staff-tag').value = '';
+    $('staff-msg').textContent = `${t} is now a moderator.`;
+  } catch (err) { $('staff-msg').textContent = err.message; }
+});
+$('staff-tag').addEventListener('keydown', (e) => e.stopPropagation());
+roles.init(social);
+roles.onChange = () => { renderStaff(); renderFriends(); renderChip(); };
+renderStaff();
 
 async function hostLobby() {
   if (busy) return;
@@ -757,7 +823,7 @@ $('btn-hostpanel').onclick = () => {
   $('hp-public').checked = !!(hosting && hosting.public);
 };
 $('hp-public').onchange = () => setPublic($('hp-public').checked);
-game.onKicked = () => leave('You were kicked by the host.');
+game.onKicked = () => leave('You were kicked from the match.');
 $('btn-copy').onclick = async () => {
   const link = `${location.origin}${location.pathname}?lobby=${net ? net.code : ''}`;
   try {

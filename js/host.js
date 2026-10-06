@@ -6,6 +6,7 @@ import { Bot, BOT_NAMES } from './bot.js';
 import { COLORS } from './util.js';
 import { sanitizeCos, randomCos } from './missions.js';
 import { cleanModMap, randomMods } from './mods.js';
+import { roles } from './roles.js';
 
 // redBlue: two balanced teams. hill: uses the moving zone. loadout: forced for everyone.
 // preset: physics/rule overrides applied when the mode is picked.
@@ -236,7 +237,7 @@ export class HostLogic {
   }
 
   info(p) {
-    return { id: p.id, name: p.name, color: p.color, team: p.team, k: p.kills, d: p.deaths, sc: Math.floor(p.score), bot: !!p.bot, cos: p.cos, mods: p.mods || {} };
+    return { id: p.id, name: p.name, color: p.color, team: p.team, k: p.kills, d: p.deaths, sc: Math.floor(p.score), bot: !!p.bot, cos: p.cos, mods: p.mods || {}, role: p.role || null };
   }
 
   addPlayer(id, name, color, cos) {
@@ -244,6 +245,15 @@ export class HostLogic {
     p.cos = sanitizeCos(cos);
     p.team = this.autoTeam(p);
     this.players.set(id, p);
+    // Names of the owner and moderators are only for them: whoever uses one has a few seconds to
+    // prove it (the 'staff' message) before being renamed.
+    if (roles.reserved(p.name)) {
+      setTimeout(() => {
+        if (this.players.get(id) !== p || p.role) return;
+        p.name = 'Imposter' + ((Math.random() * 900 + 100) | 0);
+        this.broadcast({ t: 'pname', id, name: p.name });
+      }, 6000);
+    }
     this.sendTo(id, {
       t: 'welcome', id, settings: this.s,
       players: [...this.players.values()].map((q) => this.info(q)),
@@ -399,11 +409,36 @@ export class HostLogic {
         break;
       case 'chat': { // party chat: plain text, max 100 chars, at most ~2 messages a second each
         const now = Date.now();
-        if (now - (p.lastChat || 0) < 450) break;
+        if (p.muted || now - (p.lastChat || 0) < 450) break;
         const text = String(m.text || '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 100);
         if (!text) break;
         p.lastChat = now;
-        this.broadcast({ t: 'chat', id, name: p.name, color: p.color, text });
+        this.broadcast({ t: 'chat', id, name: p.name, color: p.color, text, role: p.role || null });
+        break;
+      }
+      case 'staff': // signed proof that this player is the owner / a moderator (see roles.js)
+        if (typeof m.proof !== 'string' || p.role) break;
+        roles.check(m.proof, this.code, id).then((r) => {
+          if (!r || this.players.get(id) !== p) return;
+          p.role = r.role;
+          p.name = r.tag;
+          this.broadcast({ t: 'prole', id, role: p.role, name: p.name });
+        });
+        break;
+      case 'modkick': case 'modmute': { // moderator tools: staff only, and only on lower ranks
+        const v = this.players.get(m.id);
+        const rank = (q) => (q.role === 'owner' ? 2 : q.role === 'mod' ? 1 : 0);
+        if (!v || v === p || !p.role || rank(p) <= rank(v)) break;
+        const by = p.role === 'owner' ? 'the owner' : 'a moderator';
+        if (m.t === 'modkick') {
+          if (v.id === 'host') break; // the host's browser runs the match
+          this.broadcast({ t: 'notice', text: `${v.name} was kicked by ${by}` });
+          this.kick(v.id);
+        } else {
+          v.muted = !v.muted;
+          this.broadcast({ t: 'pmute', id: v.id, muted: v.muted });
+          this.sendTo(v.id, { t: 'notice', text: v.muted ? `You were muted by ${by}` : 'You can chat again' });
+        }
         break;
       }
       case 'mods': // weapon attachments (looks for everyone else; stats are applied on their side)

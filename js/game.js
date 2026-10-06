@@ -421,7 +421,9 @@ export class Game {
 
   addRemote(p) {
     if (p.id === this.myId || this.remotes.has(p.id)) return;
-    this.remotes.set(p.id, new RemotePlayer(this.scene, p.id, p.name, p.color, p.cos, cleanModMap(p.mods)));
+    const r = new RemotePlayer(this.scene, p.id, p.name, p.color, p.cos, cleanModMap(p.mods));
+    if (p.role) r.setIdentity(p.name, p.role);
+    this.remotes.set(p.id, r);
   }
 
   onNet(m) {
@@ -433,15 +435,16 @@ export class Game {
         this.loadMap(m.settings.map);
         this.players.clear();
         for (const p of m.players) {
-          this.players.set(p.id, { id: p.id, name: p.name, color: p.color, k: p.k, d: p.d, team: p.team, sc: p.sc, bot: p.bot });
+          this.players.set(p.id, { id: p.id, name: p.name, color: p.color, k: p.k, d: p.d, team: p.team, sc: p.sc, bot: p.bot, role: p.role || null });
           this.addRemote(p);
         }
         this.refreshColors();
         this.hud.show(true);
         this.net.send({ t: 'mods', m: this.mods }); // so everyone sees our attachments
+        if (this.onWelcome) this.onWelcome(); // staff send their proof (main.js)
         break;
       case 'pjoin':
-        this.players.set(m.id, { id: m.id, name: m.name, color: m.color, k: 0, d: 0, team: m.team, sc: 0, bot: m.bot });
+        this.players.set(m.id, { id: m.id, name: m.name, color: m.color, k: 0, d: 0, team: m.team, sc: 0, bot: m.bot, role: m.role || null });
         this.addRemote(m);
         this.refreshColors();
         this.hud.say(`${m.name} joined`);
@@ -472,6 +475,19 @@ export class Game {
       case 'pcos': {
         const r = this.remotes.get(m.id);
         if (r) r.setCosmetics(m.c);
+        break;
+      }
+      case 'prole': case 'pname': { // a player proved they're staff / an impostor was renamed
+        const p = this.players.get(m.id);
+        if (p) { p.name = m.name; if (m.t === 'prole') p.role = m.role; }
+        const r = this.remotes.get(m.id);
+        if (r) r.setIdentity(m.name, p ? p.role : null);
+        if (m.t === 'prole' && m.id !== this.myId) this.hud.say(`${m.role === 'owner' ? '♛ THE OWNER' : '🛡 A MODERATOR'} IS HERE: ${m.name}`);
+        break;
+      }
+      case 'pmute': {
+        const p = this.players.get(m.id);
+        if (p) p.muted = m.muted;
         break;
       }
       case 'kicked':
@@ -1804,7 +1820,7 @@ export class Game {
       const out = this.rules.mode === 'lms' && mine && mine.sc <= 0;
       const kr = killer && this.remotes.get(killer.id);
       hud.death(true, killer ? killer.name : null, this.deathInfo.w, secs, out ? 'Out of lives · spectating until the next round' : null, this.deathInfo.head,
-        killer ? this.colorFor(killer) : '#fff', (kr && kr.cos && kr.cos.banner) || 'standard');
+        killer ? this.colorFor(killer) : '#fff', (kr && kr.cos && kr.cos.banner) || 'standard', killer ? killer.role : null);
     }
     if (this.matchOver && this.endInfo) {
       const next = MAPS[this.endInfo.nextMap];

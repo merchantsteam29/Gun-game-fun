@@ -1015,3 +1015,22 @@ body.mobile #death .big { font-size: 20px; }
   background: rgba(8,10,14,0.55); padding: 4px 12px; border-radius: 999px; }
 #crosshair.rgb { animation: rgb-cross 1.6s linear infinite; }
 @keyframes rgb-cross { to { filter: hue-rotate(360deg); } }
+/* ---------- Staff badges & moderation ---------- */
+.role-badge { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; padding: 1px 7px; border-radius: 3px; font-size: 10px; font-weight: 800;
+  letter-spacing: 1px; vertical-align: 2px; white-space: nowrap; text-shadow: none; line-height: 1.5; }
+.role-badge.sm { font-size: 9px; padding: 0 5px; }
+.role-badge.owner { color: #1a1406; background: linear-gradient(90deg, #ffd23f, #ffb020); box-shadow: 0 0 10px rgba(255,200,60,0.45); }
+.role-badge.mod { color: #04131c; background: linear-gradient(90deg, #7fd8ff, #4fc3ff); }
+.bnr-sub .role-badge { margin-left: 0; vertical-align: 0; }
+.role-ico { font-weight: 400; margin-right: 4px; }
+.role-ico.owner { color: #ffd23f; }
+.role-ico.mod { color: #4fc3ff; }
+.pause-mod summary span { color: #4fc3ff; }
+#mod-list { display: flex; flex-direction: column; gap: 4px; padding: 6px 0 2px; }
+.mod-row { display: flex; align-items: center; gap: 6px; padding: 5px 8px; background: rgba(255,255,255,0.04); border-radius: 4px; }
+.mod-row .mod-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mod-row .mod-name em { color: var(--danger); font-style: normal; font-size: 11px; margin-left: 6px; }
+.mod-row button { padding: 4px 10px; font-size: 12px; }
+.mod-row small { color: var(--muted); font-size: 11px; }
+.staff-card .fr-row .role-badge { margin-left: 0; }
+.staff-card .fr-add { margin-top: 8px; }

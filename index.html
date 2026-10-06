@@ -269,6 +269,7 @@
             <div>
               <div id="fr-requests-card" class="card hidden"><h3>Requests &amp; invites</h3><div id="fr-requests"></div></div>
               <div class="card"><h3>Friends <span id="fr-count" class="muted"></span></h3><div id="fr-list"></div></div>
+              <div class="card staff-card"><h3>Staff</h3><div id="staff-list"></div><form id="staff-add" class="fr-add hidden" autocomplete="off"><input id="staff-tag" maxlength="16" placeholder="Gamertag to make a moderator" spellcheck="false" autocapitalize="off"><button class="primary" type="submit">Make moderator</button></form><div id="staff-msg" class="note"></div></div>
             </div>
             <div class="card party-card">
               <h3>Party chat</h3>
@@ -332,6 +333,10 @@
       <button id="btn-hostpanel" class="hidden"><span class="ic">♛</span>Host panel</button>
       <button id="btn-leave" class="danger"><span class="ic">⎋</span>Leave</button>
     </div>
+    <details id="pause-mod" class="pause-lo pause-mod hidden" open>
+      <summary><span>🛡 Moderation</span><small>kick or mute players in this match</small></summary>
+      <div id="mod-list"></div>
+    </details>
     <details id="pause-lo" class="pause-lo">
       <summary><span>Loadout</span> <em id="pause-lo-sum"></em><small>applies on next spawn</small></summary>
       <div id="pause-loadout" class="loadout"></div>

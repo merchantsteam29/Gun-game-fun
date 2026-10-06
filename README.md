@@ -229,6 +229,22 @@ message and status update is signed with a key stored on your device, so nobody 
 browser's site data loses that key (and with it your gamertag on that device). A gamertag nobody uses for 120 days
 becomes free again.
 
+## Staff: owner & moderators
+
+**GIGACHAD** is the game's owner. Staff get a badge (♛ OWNER or 🛡 MOD) everywhere names show:
+- in matches: the name tag above their head, scoreboard, kill feed, chat, death screen and end screen;
+- in the menus: friends list and the **Staff** list in the Friends tab.
+
+- **Can't be faked:** the owner badge is tied to the GIGACHAD gamertag's key, not the name. In a match, staff prove
+  who they are to the host with a signed message. Anyone else who joins using a staff name is renamed to
+  "Imposter###" after a few seconds.
+- **Moderators:** the owner appoints them in **Friends → Staff** by typing their gamertag. Appointments are signed with
+  the owner's key, so nobody else can make moderators. Only the owner can remove them.
+- **In a match:** staff get a **Moderation** section in the pause menu to **mute** or **kick** players.
+  - Moderators can act on regular players.
+  - The owner can also act on moderators.
+  - Nobody can kick the host, whose browser runs the match.
+
 ## Run locally
 
 `node serve.js` → http://localhost:8080

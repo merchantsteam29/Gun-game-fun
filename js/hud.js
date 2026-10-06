@@ -2,6 +2,9 @@ import { WEAPONS, SLOT_NAMES, SHORT } from './weapons.js';
 import { esc } from './util.js';
 import { Radar } from './radar.js';
 import { bannerHtml } from './banners.js';
+import { badge, ROLE_INFO } from './roles.js';
+
+const roleIcon = (r) => (ROLE_INFO[r] ? `<b class="role-ico ${r}" title="${ROLE_INFO[r].label}">${ROLE_INFO[r].icon}</b>` : '');
 
 const $ = (id) => document.getElementById(id);
 const W_LABEL = SHORT;
@@ -220,9 +223,9 @@ export class Hud {
     const d = document.createElement('div');
     if (mine) d.className = 'me';
     const kname = killer && killer !== victim
-      ? `<span style="color:${esc(killer.color)}">${esc(killer.name)}</span><span class="w">${W_LABEL[weapon] || esc(weapon)}${head ? '<i class="hs" title="Headshot">⌖</i>' : ''}</span>`
+      ? `${roleIcon(killer.role)}<span style="color:${esc(killer.color)}">${esc(killer.name)}</span><span class="w">${W_LABEL[weapon] || esc(weapon)}${head ? '<i class="hs" title="Headshot">⌖</i>' : ''}</span>`
       : `<span class="w">${W_LABEL[weapon] || esc(weapon)} · self</span>`;
-    d.innerHTML = `${kname}<span style="color:${esc(victim.color)}">${esc(victim.name)}</span>`;
+    d.innerHTML = `${kname}${roleIcon(victim.role)}<span style="color:${esc(victim.color)}">${esc(victim.name)}</span>`;
     this.killfeed.prepend(d);
     while (this.killfeed.children.length > 6) this.killfeed.lastChild.remove();
     setTimeout(() => d.remove(), 6000);
@@ -248,20 +251,20 @@ export class Hud {
       const c = colorFor ? colorFor(p) : p.color;
       const sc = mode === 'gungame' ? p.sc + 1 : p.sc;
       const kd = (p.k / Math.max(1, p.d)).toFixed(2);
-      return `<tr class="${p.id === myId ? 'me' : ''}" style="--c:${esc(c)}"><td class="rk">${rank}</td><td><span class="dot" style="background:${esc(c)}"></span>${esc(p.name)}</td><td class="sc">${sc}</td><td>${p.k}</td><td>${p.d}</td><td class="kd">${kd}</td></tr>`;
+      return `<tr class="${p.id === myId ? 'me' : ''}" style="--c:${esc(c)}"><td class="rk">${rank}</td><td><span class="dot" style="background:${esc(c)}"></span>${esc(p.name)}${badge(p.role, true)}</td><td class="sc">${sc}</td><td>${p.k}</td><td>${p.d}</td><td class="kd">${kd}</td></tr>`;
     }).join('');
   }
 
   // Death screen: the killer's banner with their name, the weapon and a headshot tag.
-  death(show, killerName, weapon, secs, status = null, head = false, killerColor = '#fff', banner = 'standard') {
+  death(show, killerName, weapon, secs, status = null, head = false, killerColor = '#fff', banner = 'standard', role = null) {
     $('death').classList.toggle('hidden', !show);
     if (!show) { this.lastDeath = ''; return; }
-    const key = [killerName, weapon, head, killerColor, banner].join('|');
+    const key = [killerName, weapon, head, killerColor, banner, role].join('|');
     if (key !== this.lastDeath) {
       this.lastDeath = key;
       const wl = W_LABEL[weapon] || weapon || '';
       $('death-by').innerHTML = killerName
-        ? bannerHtml(banner, killerName, killerColor, 'KILLED YOU', `<span class="chip">${esc(wl)}</span>${head ? '<span class="chip hs">⌖ HEADSHOT</span>' : ''}`)
+        ? bannerHtml(banner, killerName, killerColor, 'KILLED YOU', `${badge(role)}<span class="chip">${esc(wl)}</span>${head ? '<span class="chip hs">⌖ HEADSHOT</span>' : ''}`)
         : `<div class="death-self">${weapon ? esc(wl) + ' · ' : ''}You took yourself out</div>`;
       // Replay the slide-in each time a new death screen opens.
       const card = $('death-by');
@@ -283,7 +286,7 @@ export class Hud {
       $('podium').innerHTML = top.map((p, i) => !p ? '<div class="pd empty"></div>' :
         `<div class="pd p${[2, 1, 3][i]} ${p.id === myId ? 'me' : ''}" style="--c:${esc(p.color)}"><div class="pd-name">${esc(p.name)}</div><div class="pd-sc">${p.sc} ${label}</div><div class="pd-step">${[2, 1, 3][i]}</div></div>`).join('');
       $('end-body').innerHTML = scores.map((p, i) =>
-        `<tr class="${p.id === myId ? 'me' : ''}"><td class="rk">${i + 1}</td><td><span class="dot" style="background:${esc(p.color)}"></span>${esc(p.name)}</td><td class="sc">${p.sc} ${label}</td><td>${p.k} K</td><td>${p.d} D</td></tr>`
+        `<tr class="${p.id === myId ? 'me' : ''}"><td class="rk">${i + 1}</td><td><span class="dot" style="background:${esc(p.color)}"></span>${esc(p.name)}${badge(p.role, true)}</td><td class="sc">${p.sc} ${label}</td><td>${p.k} K</td><td>${p.d} D</td></tr>`
       ).join('');
     }
     $('end-timer').textContent = `Next match${nextMap ? ' on ' + nextMap : ''} in ${secs}s`;
