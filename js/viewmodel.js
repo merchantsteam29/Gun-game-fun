@@ -118,16 +118,29 @@ export class Viewmodel {
     };
   }
 
+  // Attachments changed: rebuild the affected guns (the one in hand right away).
+  setMods(mods) {
+    this.mods = mods || {};
+    for (const [id, m] of Object.entries(this.builtModels)) {
+      const key = JSON.stringify(this.mods[id] || null);
+      if (m.modsKey === key) continue;
+      this.root.remove(m.holder);
+      m.holder.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
+      delete this.builtModels[id];
+      if (id === this.cur && !this.quick) this.swapTo(id, 0);
+    }
+  }
+
   buildModel(id) {
     const holder = new THREE.Group();
     holder.scale.setScalar(S);
-    const gun = buildGun(id);
+    const gun = buildGun(id, this.mods ? this.mods[id] : null);
     holder.add(gun);
     holder.visible = false;
     this.root.add(holder);
     const sight = gun.userData.sight || 0.1;
     // Magnified optics sit closer to the eye so you look into the scope.
-    return { id, holder, gun, parts: gun.userData.parts, ads: [0, -sight * S, gun.userData.adsZ ?? -0.3] };
+    return { id, holder, gun, parts: gun.userData.parts, ads: [0, -sight * S, gun.userData.adsZ ?? -0.3], modsKey: JSON.stringify(this.mods ? this.mods[id] || null : null) };
   }
 
   get model() { return this.models[this.quick || this.cur]; }
@@ -167,10 +180,10 @@ export class Viewmodel {
 
   fire(w) {
     this.inspectT = -1;
-    const big = w.type === 'proj' || ['shotgun', 'sniper', 'revolver', 'sawedoff', 'handcannon', 'dmr', 'doublebarrel', 'railgun'].includes(w.id);
+    const big = w.type === 'proj' || ['shotgun', 'sniper', 'revolver', 'sawedoff', 'handcannon', 'dmr', 'doublebarrel', 'railgun', 'amr', 'autoshot', 'slug', 'autorev'].includes(w.id);
     this.kick = Math.min(1.4, this.kick + (big ? 1 : 0.45));
     this.kickYaw = (Math.random() - 0.5) * (big ? 0.12 : 0.05);
-    this.flashT = 0.05;
+    this.flashT = w.quiet ? 0 : 0.05; // suppressors hide the flash
     this.flash.rotation.z = Math.random() * Math.PI;
     if (w.id === 'revolver') this.cylTarget += Math.PI / 3;
     if (w.id === 'gl') this.cylTarget += Math.PI / 2;
@@ -231,7 +244,7 @@ export class Viewmodel {
     const w = WEAPONS[id];
     const P = m.parts;
 
-    this.adsT += ((s.ads ? 1 : 0) - this.adsT) * Math.min(1, dt * 14);
+    this.adsT += ((s.ads ? 1 : 0) - this.adsT) * Math.min(1, dt * 14 * (s.adsSpeed || 1)); // optics change aim speed
     this.sprintT += ((s.sprint ? 1 : 0) - this.sprintT) * Math.min(1, dt * 9);
     if (!this.next) this.raiseT = Math.max(0, this.raiseT - dt / this.raiseDur);
     this.kick *= Math.exp(-dt * 12);

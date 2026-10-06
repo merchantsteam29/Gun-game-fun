@@ -251,7 +251,7 @@ button.big { padding: 14px 18px; font-size: 16px; letter-spacing: 2px; }
 .lo-tab, .lo-tab small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .lo-tab.sel { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 -2px 0 var(--accent); }
 .lo-tab.sel small { color: var(--accent); }
-.lo-body { display: grid; grid-template-columns: minmax(0, 1fr) 250px; gap: 14px; align-items: start; }
+.lo-body { display: grid; grid-template-columns: minmax(0, 1fr) 270px; gap: 14px; align-items: start; }
 .lo-list { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .lo-group h4 { margin: 0 0 6px; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); font-weight: 700;
   display: flex; align-items: center; gap: 8px; }
@@ -264,6 +264,16 @@ button.big { padding: 14px 18px; font-size: 16px; letter-spacing: 2px; }
 .lo-grid button.sel { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 .lo-grid button.sel small { color: var(--accent); opacity: 0.85; }
 .lo-card { padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius); background: rgba(0,0,0,0.3); min-height: 168px; position: sticky; top: 0; }
+.lo-side { display: flex; flex-direction: column; gap: 10px; position: sticky; top: 0; min-width: 0; }
+.lo-side .lo-card { position: static; }
+.lo-mods { padding: 12px 14px; border: 1px solid rgba(255,176,32,0.35); border-radius: var(--radius); background: rgba(255,176,32,0.05); }
+.lo-mods h4 { margin: 0 0 8px; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); }
+.lo-mod { margin-bottom: 8px; }
+.lo-mod > span { display: block; font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
+.lo-mod-opts { display: flex; flex-wrap: wrap; gap: 4px; }
+.lo-mod-opts button { padding: 5px 8px; font-size: 11px; text-transform: none; letter-spacing: 0.2px; background: var(--panel-2); }
+.lo-mod-opts button.sel { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.lo-mod-desc { margin: 2px 0 0; font-size: 11.5px; color: var(--muted); min-height: 30px; line-height: 1.35; }
 .lo-facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; margin: 12px 0 0; padding-top: 10px; border-top: 1px solid var(--line); font-size: 12px; }
 .lo-facts dt { color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; font-size: 10.5px; align-self: center; }
 .lo-facts dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }

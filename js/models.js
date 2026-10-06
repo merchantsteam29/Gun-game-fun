@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { M, box, rbox, cyl, grp, anchor, modelQuality } from './modelkit.js';
-import { GUNS } from './guns.js';
+import { GUNS, finishGun } from './guns.js';
 
 export { modelQuality };
 
@@ -220,9 +220,12 @@ const builders = {
   },
 };
 
-export function buildGun(id) {
+// mods: the gun's attachments (see mods.js); guns get their defaults if left out.
+export function buildGun(id, mods = null) {
   const g = new THREE.Group();
-  (builders[id] || builders.ar)(g);
+  const key = builders[id] ? id : 'ar';
+  const spec = builders[key](g);
+  if (spec) finishGun(g, key, spec, mods);
   g.traverse((o) => { if (o.isMesh) o.castShadow = o.material !== M.glass; });
   mergeStatic(g);
   const parts = {};

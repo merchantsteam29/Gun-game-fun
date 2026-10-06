@@ -106,8 +106,8 @@ const LEGACY_REWARDS = {
   party: ['hat', 'party'],
 };
 
-const SNIPERS = ['sniper', 'dmr', 'railgun'];
-const SHOTGUNS = ['shotgun', 'doublebarrel', 'sawedoff'];
+const SNIPERS = ['sniper', 'dmr', 'amr', 'railgun'];
+const SHOTGUNS = ['shotgun', 'autoshot', 'slug', 'doublebarrel', 'sawedoff'];
 
 const stats = { ...store.get('stats', {}) };
 const modes = new Set(store.get('modesPlayed', []));

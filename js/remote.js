@@ -63,8 +63,9 @@ function nameTag(name, color) {
 // Another player's avatar, interpolated from host snapshots. Limbs are solved with IK
 // every frame from foot targets (walk cycle) and gun hand anchors.
 export class RemotePlayer {
-  constructor(scene, id, name, color, cos) {
+  constructor(scene, id, name, color, cos, mods = null) {
     this.id = id;
+    this.mods = mods || {}; // their attachments, so their guns look like what they picked
     this.name = name;
     this.color = color;
     this.scene = scene;
@@ -195,7 +196,7 @@ export class RemotePlayer {
     if (id === this.weapon || !WEAPONS[id]) return;
     if (this.weapon && this.guns[this.weapon]) this.guns[this.weapon].visible = false;
     if (!this.guns[id]) {
-      const g = buildGun(id);
+      const g = buildGun(id, this.mods[id]);
       g.scale.setScalar(1.25);
       if (!modelQuality.remoteShadows) g.traverse((o) => { o.castShadow = false; });
       this.gunHolder.add(g);
@@ -204,6 +205,19 @@ export class RemotePlayer {
     this.guns[id].visible = true;
     if (this.weapon && this.alive) this.swapT = 1;
     this.weapon = id;
+  }
+
+  // They changed attachments: rebuild their guns (the one in hand straight away).
+  setMods(mods) {
+    this.mods = mods || {};
+    for (const g of Object.values(this.guns)) {
+      this.gunHolder.remove(g);
+      g.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
+    }
+    this.guns = {};
+    const cur = this.weapon;
+    this.weapon = null;
+    if (cur) { this.setWeapon(cur); this.swapT = 0; }
   }
 
   // a = [x, y, z, yaw, pitch, weapon, crouch, alive, hp, kills, deaths, flags]
@@ -369,7 +383,7 @@ export class RemotePlayer {
     // Gun pose
     const w = WEAPONS[this.weapon] || WEAPONS.ar;
     const melee = w.type === 'melee', thrown = w.type === 'throw';
-    const pistol = ['pistol', 'revolver', 'mpistol', 'handcannon', 'sawedoff'].includes(this.weapon);
+    const pistol = ['pistol', 'bpistol', 'revolver', 'autorev', 'mpistol', 'microsmg', 'handcannon', 'sawedoff', 'flare'].includes(this.weapon);
     const gh = this.gunHolder;
     if (melee) gh.position.set(0.24, -0.32, -0.32);
     else if (thrown) gh.position.set(0.24, -0.2, -0.3);

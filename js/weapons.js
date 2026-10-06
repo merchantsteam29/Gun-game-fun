@@ -44,8 +44,8 @@ export const WEAPONS = {
     id: 'gl', name: 'Grenade Launcher', type: 'proj', auto: false,
     rate: 1.0, mag: 4, reload: 3.0,
     projSpeed: 30, projGravity: 9,
-    directDmg: 999, // one-shot on a direct hit
-    splash: 80, radius: 4.5,
+    directDmg: 130, // a direct hit kills
+    splash: 70, radius: 4.5,
     spread: 0, moveSpread: 0, adsMul: 1,
     recoil: 0.06, speedMul: 0.68, // heavy: slows you down while equipped
     switch: 0.6, reloadStyle: 'drum',
@@ -58,8 +58,8 @@ export const WEAPONS = {
     recoil: 0.03, speedMul: 0.95, switch: 0.4, reloadStyle: 'mag',
   },
   minigun: {
-    id: 'minigun', name: 'Minigun', type: 'gun', auto: true, spinup: 0.6,
-    rate: 0.045, dmg: 13, head: 1.4, pellets: 1, mag: 200, reload: 5,
+    id: 'minigun', name: 'Minigun', type: 'gun', auto: true, spinup: 0.8,
+    rate: 0.045, dmg: 12, head: 1.4, pellets: 1, mag: 200, reload: 5,
     spread: 0.035, moveSpread: 0.03, adsMul: 0.7, range: 150,
     recoil: 0.006, speedMul: 0.7, switch: 0.8, reloadStyle: 'box',
   },
@@ -164,6 +164,83 @@ export const WEAPONS = {
     smokeTime: 11, radius: 5.5,
     spread: 0, moveSpread: 0, speedMul: 1.05, switch: 0.25,
   },
+  carbine: {
+    id: 'carbine', name: 'Carbine', type: 'gun', auto: true,
+    rate: 0.1, dmg: 24, head: 1.6, pellets: 1, mag: 25, reload: 1.9,
+    spread: 0.011, moveSpread: 0.028, adsMul: 0.3, range: 220, falloff: [30, 70, 0.7],
+    recoil: 0.013, speedMul: 1.04, switch: 0.32, reloadStyle: 'mag',
+  },
+  pdw: {
+    id: 'pdw', name: 'PDW', type: 'gun', auto: true,
+    rate: 0.055, dmg: 15, head: 1.5, pellets: 1, mag: 50, reload: 2.0,
+    spread: 0.022, moveSpread: 0.015, adsMul: 0.5, range: 100, falloff: [12, 35, 0.55],
+    recoil: 0.007, speedMul: 1.12, switch: 0.26, reloadStyle: 'mag',
+  },
+  laser: {
+    id: 'laser', name: 'Laser Rifle', type: 'gun', auto: true, tracer: '#3fe8ff',
+    rate: 0.08, dmg: 15, head: 1.4, pellets: 1, mag: 40, reload: 2.2,
+    spread: 0.004, moveSpread: 0.012, adsMul: 0.5, range: 260,
+    recoil: 0.003, speedMul: 1.0, switch: 0.35, reloadStyle: 'mag',
+  },
+  amr: {
+    id: 'amr', name: 'Anti-Materiel Rifle', type: 'gun', auto: false,
+    rate: 1.7, dmg: 130, head: 1.5, pellets: 1, mag: 4, reload: 3.6,
+    spread: 0.12, moveSpread: 0.06, adsMul: 0, range: 450,
+    recoil: 0.12, speedMul: 0.78, switch: 0.8, reloadStyle: 'mag',
+    scope: true, zoom: 18, cycle: 'bolt',
+  },
+  autoshot: {
+    id: 'autoshot', name: 'Auto Shotgun', type: 'gun', auto: true,
+    rate: 0.3, dmg: 9, head: 1.25, pellets: 8, mag: 10, reload: 2.6,
+    spread: 0.085, moveSpread: 0.02, adsMul: 0.8, range: 45, falloff: [7, 24, 0.3],
+    recoil: 0.04, speedMul: 0.93, switch: 0.45, reloadStyle: 'mag',
+  },
+  slug: {
+    id: 'slug', name: 'Slug Shotgun', type: 'gun', auto: false,
+    rate: 0.75, dmg: 78, head: 1.5, pellets: 1, mag: 5, reload: 2.6,
+    spread: 0.006, moveSpread: 0.03, adsMul: 0.4, range: 120, falloff: [20, 60, 0.45],
+    recoil: 0.06, speedMul: 0.95, switch: 0.4, reloadStyle: 'shells', cycle: 'pump',
+  },
+  crossbow: {
+    id: 'crossbow', name: 'Crossbow', type: 'proj', auto: false, bolt: true,
+    rate: 0.5, mag: 1, reload: 1.6,
+    projSpeed: 65, projGravity: 5, directDmg: 95, head: 2,
+    spread: 0, moveSpread: 0, adsMul: 1, adsFov: 45,
+    recoil: 0.04, speedMul: 0.95, switch: 0.4, reloadStyle: 'mag',
+  },
+  harpoon: {
+    id: 'harpoon', name: 'Harpoon Gun', type: 'proj', auto: false, bolt: true,
+    rate: 0.6, mag: 1, reload: 2.2,
+    projSpeed: 52, projGravity: 7, directDmg: 110, head: 1.6,
+    spread: 0, moveSpread: 0, adsMul: 1, adsFov: 48,
+    recoil: 0.05, speedMul: 0.92, switch: 0.45, reloadStyle: 'mag',
+  },
+  bpistol: {
+    id: 'bpistol', name: 'Burst Pistol', type: 'gun', auto: false, burst: 3, burstGap: 0.06,
+    rate: 0.38, dmg: 19, head: 1.8, pellets: 1, mag: 18, reload: 1.5,
+    spread: 0.012, moveSpread: 0.025, adsMul: 0.4, range: 140, falloff: [20, 50, 0.7],
+    recoil: 0.02, speedMul: 1.05, switch: 0.25, reloadStyle: 'mag',
+  },
+  autorev: {
+    id: 'autorev', name: 'Auto Revolver', type: 'gun', auto: false,
+    rate: 0.24, dmg: 37, head: 1.9, pellets: 1, mag: 6, reload: 2.0,
+    spread: 0.012, moveSpread: 0.03, adsMul: 0.3, range: 160, falloff: [20, 50, 0.7],
+    recoil: 0.04, speedMul: 1.05, switch: 0.3, reloadStyle: 'revolver',
+  },
+  microsmg: {
+    id: 'microsmg', name: 'Micro SMG', type: 'gun', auto: true,
+    rate: 0.06, dmg: 12, head: 1.4, pellets: 1, mag: 25, reload: 1.5,
+    spread: 0.026, moveSpread: 0.018, adsMul: 0.55, range: 70, falloff: [8, 26, 0.5],
+    recoil: 0.007, speedMul: 1.08, switch: 0.22, reloadStyle: 'mag',
+  },
+  flare: {
+    id: 'flare', name: 'Flare Gun', type: 'proj', auto: false,
+    rate: 0.6, mag: 1, reload: 1.4,
+    projSpeed: 40, projGravity: 6, trail: true, glow: true,
+    directDmg: 75, splash: 40, radius: 2.5,
+    spread: 0, moveSpread: 0, adsMul: 1,
+    recoil: 0.05, speedMul: 1.05, switch: 0.3, reloadStyle: 'mag',
+  },
   // ---------- Returning weapons ----------
   br: {
     id: 'br', name: 'Battle Rifle', type: 'gun', auto: true,
@@ -202,11 +279,11 @@ export const WEAPONS = {
   },
 };
 
-// What players can pick. A few more weapons exist only inside modes that hand them out:
-// Minigun (Juggernaut), Grenade Launcher (Boom Town) and Zombie Claws (Infection).
+// What players can pick. (Zombie Claws exist only in Infection.)
 export const SLOTS = [
-  ['ar', 'burst', 'br', 'smg', 'vector', 'lmg', 'dmr', 'sniper', 'railgun', 'shotgun', 'doublebarrel', 'rocket'],
-  ['pistol', 'revolver', 'mpistol', 'handcannon', 'sawedoff'],
+  ['ar', 'carbine', 'br', 'burst', 'laser', 'smg', 'pdw', 'vector', 'lmg', 'minigun', 'dmr', 'sniper', 'amr', 'railgun',
+    'shotgun', 'autoshot', 'slug', 'doublebarrel', 'gl', 'rocket', 'crossbow', 'harpoon'],
+  ['pistol', 'bpistol', 'handcannon', 'revolver', 'autorev', 'mpistol', 'microsmg', 'sawedoff', 'flare'],
   ['knife', 'katana', 'bat', 'axe', 'sledge'],
   ['frag', 'sticky', 'tknife', 'smoke', 'flash', 'vortex'],
 ];
@@ -224,19 +301,24 @@ export const SHORT = {
   pistol: 'Pistol', revolver: 'Revolver', mpistol: 'M-Pistol', knife: 'Knife', axe: 'Axe',
   frag: 'Frag', sticky: 'Sticky', smoke: 'Smoke', claws: 'Claws',
   dmr: 'DMR', minigun: 'Minigun', rocket: 'Rocket', br: 'Battle', vector: 'Vector', doublebarrel: 'Dbl Barrel',
-  railgun: 'Railgun', sledge: 'Sledge', vortex: 'Vortex',
+  railgun: 'Railgun', sledge: 'Sledge', vortex: 'Vortex', carbine: 'Carbine', pdw: 'PDW', laser: 'Laser', amr: 'AMR',
+  autoshot: 'Auto-SG', slug: 'Slug SG', crossbow: 'Crossbow', harpoon: 'Harpoon', bpistol: 'B-Pistol', autorev: 'Auto-Rev',
+  microsmg: 'Micro SMG', flare: 'Flare',
   handcannon: 'H-Cannon', sawedoff: 'Sawed-Off', katana: 'Katana', bat: 'Bat', flash: 'Flash', tknife: 'T-Knives',
 };
 
 // Weapon classes, for grouping in the loadout picker (in display order per slot).
 export const CLASSES = [
-  ['Rifles', ['ar', 'burst', 'br']],
-  ['SMG & LMG', ['smg', 'vector', 'lmg']],
-  ['Long range', ['dmr', 'sniper', 'railgun']],
-  ['Close range', ['shotgun', 'doublebarrel']],
-  ['Explosive', ['rocket']],
-  ['Pistols', ['pistol', 'revolver', 'mpistol', 'handcannon']],
-  ['Special', ['sawedoff']],
+  ['Rifles', ['ar', 'carbine', 'br', 'burst', 'laser']],
+  ['SMGs', ['smg', 'pdw', 'vector']],
+  ['Heavy', ['lmg', 'minigun']],
+  ['Long range', ['dmr', 'sniper', 'amr', 'railgun']],
+  ['Shotguns', ['shotgun', 'autoshot', 'slug', 'doublebarrel']],
+  ['Launchers & bows', ['gl', 'rocket', 'crossbow', 'harpoon']],
+  ['Pistols', ['pistol', 'bpistol', 'handcannon']],
+  ['Revolvers', ['revolver', 'autorev']],
+  ['Machine pistols', ['mpistol', 'microsmg']],
+  ['Special', ['sawedoff', 'flare']],
   ['Quick', ['knife', 'katana']],
   ['Heavy', ['bat', 'axe', 'sledge']],
   ['Lethal', ['frag', 'sticky', 'tknife']],
@@ -244,8 +326,8 @@ export const CLASSES = [
 ];
 
 // Shots (or hits) to kill a 100-health player up close, and how long that takes.
-export function killStats(id) {
-  const w = WEAPONS[id];
+// w: optional stats override (e.g. with attachments applied).
+export function killStats(id, w = WEAPONS[id]) {
   const per = w.type === 'gun' ? w.dmg * w.pellets : w.type === 'melee' ? w.dmg : Math.max(w.directDmg || 0, w.splash || 0);
   if (!per) return null;
   const n = Math.ceil(100 / per);
@@ -255,12 +337,11 @@ export function killStats(id) {
 }
 
 // Menu summary: a one-line description, 0..1 stat bars and a few exact numbers.
-export function weaponInfo(id) {
-  const w = WEAPONS[id];
+export function weaponInfo(id, w = WEAPONS[id]) {
   const tags = [];
   const facts = [];
   let dmg = 0, rate = 0, range = 0;
-  const ks = killStats(id);
+  const ks = killStats(id, w);
   if (w.type === 'gun') {
     tags.push(w.cycle === 'bolt' ? 'Bolt-action' : w.cycle === 'pump' ? 'Pump-action' : w.burst ? `${w.burst}-round burst` : w.auto ? 'Full-auto' : 'Semi-auto');
     tags.push(`${w.mag} rounds`);
@@ -277,7 +358,7 @@ export function weaponInfo(id) {
     facts.push(['Headshots', ks.heads === 1 ? 'one shot' : `${ks.heads} · ${ks.ttkHead.toFixed(2)}s`]);
     facts.push(['Fire rate', w.burst ? `${Math.round(60 / w.rate)} bursts/min` : `${Math.round(60 / w.rate)} rpm`]);
     facts.push(['Reload', `${w.reload}s`]);
-    if (w.falloff) facts.push(['Drop-off', `${w.falloff[0]}–${w.falloff[1]}m (to ${Math.round(w.falloff[2] * 100)}%)`]);
+    if (w.falloff) facts.push(['Drop-off', `${Math.round(w.falloff[0])}–${Math.round(w.falloff[1])}m (to ${Math.round(w.falloff[2] * 100)}%)`]);
   } else if (w.type === 'proj') {
     facts.push(['Damage', w.directDmg >= 999 ? 'direct hit kills' : `${w.directDmg} direct${w.splash ? ` · ${w.splash} splash` : ''}`]);
     facts.push(['Reload', `${w.reload}s`]);

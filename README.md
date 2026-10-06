@@ -102,10 +102,24 @@ their damage at range; SMGs are faster up close (~0.33s) but fall off with dista
 (~0.45–0.5s) with short drop-off; snipers and slugs reward headshots; shotguns one-shot only up close. Melee weapons
 trade swing speed for reach and movement speed, and only the Sledgehammer one-shots from the front.
 
+### Attachments
+
+Every gun has an **Attachments** panel on its card in Loadout (hover an option to preview its stats):
+
 | Slot | Options |
 |---|---|
-| Primary | Assault Rifle, Burst Rifle, Battle Rifle, SMG, Vector, LMG, DMR, Sniper Rifle (scoped), Railgun, Shotgun, Double Barrel, Rocket Launcher |
-| Secondary | Pistol, Revolver, Machine Pistol, Hand Cannon, Sawed-Off |
+| Optic | Iron sights (fastest to aim) Â· Red dot Â· Holographic (steadier) Â· 2.5Ã— scope (magnified, slower to aim) Â· 6Ã— sniper scope (snipers / DMR / energy weapons) |
+| Muzzle | Standard Â· Suppressor (quiet, no muzzle flash for others, damage drops off a bit sooner) Â· Compensator (30% less recoil) |
+| Magazine | Standard Â· Extended (+50% ammo, slower reload, slightly slower movement) Â· Fast mag (25% faster reload) |
+| Underbarrel | None Â· Vertical grip (less recoil, steadier on the move) Â· Laser (tighter hip-fire) |
+
+Which options a gun takes depends on its type (pistols can't take scopes, break-action shotguns have no muzzle
+slot, and so on). Attachments show on the gun model, and other players see yours too.
+
+| Slot | Options |
+|---|---|
+| Primary | Assault Rifle, Carbine, Battle Rifle, Burst Rifle, Laser Rifle, SMG, PDW, Vector, LMG, Minigun, DMR, Sniper Rifle, Anti-Materiel Rifle, Railgun, Shotgun, Auto Shotgun, Slug Shotgun, Double Barrel, Grenade Launcher, Rocket Launcher, Crossbow, Harpoon Gun |
+| Secondary | Pistol, Burst Pistol, Hand Cannon, Revolver, Auto Revolver, Machine Pistol, Micro SMG, Sawed-Off, Flare Gun |
 | Melee | Combat Knife, Katana, Baseball Bat (knockback), Fire Axe, Sledgehammer (one-shot, knockback) — backstabs one-shot |
 | Utility | Frag, Sticky, Throwing Knives, Smoke, Flashbang, Vortex (pulls players in) |
 

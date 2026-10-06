@@ -5,6 +5,7 @@ import { NavGrid } from './nav.js';
 import { Bot, BOT_NAMES } from './bot.js';
 import { COLORS } from './util.js';
 import { sanitizeCos, randomCos } from './missions.js';
+import { cleanModMap, randomMods } from './mods.js';
 
 // redBlue: two balanced teams. hill: uses the moving zone. loadout: forced for everyone.
 // preset: physics/rule overrides applied when the mode is picked.
@@ -245,7 +246,7 @@ export class HostLogic {
   }
 
   info(p) {
-    return { id: p.id, name: p.name, color: p.color, team: p.team, k: p.kills, d: p.deaths, sc: Math.floor(p.score), bot: !!p.bot, cos: p.cos };
+    return { id: p.id, name: p.name, color: p.color, team: p.team, k: p.kills, d: p.deaths, sc: Math.floor(p.score), bot: !!p.bot, cos: p.cos, mods: p.mods || {} };
   }
 
   addPlayer(id, name, color, cos) {
@@ -282,6 +283,8 @@ export class HostLogic {
     const p = this.record(id, '[BOT] ' + base, COLORS[(Math.random() * COLORS.length) | 0]);
     p.bot = new Bot(this, p, difficulty);
     p.cos = randomCos();
+    p.mods = {}; // bots get random attachments (looks only)
+    for (const w of SLOTS[0].concat(SLOTS[1])) { const m = randomMods(w); if (m) p.mods[w] = m; }
     p.team = this.autoTeam(p);
     this.players.set(id, p);
     this.ensureNav();
@@ -413,6 +416,10 @@ export class HostLogic {
         this.broadcast({ t: 'chat', id, name: p.name, color: p.color, text });
         break;
       }
+      case 'mods': // weapon attachments (looks for everyone else; stats are applied on their side)
+        p.mods = cleanModMap(m.m);
+        this.broadcast({ t: 'pmods', id, m: p.mods }, id);
+        break;
       case 'cos': // changed cosmetics mid-lobby
         p.cos = sanitizeCos(m.c);
         this.broadcast({ t: 'pcos', id, c: p.cos });
@@ -425,7 +432,7 @@ export class HostLogic {
     const v = this.players.get(m.v);
     if (!v || !v.alive) return;
     const w = WEAPONS[m.w];
-    const explosive = ['gl', 'frag', 'sticky', 'rocket', 'tknife', 'vortex'].includes(m.w);
+    const explosive = ['gl', 'frag', 'sticky', 'rocket', 'crossbow', 'harpoon', 'flare', 'tknife', 'vortex'].includes(m.w);
     if (!attacker.alive && !explosive) return;
     if (v !== attacker && !this.hostile(attacker, v) && !(this.s.friendlyFire && this.mode.redBlue)) return;
     if (this.s.headshotsOnly && w && w.type === 'gun' && !m.head && v !== attacker) return;

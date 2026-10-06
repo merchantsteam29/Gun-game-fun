@@ -18,6 +18,7 @@ import { Chat } from './chat.js';
 import { GamepadInput } from './gamepad.js';
 import { Social, TAG_RULES, validTag } from './social.js';
 import { Voice } from './voice.js';
+import { MODS, MOD_SLOTS, MOD_SLOT_NAMES, modOptions, hasMods, cleanMods, cleanModMap, statsFor } from './mods.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -25,6 +26,7 @@ const settings = {
   name: store.get('name', 'Player' + Math.floor(Math.random() * 900 + 100)),
   color: store.get('color', COLORS[Math.floor(Math.random() * COLORS.length)]),
   loadout: validLoadout(store.get('loadout', null)),
+  mods: cleanModMap(store.get('mods', {})), // weapon id -> attachments
   map: store.get('map', 'warehouse'),
   mode: store.get('mode', 'ffa'),
 };
@@ -55,6 +57,7 @@ if (mobile) {
 }
 
 const game = new Game($('game'), { mobile, tablet });
+game.setMods(settings.mods);
 window.game = game; // handy for debugging from the console
 let net = null;
 let busy = false;
@@ -114,11 +117,23 @@ function renderChip() {
 // for whichever weapon is hovered (or equipped).
 const loadoutTab = new WeakMap();
 
-function statCard(id) {
-  const info = weaponInfo(id);
+// mods: attachments to show the stats with (defaults to what you've picked for that gun).
+function statCard(id, mods) {
+  const w = hasMods(id) ? statsFor(id, mods || settings.mods[id]) : WEAPONS[id];
+  const info = weaponInfo(id, w);
   return `<div class="lo-name">${WEAPONS[id].name}</div><div class="lo-tag">${info.tag}</div>` +
     info.stats.map(([label, v]) => `<div class="lo-stat"><span>${label}</span><i><b style="width:${Math.round(v * 100)}%"></b></i></div>`).join('') +
     (info.facts.length ? `<dl class="lo-facts">${info.facts.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>` : '');
+}
+
+// The attachment picker for a gun (nothing for melee / throwables).
+function modsPanel(id) {
+  if (!hasMods(id)) return '';
+  const opts = modOptions(id), m = cleanMods(id, settings.mods[id]);
+  const rows = MOD_SLOTS.filter((s) => opts[s].length > 1).map((s) =>
+    `<div class="lo-mod"><span>${MOD_SLOT_NAMES[s]}</span><div class="lo-mod-opts">${opts[s].map((o) =>
+      `<button class="${m[s] === o ? 'sel' : ''}" data-mod="${s}:${o}">${MODS[s][o].name}</button>`).join('')}</div></div>`).join('');
+  return `<div class="lo-mods"><h4>Attachments</h4>${rows}<p class="lo-mod-desc"></p></div>`;
 }
 
 // One-line summary under each weapon in the picker.
@@ -142,8 +157,25 @@ function renderLoadout(el) {
   if (rest.length) groups.push(['Other', rest]);
   const list = groups.map(([name, l]) => `<div class="lo-group"><h4>${name}</h4><div class="lo-grid">${l.map((id) =>
     `<button class="${settings.loadout[open] === id ? 'sel' : ''}" data-w="${id}"><b>${WEAPONS[id].name}</b><small>${weaponBlurb(id)}</small></button>`).join('')}</div></div>`).join('');
-  el.innerHTML = `<div class="lo-tabs">${tabs}</div><div class="lo-body"><div class="lo-list">${list}</div><div class="lo-card">${statCard(settings.loadout[open])}</div></div>`;
+  const cur = settings.loadout[open];
+  el.innerHTML = `<div class="lo-tabs">${tabs}</div><div class="lo-body"><div class="lo-list">${list}</div>
+    <div class="lo-side"><div class="lo-card">${statCard(cur)}</div>${modsPanel(cur)}</div></div>`;
   const card = el.querySelector('.lo-card');
+  // Attachments: click to fit; hovering previews the stats and explains the part.
+  el.querySelectorAll('[data-mod]').forEach((b) => {
+    const [slot, opt] = b.dataset.mod.split(':');
+    const preview = { ...cleanMods(cur, settings.mods[cur]), [slot]: opt };
+    const desc = el.querySelector('.lo-mod-desc');
+    b.onmouseenter = () => { card.innerHTML = statCard(cur, preview); if (desc) desc.textContent = MODS[slot][opt].desc; };
+    b.onmouseleave = () => { card.innerHTML = statCard(cur); if (desc) desc.textContent = ''; };
+    b.onclick = () => {
+      settings.mods[cur] = preview;
+      store.set('mods', settings.mods);
+      game.setMods(settings.mods);
+      renderLoadout($('menu-loadout'));
+      renderLoadout($('pause-loadout'));
+    };
+  });
   el.querySelectorAll('[data-tab]').forEach((b) => {
     b.onclick = () => { loadoutTab.set(el, Number(b.dataset.tab)); renderLoadout(el); };
   });
@@ -374,7 +406,8 @@ social.onPartyChat = ({ from, text, mine }) => { if (from && net && !mine) chat.
 applyGamertag();
 renderFriends();
 window.social = social; // debugging
-social.ready.then(() => { if (!social.tag && !sessionStorage.getItem('tagLater')) openTagPop(); });
+// First visit: ask for a gamertag (only on the menu, never on top of a match).
+social.ready.then(() => { if (!social.tag && !sessionStorage.getItem('tagLater') && !net) openTagPop(); });
 
 // Mode and map pickers are tap targets rather than dropdowns (much easier on touch screens).
 const MAP_BLURB = {

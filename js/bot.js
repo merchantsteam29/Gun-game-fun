@@ -7,7 +7,7 @@ const DIFF = {
   normal: { react: 0.85, err: 0.11, turn: 4, see: 38, pause: 0.55, fov: 1.4, head: 0.03, forget: 0.25 },
   hard: { react: 0.5, err: 0.055, turn: 6.5, see: 52, pause: 0.3, fov: 1.6, head: 0.1, forget: 0.1 },
 };
-export const BOT_PRIMARIES = ['ar', 'smg', 'burst', 'lmg', 'shotgun', 'dmr', 'br', 'vector', 'doublebarrel'];
+export const BOT_PRIMARIES = ['ar', 'smg', 'burst', 'lmg', 'shotgun', 'dmr', 'br', 'vector', 'doublebarrel', 'carbine', 'pdw', 'laser', 'autoshot', 'slug'];
 export const BOT_NAMES = ['Viper', 'Ghost', 'Razor', 'Blaze', 'Echo', 'Havoc', 'Nova', 'Raptor', 'Specter', 'Talon', 'Onyx', 'Fang', 'Jinx', 'Rook'];
 
 const angDiff = (a, b) => ((((b - a + Math.PI) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)) - Math.PI;
@@ -161,7 +161,7 @@ export class Bot {
       if (this.strafeT <= 0) { this.strafe = Math.random() < 0.5 ? -1 : 1; this.strafeT = 0.6 + Math.random() * 1.4; }
       const tx = this.target.st[0] - b.pos.x, tz = this.target.st[2] - b.pos.z;
       const dist = Math.hypot(tx, tz) || 1;
-      const pref = ['shotgun', 'doublebarrel', 'sawedoff'].includes(this.weapon) ? 5 : ['sniper', 'dmr', 'railgun'].includes(this.weapon) ? 30 : 14;
+      const pref = ['shotgun', 'autoshot', 'doublebarrel', 'sawedoff'].includes(this.weapon) ? 5 : ['sniper', 'dmr', 'amr', 'railgun'].includes(this.weapon) ? 30 : 14;
       const fwd = dist > pref + 4 ? 1 : dist < pref - 4 ? -0.7 : 0;
       mx = (tx / dist) * fwd + (-tz / dist) * this.strafe * 0.8;
       mz = (tz / dist) * fwd + (tx / dist) * this.strafe * 0.8;

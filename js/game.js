@@ -4,6 +4,7 @@ import { moveBody, overlap, raycast, rayAABB, PLAYER_R, phys } from './physics.j
 import { MODES, TEAM_COLORS, ZOMBIE_COLOR, JUGG_COLOR, JUGG_TEAM, defaultSettings } from './host.js';
 import { WEAPONS, DEFAULT_LOADOUT, GUNGAME_LADDER, SLOTS } from './weapons.js';
 import { track, onMissionComplete } from './missions.js';
+import { statsFor, cleanModMap } from './mods.js';
 import { Viewmodel } from './viewmodel.js';
 import { RemotePlayer, netClock } from './remote.js';
 import { Effects } from './effects.js';
@@ -82,6 +83,8 @@ export class Game {
     this.mapGroup = null;
 
     this.vm = new Viewmodel();
+    this.mods = {}; // weapon id -> attachments (set from the loadout screen)
+    this.wCache = new Map();
     this.fx = new Effects(this.scene);
     this.hud = new Hud();
     this.loadMap('warehouse');
@@ -299,6 +302,21 @@ export class Game {
     window.addEventListener('blur', () => this.keys.clear());
   }
 
+  // The local player's weapon stats, with their attachments applied (cached).
+  W(id) {
+    let w = this.wCache.get(id);
+    if (!w) { w = statsFor(id, this.mods[id]) || WEAPONS[id]; this.wCache.set(id, w); }
+    return w;
+  }
+
+  // New attachments from the loadout screen (models rebuild; stats apply right away, ammo on next spawn).
+  setMods(mods) {
+    this.mods = cleanModMap(mods);
+    this.wCache.clear();
+    this.vm.setMods(this.mods);
+    if (this.net) this.net.send({ t: 'mods', m: this.mods });
+  }
+
   // touch: drag-to-look from the touch controls (uses its own sensitivity).
   look(dx, dy, touch = false) {
     if (!this.me.alive) return;
@@ -402,7 +420,7 @@ export class Game {
 
   addRemote(p) {
     if (p.id === this.myId || this.remotes.has(p.id)) return;
-    this.remotes.set(p.id, new RemotePlayer(this.scene, p.id, p.name, p.color, p.cos));
+    this.remotes.set(p.id, new RemotePlayer(this.scene, p.id, p.name, p.color, p.cos, cleanModMap(p.mods)));
   }
 
   onNet(m) {
@@ -419,6 +437,7 @@ export class Game {
         }
         this.refreshColors();
         this.hud.show(true);
+        this.net.send({ t: 'mods', m: this.mods }); // so everyone sees our attachments
         break;
       case 'pjoin':
         this.players.set(m.id, { id: m.id, name: m.name, color: m.color, k: 0, d: 0, team: m.team, sc: 0, bot: m.bot });
@@ -429,6 +448,11 @@ export class Game {
       case 'settings':
         this.applySettings(m.s);
         break;
+      case 'pmods': { // someone changed attachments
+        const r = this.remotes.get(m.id);
+        if (r) r.setMods(cleanModMap(m.m));
+        break;
+      }
       case 'notice':
         this.hud.say(m.text);
         break;
@@ -565,7 +589,7 @@ export class Game {
   setLoadout(l) {
     this.loadout = l.slice();
     this.ammo = {};
-    for (const id of this.loadout) this.ammo[id] = WEAPONS[id].mag || 0;
+    for (const id of this.loadout) this.ammo[id] = this.W(id).mag || 0;
     this.util = this.utilId ? WEAPONS[this.utilId].count : 0;
     this.slot = -1;
     this.reloadT = 0;
@@ -616,7 +640,7 @@ export class Game {
         track.kill({
           weapon: m.w, weaponType: W && W.type, head: !!m.head, mode: this.rules.mode,
           secondary: SLOTS[1].includes(m.w),
-          explosive: ['gl', 'rocket', 'frag', 'sticky', 'vortex'].includes(m.w),
+          explosive: ['gl', 'rocket', 'flare', 'frag', 'sticky', 'vortex'].includes(m.w),
           juggernaut: this.rules.mode === 'juggernaut' && pv && pv.team === JUGG_TEAM,
         });
       }
@@ -729,7 +753,7 @@ export class Game {
   update(dt, now) {
     const me = this.me;
     const cam = this.camera;
-    const w = WEAPONS[this.curW];
+    const w = this.W(this.curW);
 
     if (me.alive && !this.matchOver) this.updateMovement(dt);
     this.assist = null;
@@ -800,6 +824,7 @@ export class Game {
       hasUtil: this.util > 0,
       spin: w.spinup ? this.spin / w.spinup : 0,
       bob: opts.bobbing,
+      adsSpeed: w.adsSpeed || 1,
     });
     this.updateHud(dt, now);
   }
@@ -821,7 +846,7 @@ export class Game {
   }
 
   updateMovement(dt) {
-    const me = this.me, k = this.keys, w = WEAPONS[this.curW];
+    const me = this.me, k = this.keys, w = this.W(this.curW);
     let f = (k.has('KeyW') ? 1 : 0) - (k.has('KeyS') ? 1 : 0);
     let s = (k.has('KeyD') ? 1 : 0) - (k.has('KeyA') ? 1 : 0);
     let analog = 1;
@@ -932,7 +957,7 @@ export class Game {
     this.burstLeft = 0;
     this.spin = 0;
     this.returnSlot = -1;
-    const id = this.curW, w = WEAPONS[id];
+    const id = this.curW, w = this.W(id);
     if (instant || !prevId) {
       this.switchT = 0;
       this.vm.equip(id, { drop: 0, raise: prevId ? 0 : 0.3 });
@@ -959,7 +984,7 @@ export class Game {
   }
 
   startReload() {
-    const id = this.curW, w = WEAPONS[id];
+    const id = this.curW, w = this.W(id);
     if ((w.type !== 'gun' && w.type !== 'proj') || this.reloadT > 0 || this.switchT > 0) return;
     if (MODES[this.rules.mode].noReload) return;
     if (this.ammo[id] >= w.mag) return;
@@ -993,7 +1018,7 @@ export class Game {
     const me = this.me;
     this.fireCd -= dt;
     this.switchT -= dt;
-    const id = this.curW, w = WEAPONS[id];
+    const id = this.curW, w = this.W(id);
 
     if (this.reloadT > 0) {
       this.reloadT -= dt;
@@ -1058,7 +1083,7 @@ export class Game {
   }
 
   tryFire() {
-    const id = this.curW, w = WEAPONS[id];
+    const id = this.curW, w = this.W(id);
     if (this.fireCd > 0 || this.switchT > 0 || this.reloadT > 0 || this.burstLeft > 0 || this.pendingThrow) return;
     if (!w.auto && this.firedThisPress) return;
     this.firedThisPress = true;
@@ -1076,10 +1101,10 @@ export class Game {
     this.recoil += w.recoil * (this.ads ? 0.6 : 1);
     this.me.yaw += (Math.random() - 0.5) * w.recoil * 0.4;
     this.vm.fire(w);
-    sfx[id](0.75);
+    sfx[id](w.quiet ? 0.3 : 0.75); // suppressed: much quieter, no flash
     const muzzle = this.scoped ? this.camera.position.clone().addScaledVector(this.camera.getWorldDirection(_d), 0.4).addScaledVector(UP, -0.1)
       : this.vm.muzzleWorld(this.camera, new THREE.Vector3());
-    this.fx.muzzleFlash(muzzle);
+    if (!w.quiet) this.fx.muzzleFlash(muzzle);
     if (w.type === 'proj') this.launchProjectile(id);
     else this.hitscan(id, w, muzzle);
   }
@@ -1132,7 +1157,7 @@ export class Game {
       this.hud.hit(h.head ? 'head' : null);
       (h.head ? sfx.head : sfx.hit)(0.8);
     }
-    this.net.send({ t: 'shot', w: id, o: arr(muzzle), e: ends });
+    this.net.send({ t: 'shot', w: id, o: arr(muzzle), e: ends, q: w.quiet ? 1 : 0 });
   }
 
   los(a, b) {
@@ -1147,7 +1172,7 @@ export class Game {
 
   melee() {
     // Swing what's in hand if it's a blade (some modes give two), else the melee slot.
-    const cur = WEAPONS[this.curW];
+    const cur = this.W(this.curW);
     const w = cur.type === 'melee' ? cur : WEAPONS[this.loadout[this.meleeSlot()]] || WEAPONS.knife;
     this.fireCd = w.rate;
     if (this.returnSlot >= 0) this.returnT = w.rate * 0.9;
@@ -1453,10 +1478,10 @@ export class Game {
       this.fx.tracer(o, end, W && W.tracer);
       this.fx.impact(end, null);
     }
-    this.fx.muzzleFlash(o);
+    if (!m.q) this.fx.muzzleFlash(o); // suppressed guns: no flash, much quieter
     const r = this.remotes.get(m.id);
     if (r) r.fire();
-    if (sfx[m.w]) this.posSound(sfx[m.w], o, 0.9);
+    if (sfx[m.w]) this.posSound(sfx[m.w], o, m.q ? 0.3 : 0.9);
   }
 
   remoteFx(m) {
@@ -1696,7 +1721,7 @@ export class Game {
 
   updateHud(dt, now) {
     const me = this.me, hud = this.hud;
-    const id = this.curW, w = WEAPONS[id];
+    const id = this.curW, w = this.W(id);
     hud.health(me.alive ? me.hp : 0, this.maxHp);
     hud.ammo(id, this.ammo[id] ?? 0, w.mag || 0, this.util);
     hud.slots(this.loadout, this.slot, this.util, this.ammo);
