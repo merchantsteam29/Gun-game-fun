@@ -170,11 +170,14 @@ export class Hud {
   medals(ids, extra = {}) { if (ids.length) this.medalQ.add(ids, extra); }
 
   // Spectating staff: who you're watching, and the controls.
-  spectate(name, free) {
-    const key = free + '|' + name;
+  // death: watching others while waiting to respawn (no free camera).
+  spectate(name, free, death = false) {
+    const key = free + '|' + name + '|' + death;
     if (key === this.lastSpec) return;
     this.lastSpec = key;
-    $('spec-bar').innerHTML = `<b>👁 SPECTATING</b>${free ? ' · Free camera' : name ? ` · <span>${esc(name)}</span>` : ''}
+    $('spec-bar').innerHTML = death
+      ? `<b>👁 WATCHING</b>${name ? ` · <span>${esc(name)}</span>` : ''}<small>Q / E or click to switch player · mouse to orbit</small>`
+      : `<b>👁 SPECTATING</b>${free ? ' · Free camera' : name ? ` · <span>${esc(name)}</span>` : ''}
       <small>${free ? 'WASD move · Space / C up / down · Shift fast · F follow players' : 'Q / E or click switch player · mouse orbit · F free camera'}</small>`;
   }
 

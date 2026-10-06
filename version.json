@@ -1,9 +1,10 @@
 {
-  "version": "2026.10.07.4",
+  "version": "2026.10.07.5",
   "notes": [
-    "Weapon camos: pick one per gun in Loadout (looks only, everyone sees it)",
+    "After dying, watch your killer and teammates until you respawn (longer respawns and Last Man Standing)",
+    "Weapon camos: pick one per gun in Loadout",
     "Match MVP card and next-map voting",
-    "Medals: First Blood, multi-kills, streaks, Headshot, Revenge, Longshot and more"
+    "Medals: First Blood, multi-kills, streaks and more"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json",

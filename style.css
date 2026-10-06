@@ -1222,3 +1222,9 @@ body.mobile .mvp-stats b { font-size: 15px; }
 .lo-camos button { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px 4px 4px; font-size: 11px; }
 .lo-camos button i { width: 16px; height: 16px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.25); flex: none; }
 .lo-camos button.sel { border-color: var(--accent); color: var(--accent); background: rgba(255,176,32,0.12); }
+
+/* Spectating others while dead */
+#hud.dspec #spec-bar { display: block; }
+#hud.dspec #crosshair, #hud.dspec #reload-hint { display: none; }
+#hud.dspec #death { top: 9%; transform: translateX(-50%) scale(0.78); transform-origin: top center; }
+#hud.dspec #death .big { font-size: 26px; }

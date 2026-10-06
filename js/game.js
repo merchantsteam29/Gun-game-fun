@@ -324,7 +324,7 @@ export class Game {
 
   // touch: drag-to-look from the touch controls (uses its own sensitivity).
   look(dx, dy, touch = false) {
-    if (!this.me.alive && !this.spectating) return;
+    if (!this.me.alive && !this.spectating && !this.deathSpecOn) return;
     if (opts.invertY) dy = -dy;
     let s = BASE_SENS * (touch ? opts.touchSens : opts.sens) * (this.camera.fov / (opts.fov * this.fovK)) * (this.ads ? opts.adsSens : 1);
     // Aim assist "friction": aim slows down while the crosshair is on an enemy.
@@ -399,6 +399,7 @@ export class Game {
     this.me.alive = false;
     this.matchOver = false;
     this.deathInfo = null;
+    this.endDeathSpectate();
     this.spectating = this.frozen = false;
     this.specPos = null;
     this.hud.el.classList.remove('spec', 'frozen');
@@ -596,6 +597,7 @@ export class Game {
         }
         this.me.alive = false;
         this.deathInfo = null;
+        this.endDeathSpectate();
         this.hud.death(false);
         this.hud.reloading(false);
         this.hud.scope(false);
@@ -622,6 +624,7 @@ export class Game {
 
   respawn(m) {
     const me = this.me;
+    this.endDeathSpectate(); // back to your own view
     me.pos.set(m.p[0], m.p[1], m.p[2]);
     me.vel.set(0, 0, 0);
     me.yaw = m.yaw;
@@ -862,7 +865,7 @@ export class Game {
     } else if (this.spectating) {
       this.specCam(dt);
     } else if (this.deathInfo) {
-      this.deathCam(dt, now);
+      if (!this.deathSpectate(dt, now)) { this.endDeathSpectate(); this.deathCam(dt, now); }
     } else {
       this.menuCam(now); // waiting to spawn (e.g. joined mid-round in Last Man Standing)
     }
@@ -914,12 +917,14 @@ export class Game {
 
   // Spectating staff: follow a player from behind (mouse orbits, Q / E or click to switch), or
   // F for a free camera (WASD, Space up, Ctrl / C down, Shift faster).
-  specCam(dt) {
+  // list: who can be watched (default: everyone alive); free: allow the F free camera.
+  specCam(dt, list = null, free = true) {
     const me = this.me, cam = this.camera, k = this.keys;
     const edge = (code) => { const on = k.has(code), was = this.specKeys.has(code); if (on) this.specKeys.add(code); else this.specKeys.delete(code); return on && !was; };
     if (!this.specKeys) this.specKeys = new Set();
-    const list = [...this.remotes.values()].filter((r) => r.alive).sort((a, b) => a.id.localeCompare(b.id));
-    if (edge('KeyF')) { this.specFree = !this.specFree; this.specPos = cam.position.clone(); }
+    if (!list) list = [...this.remotes.values()].filter((r) => r.alive).sort((a, b) => a.id.localeCompare(b.id));
+    if (!free) this.specFree = false;
+    else if (edge('KeyF')) { this.specFree = !this.specFree; this.specPos = cam.position.clone(); }
     const click = this.mouse.left && !this.specClick;
     this.specClick = this.mouse.left;
     if (edge('KeyE') || click) this.specIdx = (this.specIdx || 0) + 1;
@@ -947,7 +952,41 @@ export class Game {
     // The minimap and sounds follow the camera.
     me.pos.set(cam.position.x, cam.position.y - 1.6, cam.position.z);
     const p = this.specTarget && this.players.get(this.specTarget.id);
-    this.hud.spectate(p ? p.name : null, this.specFree || !list.length);
+    this.hud.spectate(p ? p.name : null, this.specFree || !list.length, !free);
+  }
+
+  // After dying: watch the killer, then other living players (teammates only in team modes)
+  // until you respawn. Only when there's time for it — quick respawns keep the normal death cam.
+  deathSpectate(dt, now) {
+    const di = this.deathInfo;
+    const mine = this.players.get(this.myId);
+    const out = this.rules.mode === 'lms' && mine && mine.sc <= 0;
+    const left = this.rules.respawn - (now - di.at) / 1000;
+    if ((now - di.at) < 2600 || (!out && left < 1.2)) return false;
+    const myTeam = this.myTeam;
+    const list = [...this.remotes.values()].filter((r) => {
+      if (!r.alive) return false;
+      const p = this.players.get(r.id);
+      return !this.teams || !p || p.team === myTeam;
+    }).sort((a, b) => a.id.localeCompare(b.id));
+    if (!list.length) return false;
+    if (!this.deathSpecOn) {
+      this.deathSpecOn = true;
+      this.hud.el.classList.add('dspec');
+      const ki = list.findIndex((r) => r.id === di.killer); // start on the killer when we may watch them
+      this.specIdx = ki >= 0 ? ki : 0;
+      this.me.pitch = -0.25;
+    }
+    const keep = this.me.pos.clone();
+    this.specCam(dt, list, false);
+    this.me.pos.copy(keep); // stay where we died (radar, sounds)
+    return true;
+  }
+
+  endDeathSpectate() {
+    if (!this.deathSpecOn) return;
+    this.deathSpecOn = false;
+    this.hud.el.classList.remove('dspec');
   }
   deathCam(dt, now) {
     const di = this.deathInfo, cam = this.camera;
