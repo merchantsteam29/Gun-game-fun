@@ -22,6 +22,7 @@ import { moderation, REPORT_REASONS } from './moderation.js';
 import { ModPanel } from './modpanel.js';
 import { Voice } from './voice.js';
 import { Showroom } from './showroom.js';
+import { isBound, keysLabel } from './binds.js';
 import { CAMOS, camoSwatch } from './camos.js';
 import { MODS, MOD_SLOTS, MOD_SLOT_NAMES, modOptions, hasMods, cleanMods, cleanModMap, statsFor } from './mods.js';
 
@@ -346,7 +347,7 @@ function renderFriends() {
     $('vc-mute').textContent = voice.muted ? 'Unmute' : 'Mute';
     if (!$('vc-status').classList.contains('err')) {
       $('vc-status').textContent = !voice.active ? (voice.inVoice.size ? `${voice.inVoice.size} in voice` : '')
-        : voice.muted ? 'Muted' : opts.voicePtt ? 'Hold V to talk' : 'Mic on';
+        : voice.muted ? 'Muted' : opts.voicePtt ? `Hold ${keysLabel('voice')} to talk` : 'Mic on';
     }
     const canFollow = !social.isLeader && p.lobby && !net;
     $('pt-follow').classList.toggle('hidden', !canFollow);
@@ -414,12 +415,12 @@ function renderVoiceHud() {
   const el = $('voice-hud');
   el.classList.toggle('hidden', !voice.active);
   if (!voice.active) return;
-  const mine = voice.muted ? '🔇 Voice muted' : opts.voicePtt ? (voice.pttDown ? '🎤 Talking' : '🎤 Hold V to talk') : '🎤 Mic on';
+  const mine = voice.muted ? '🔇 Voice muted' : opts.voicePtt ? (voice.pttDown ? '🎤 Talking' : `🎤 Hold ${keysLabel('voice')} to talk`) : '🎤 Mic on';
   el.innerHTML = `<div class="me">${mine}</div>` + voice.talkers().filter((t) => t !== social.tag).map((t) => `<div class="t">🔊 ${esc(t)}</div>`).join('');
 }
 voice.onChange = () => { renderFriends(); renderVoiceHud(); };
-window.addEventListener('keydown', (e) => { if (e.code === 'KeyV') setTimeout(renderVoiceHud, 0); });
-window.addEventListener('keyup', (e) => { if (e.code === 'KeyV') setTimeout(renderVoiceHud, 0); });
+window.addEventListener('keydown', (e) => { if (isBound('voice', e.code)) setTimeout(renderVoiceHud, 0); });
+window.addEventListener('keyup', (e) => { if (isBound('voice', e.code)) setTimeout(renderVoiceHud, 0); });
 window.voice = voice; // debugging
 $('pt-follow').onclick = () => { if ($('pt-follow').dataset.code) { $('join-code').value = $('pt-follow').dataset.code; joinLobby(); } };
 
@@ -1020,6 +1021,26 @@ $('btn-resume').onclick = () => {
 $('btn-leave').onclick = () => leave();
 
 // Settings: from the main menu or the pause menu; returns to whichever opened it.
+// "Keyboard & mouse" help in the menu, from the current key bindings.
+function renderKeyHelp() {
+  const k = (a) => `<kbd>${esc(keysLabel(a))}</kbd>`;
+  const move = ['forward', 'left', 'back', 'right'].map((a) => keysLabel(a).split(' / ')[0]).join('');
+  $('kb-help').innerHTML = [
+    [`<kbd>${esc(move)}</kbd>`, 'move'], ['<kbd>Mouse</kbd>', 'aim'], ['<kbd>LMB</kbd>', 'fire'], ['<kbd>RMB</kbd>', 'aim down sights'],
+    [k('jump'), 'jump'], [k('sprint'), 'sprint'], [k('crouch'), 'crouch · slide'], [k('reload'), 'reload'],
+    [`<kbd>${esc([1, 2, 3, 4].map((n) => keysLabel('slot' + n)).join(' '))}</kbd> / wheel`, 'switch'], [k('swap'), 'last weapon'],
+    [k('grenade'), 'quick throw'], [k('melee'), 'quick melee'], [k('inspect'), 'inspect'], [k('scores'), 'scoreboard'],
+    ['<kbd>Esc</kbd>', 'pause'], [k('chat'), 'chat'],
+  ].map(([key, what]) => `<span>${key} ${what}</span>`).join('');
+}
+onOpts((o, key) => { if (!key || key === 'binds') renderKeyHelp(); });
+$('kb-change').onclick = (e) => {
+  e.preventDefault();
+  $('menu').classList.add('hidden');
+  settingsUI.onClose = () => { $('menu').classList.remove('hidden'); showPane(menuPane); };
+  settingsUI.open('Controls');
+};
+
 // Secret PC-only Showroom (Konami code on the menus).
 new Showroom({
   game, mobile,
@@ -1048,7 +1069,7 @@ $('pause-lo').open = !mobile || tablet;
 
 // Enter opens chat while playing (keeps your view; stops you walking while you type).
 document.addEventListener('keydown', (e) => {
-  if (e.key !== 'Enter' || mobile || chat.typing || !game.active || !game.locked) return;
+  if (!isBound('chat', e.code) || mobile || chat.typing || !game.active || !game.locked) return;
   e.preventDefault();
   game.keys.clear();
   game.mouse.left = false;

@@ -1,4 +1,5 @@
 import { opts, onOpts } from './settings.js';
+import { isBound } from './binds.js';
 
 // Party voice chat: WebRTC audio between party members (everyone connects to everyone, up to
 // 8 people), set up through the same PeerJS service as matches. Who's in voice is announced on
@@ -30,8 +31,8 @@ export class Voice {
     onOpts(() => { this.applyMic(); for (const c of this.calls.values()) if (c.audio) c.audio.volume = opts.voiceVolume; });
     // Push-to-talk: hold V (ignored while typing).
     const typing = () => /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName);
-    window.addEventListener('keydown', (e) => { if (e.code === 'KeyV' && !typing() && !this.pttDown) { this.pttDown = true; this.applyMic(); } });
-    window.addEventListener('keyup', (e) => { if (e.code === 'KeyV') { this.pttDown = false; this.applyMic(); } });
+    window.addEventListener('keydown', (e) => { if (isBound('voice', e.code) && !typing() && !this.pttDown) { this.pttDown = true; this.applyMic(); } });
+    window.addEventListener('keyup', (e) => { if (isBound('voice', e.code)) { this.pttDown = false; this.applyMic(); } });
     window.addEventListener('blur', () => { this.pttDown = false; this.applyMic(); });
   }
 

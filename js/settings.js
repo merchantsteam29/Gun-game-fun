@@ -38,7 +38,8 @@ const DEFAULTS = {
   padVibration: true,
   // Party voice chat
   voiceVolume: 1,
-  voicePtt: false,    // push-to-talk: hold V
+  voicePtt: false,    // push-to-talk: hold the voice key (binds.js)
+  binds: null,        // key bindings: null = defaults (binds.js)
 };
 
 export const opts = { ...DEFAULTS, ...store.get('opts', {}) };

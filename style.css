@@ -1293,3 +1293,13 @@ body.mobile:not(.tablet) #mvp-card .bnr-emblem { width: 34px; height: 34px; font
 body.mobile:not(.tablet) #endscreen.vote-phase #podium { display: none; }
 body.mobile:not(.tablet) .vote-cards { margin-bottom: 6px; }
 body.mobile .vc-key { display: none; }
+
+/* Key bindings (Settings → Controls) */
+.keybinds { display: block; }
+.kb-table { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 4px 18px; margin: 8px 0 10px; }
+.kb-row { display: grid; grid-template-columns: 1fr 96px 96px; align-items: center; gap: 6px; font-size: 13px; }
+.kb-key { padding: 5px 6px; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kb-key.empty { color: var(--muted); font-weight: 400; }
+.kb-key.listen { border-color: var(--accent); color: var(--accent); background: rgba(255,176,32,0.12); animation: kb-blink 0.9s ease-in-out infinite; }
+@keyframes kb-blink { 50% { box-shadow: 0 0 0 2px rgba(255,176,32,0.35); } }
+.kb-change { display: inline-block; margin-top: 6px; font-size: 11px; color: var(--accent); }

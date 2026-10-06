@@ -1,4 +1,5 @@
 import { opts, setOpt, resetOpts } from './settings.js';
+import { ACTIONS, binds, setBind, resetBinds, keyName, mouseCode } from './binds.js';
 import { store, esc } from './util.js';
 import { bannerOf, bannerHtml } from './banners.js';
 import { COVERING } from './cosmetics.js';
@@ -21,6 +22,7 @@ const TABS = [
     { key: 'aimAssistStrength', label: 'Aim assist strength', type: 'range', min: 0.1, max: 1, step: 0.05, fmt: pct, only: 'mobile' },
     { key: 'invertY', label: 'Invert look up / down', type: 'check' },
     { key: 'aimToggle', label: 'Toggle aim with right mouse', hint: 'Click once to aim, again to stop (instead of holding)', type: 'check', only: 'desktop' },
+    { special: 'keybinds', only: 'desktop' },
   ] },
   { name: 'Controller', rows: [
     { special: 'padinfo' },
@@ -235,6 +237,51 @@ export class SettingsUI {
       note.className = 'cz-note';
       note.textContent = 'Tap anything to preview it. Earn tokens from Missions and spend them on whatever you like. Other players see what you wear.';
       slots.appendChild(note);
+    } else if (kind === 'keybinds') {
+      // Two keys per action. Click one, then press a key or a mouse button (middle / side
+      // buttons); Esc cancels, Backspace clears. A key used elsewhere moves to this action.
+      const b = binds();
+      el.className = 'set-row keybinds';
+      el.innerHTML = `<div class="set-label">Key bindings<small>Click a box, then press a key or mouse button (middle / side). Esc cancels, Backspace clears. Left / right mouse stay fire / aim.</small></div>
+        <div class="kb-table">${ACTIONS.map(([id, name]) => `<div class="kb-row"><span>${name}</span>${[0, 1].map((i) =>
+          `<button class="kb-key ${b[id][i] ? '' : 'empty'}" data-a="${id}" data-i="${i}">${esc(keyName(b[id][i]))}</button>`).join('')}</div>`).join('')}</div>
+        <button class="kb-reset">Reset keys to default</button>`;
+      el.querySelectorAll('.kb-key').forEach((btn) => {
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          el.querySelectorAll('.kb-key.listen').forEach((x) => x.classList.remove('listen'));
+          btn.classList.add('listen');
+          btn.textContent = 'Press a key…';
+          this.capture = { action: btn.dataset.a, slot: Number(btn.dataset.i) };
+        };
+      });
+      el.querySelector('.kb-reset').onclick = () => { resetBinds(); this.capture = null; rerender(); };
+      if (!this.captureBound) {
+        this.captureBound = true;
+        const finish = (code) => {
+          const c = this.capture;
+          this.capture = null;
+          if (code !== undefined) setBind(c.action, c.slot, code);
+          rerender();
+        };
+        // Capture phase: runs before the game's and menus' own key handlers.
+        window.addEventListener('keydown', (e) => {
+          if (!this.capture) return;
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          if (e.code === 'Escape') finish();
+          else if (e.code === 'Backspace' || e.code === 'Delete') finish(null);
+          else finish(e.code);
+        }, true);
+        window.addEventListener('mousedown', (e) => {
+          if (!this.capture) return;
+          const mc = mouseCode(e.button);
+          if (!mc) { if (!e.target.classList || !e.target.classList.contains('kb-key')) finish(); return; }
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          finish(mc);
+        }, true);
+      }
     } else if (kind === 'padinfo') {
       const pads = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : [];
       el.innerHTML = `<div class="set-label">Controller<small>${pads.length

@@ -88,7 +88,7 @@ export class GamepadInput {
   // Stop everything the controller was holding down.
   releaseGame() {
     const g = this.game;
-    for (const k of ['Space', 'KeyC', 'ShiftLeft']) g.keys.delete(k);
+    for (const k of ['@jump', '@crouch', '@sprint']) g.keys.delete(k);
     g.joy.x = g.joy.y = 0;
     if (this.firing) g.mouse.left = false;
     if (this.aiming) g.mouse.right = false;
@@ -141,19 +141,19 @@ export class GamepadInput {
     g.padLook(curve(rs[0]), curve(rs[1]), dt);
 
     // Sprint: click L3 (stays on until you stop pushing forward); crouching cancels it.
-    if (pressed(B.L3)) { this.sprintLatch = !this.sprintLatch; if (this.crouchOn) { this.crouchOn = false; k.delete('KeyC'); } }
+    if (pressed(B.L3)) { this.sprintLatch = !this.sprintLatch; if (this.crouchOn) { this.crouchOn = false; k.delete('@crouch'); } }
     if (-ls[1] < 0.35) this.sprintLatch = false;
-    if (this.sprintLatch) k.add('ShiftLeft'); else k.delete('ShiftLeft');
+    if (this.sprintLatch) k.add('@sprint'); else k.delete('@sprint');
 
     // Jump (A) also stands you up from a toggled crouch.
-    if (down(B.A)) k.add('Space'); else k.delete('Space');
-    if (pressed(B.A) && this.crouchOn) { this.crouchOn = false; k.delete('KeyC'); }
+    if (down(B.A)) k.add('@jump'); else k.delete('@jump');
+    if (pressed(B.A) && this.crouchOn) { this.crouchOn = false; k.delete('@crouch'); }
 
     // Crouch / slide (B): toggle or hold.
     if (opts.padCrouchToggle) {
       if (pressed(B.B)) { this.crouchOn = !this.crouchOn; this.sprintLatch = false; }
     } else this.crouchOn = down(B.B);
-    if (this.crouchOn) k.add('KeyC'); else k.delete('KeyC');
+    if (this.crouchOn) k.add('@crouch'); else k.delete('@crouch');
 
     // Triggers
     const fire = down(B.RT), aim = down(B.LT);

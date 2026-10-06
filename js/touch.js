@@ -243,7 +243,7 @@ export class TouchControls {
       this.toggles[a] = !this.toggles[a];
       this.btn(a).classList.toggle('on', this.toggles[a]);
       if (a === 'aim') g.mouse.right = this.toggles.aim;
-      if (a === 'crouch') { if (this.toggles.crouch) g.keys.add('KeyC'); else g.keys.delete('KeyC'); }
+      if (a === 'crouch') { if (this.toggles.crouch) g.keys.add('@crouch'); else g.keys.delete('@crouch'); }
       return;
     }
     switch (a) {
@@ -252,7 +252,7 @@ export class TouchControls {
         if (down) g.firedThisPress = false;
         break;
       case 'jump':
-        if (down) g.keys.add('Space'); else g.keys.delete('Space');
+        if (down) g.keys.add('@jump'); else g.keys.delete('@jump');
         break;
       case 'score':
         g.showScores = down;
@@ -273,8 +273,8 @@ export class TouchControls {
   releaseAll() {
     const g = this.game;
     g.mouse.left = g.mouse.right = false;
-    g.keys.delete('Space');
-    g.keys.delete('KeyC');
+    g.keys.delete('@jump');
+    g.keys.delete('@crouch');
     g.joy.x = g.joy.y = 0;
     g.showScores = false;
     this.toggles = { aim: false, crouch: false };

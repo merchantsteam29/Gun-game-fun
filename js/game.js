@@ -11,6 +11,7 @@ import { Effects } from './effects.js';
 import { Hud } from './hud.js';
 import { sfx } from './audio.js';
 import { medalsFor } from './medals.js';
+import { binds, actionOf, mouseCode } from './binds.js';
 import { buildProjectile, modelQuality } from './models.js';
 import { clamp, esc, store } from './util.js';
 import { opts, onOpts } from './settings.js';
@@ -253,26 +254,22 @@ export class Game {
   // ---------- Input ----------
 
   bindInput() {
+    // Keys go through the bindings (binds.js); this.keys holds raw codes plus '@action' entries
+    // pressed by the controller / touch buttons.
     document.addEventListener('keydown', (e) => {
       if (!this.active) return;
-      if (e.code === 'Tab') { e.preventDefault(); this.showScores = true; }
+      const act = actionOf(e.code);
+      if (act === 'scores') { e.preventDefault(); this.showScores = true; }
       const vk = { Digit1: 0, Digit2: 1, Digit3: 2 }[e.code];
       if (this.matchOver && vk !== undefined && !(e.target && /INPUT|TEXTAREA/.test(e.target.tagName))) { this.voteMap(vk); return; }
       if (!this.locked) return;
-      if (e.code === 'Space' || e.code.startsWith('Control')) e.preventDefault();
+      if (act && act !== 'chat') e.preventDefault(); // no page scrolling / browser shortcuts mid-game
       this.keys.add(e.code);
-      if (!this.me.alive || this.matchOver) return;
-      const n = { Digit1: 0, Digit2: 1, Digit3: 2, Digit4: 3 }[e.code];
-      if (n !== undefined) this.switchSlot(n);
-      else if (e.code === 'KeyQ') this.swapLast();
-      else if (e.code === 'KeyR') this.startReload();
-      else if (e.code === 'KeyG') this.quickThrow();
-      else if (e.code === 'KeyF') this.quickMelee();
-      else if (e.code === 'KeyT' && this.reloadT <= 0) this.vm.inspect();
+      if (!e.repeat) this.onAction(act);
     });
     document.addEventListener('keyup', (e) => {
       this.keys.delete(e.code);
-      if (e.code === 'Tab') this.showScores = false;
+      if (actionOf(e.code) === 'scores') this.showScores = false;
     });
     document.addEventListener('mousemove', (e) => {
       // Without pointer lock (e.g. a controller resumed the game) stray mouse moves don't turn you.
@@ -283,10 +280,14 @@ export class Game {
       if (!this.locked) return;
       if (e.button === 0) { this.mouse.left = true; this.firedThisPress = false; }
       if (e.button === 2) this.mouse.right = opts.aimToggle ? !this.mouse.right : true;
+      const mc = mouseCode(e.button); // middle / side buttons can be bound to actions
+      if (mc) { e.preventDefault(); this.keys.add(mc); this.onAction(actionOf(mc)); if (actionOf(mc) === 'scores') this.showScores = true; }
     });
     document.addEventListener('mouseup', (e) => {
       if (e.button === 0) this.mouse.left = false;
       if (e.button === 2 && !opts.aimToggle) this.mouse.right = false;
+      const mc = mouseCode(e.button);
+      if (mc) { this.keys.delete(mc); if (actionOf(mc) === 'scores') this.showScores = false; }
     });
     this.canvas.addEventListener('wheel', (e) => {
       // Trackpads fire a stream of wheel events; one switch per notch.
@@ -305,6 +306,25 @@ export class Game {
       }
     });
     window.addEventListener('blur', () => this.keys.clear());
+  }
+
+  // Is an action held? (a bound key / mouse button, or a controller / touch press)
+  down(a) {
+    if (this.keys.has('@' + a)) return true;
+    for (const c of binds()[a]) if (this.keys.has(c)) return true;
+    return false;
+  }
+
+  // One-press actions from a key or mouse button.
+  onAction(act) {
+    if (!act || !this.me.alive || this.matchOver) return;
+    const n = { slot1: 0, slot2: 1, slot3: 2, slot4: 3 }[act];
+    if (n !== undefined) this.switchSlot(n);
+    else if (act === 'swap') this.swapLast();
+    else if (act === 'reload') this.startReload();
+    else if (act === 'grenade') this.quickThrow();
+    else if (act === 'melee') this.quickMelee();
+    else if (act === 'inspect' && this.reloadT <= 0) this.vm.inspect();
   }
 
   // The local player's weapon stats, with their attachments applied (cached).
@@ -943,9 +963,9 @@ export class Game {
     const cp = Math.cos(me.pitch);
     if (this.specFree || !list.length) {
       if (!this.specPos) this.specPos = cam.position.clone();
-      const sp = (k.has('ShiftLeft') || k.has('ShiftRight') ? 22 : 9) * dt;
-      const f = (k.has('KeyW') ? 1 : 0) - (k.has('KeyS') ? 1 : 0), s = (k.has('KeyD') ? 1 : 0) - (k.has('KeyA') ? 1 : 0);
-      const u = (k.has('Space') ? 1 : 0) - (k.has('ControlLeft') || k.has('KeyC') ? 1 : 0);
+      const sp = (this.down('sprint') ? 22 : 9) * dt;
+      const f = (this.down('forward') ? 1 : 0) - (this.down('back') ? 1 : 0), s = (this.down('right') ? 1 : 0) - (this.down('left') ? 1 : 0);
+      const u = (this.down('jump') ? 1 : 0) - (this.down('crouch') ? 1 : 0);
       this.specPos.x += (-Math.sin(me.yaw) * cp * f + Math.cos(me.yaw) * s) * sp;
       this.specPos.y += (Math.sin(me.pitch) * f + u) * sp;
       this.specPos.z += (-Math.cos(me.yaw) * cp * f - Math.sin(me.yaw) * s) * sp;
@@ -1017,15 +1037,15 @@ export class Game {
 
   updateMovement(dt) {
     const me = this.me, k = this.keys, w = this.W(this.curW);
-    let f = (k.has('KeyW') ? 1 : 0) - (k.has('KeyS') ? 1 : 0);
-    let s = (k.has('KeyD') ? 1 : 0) - (k.has('KeyA') ? 1 : 0);
+    let f = (this.down('forward') ? 1 : 0) - (this.down('back') ? 1 : 0);
+    let s = (this.down('right') ? 1 : 0) - (this.down('left') ? 1 : 0);
     let analog = 1;
     if (this.joy.x || this.joy.y) { // touch joystick or controller left stick
       f = -this.joy.y; s = this.joy.x;
       analog = Math.min(1, Math.hypot(f, s));
     }
 
-    const wantCrouch = k.has('ControlLeft') || k.has('KeyC');
+    const wantCrouch = this.down('crouch');
     const crouchPressed = wantCrouch && !this.crouchHeld;
     this.crouchHeld = wantCrouch;
     this.slideCd = Math.max(0, this.slideCd - dt);
@@ -1049,7 +1069,7 @@ export class Game {
     me.eye += ((me.crouch ? (sliding ? EYE_CROUCH - 0.12 : EYE_CROUCH) : EYE_STAND) - me.eye) * Math.min(1, dt * 14);
 
     const touchSprint = (this.touch || (this.padMode && opts.padAutoSprint)) && f > 0.9 && Math.abs(s) < 0.45;
-    this.sprinting = (k.has('ShiftLeft') || touchSprint) && f > 0 && !me.crouch && !this.ads && !this.mouse.left && this.reloadT <= 0;
+    this.sprinting = (this.down('sprint') || touchSprint) && f > 0 && !me.crouch && !this.ads && !this.mouse.left && this.reloadT <= 0;
     const speed = WALK * this.rules.moveSpeed * w.speedMul * (this.sprinting ? SPRINT : 1) * (me.crouch ? CROUCH_SPD : 1) * (this.ads ? 0.7 : 1);
     const sy = Math.sin(me.yaw), cy = Math.cos(me.yaw);
     let wx = -sy * f + cy * s, wz = -cy * f - sy * s;
@@ -1073,7 +1093,7 @@ export class Game {
 
     // Jumping: held Space keeps hopping; a tap just before landing or just after leaving a
     // ledge still counts.
-    const jumpDown = k.has('Space');
+    const jumpDown = this.down('jump');
     if (jumpDown && !this.jumpHeld) this.jumpBuf = JUMP_BUFFER;
     this.jumpHeld = jumpDown;
     this.coyote = me.onGround ? COYOTE : Math.max(0, this.coyote - dt);

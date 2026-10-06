@@ -1,16 +1,15 @@
 {
-  "version": "2026.10.07.8",
+  "version": "2026.10.07.9",
   "notes": [
+    "Key bindings: change any keyboard key (and mouse side buttons) in Settings > Controls",
     "Phones: a cleaner, less crowded in-match screen",
-    "Practice Range in the main menu: every weapon, moving targets, damage numbers",
-    "New weapons: Flamethrower, Nailgun and the Frying Pan",
-    "Weapon camos, match MVP card, next-map voting and medals"
+    "Practice Range, new weapons, camos, MVP card, map voting and medals"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json",
     "js/audio.js", "js/banners.js", "js/bot.js", "js/chat.js", "js/cosmetics.js", "js/effects.js", "js/game.js", "js/gamepad.js", "js/guns.js", "js/host.js",
     "js/hostpanel.js", "js/hud.js", "js/main.js", "js/maps.js", "js/missions.js", "js/moderation.js", "js/modpanel.js", "js/radar.js", "js/mods.js", "js/modelkit.js", "js/models.js", "js/nav.js",
     "js/net.js", "js/physics.js", "js/relay.js", "js/remote.js", "js/roles.js", "js/rig.js", "js/servers.js", "js/settings.js", "js/settingsui.js", "js/showroom.js", "js/social.js",
-    "js/touch.js", "js/updater.js", "js/util.js", "js/medals.js", "js/camos.js", "js/version.js", "js/viewmodel.js", "js/voice.js", "js/weapons.js"
+    "js/touch.js", "js/updater.js", "js/util.js", "js/medals.js", "js/camos.js", "js/binds.js", "js/version.js", "js/viewmodel.js", "js/voice.js", "js/weapons.js"
   ]
 }
