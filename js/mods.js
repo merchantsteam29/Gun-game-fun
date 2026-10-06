@@ -1,4 +1,5 @@
 import { WEAPONS } from './weapons.js';
+import { CAMO_IDS } from './camos.js';
 
 // Weapon attachments ("mods"), picked per gun in the Loadout section.
 // Four slots — optic, muzzle, magazine, underbarrel — each with a few choices that trade stats.
@@ -80,6 +81,7 @@ export function cleanMods(id, m) {
   if (!d) return null;
   const opts = modOptions(id), out = { ...d };
   if (m && typeof m === 'object') for (const s of MOD_SLOTS) if (opts[s].includes(m[s])) out[s] = m[s];
+  if (m && m.camo !== 'default' && CAMO_IDS.includes(m.camo)) out.camo = m.camo; // looks only (camos.js)
   return out;
 }
 
@@ -97,6 +99,7 @@ export function randomMods(id) {
   const pick = (a) => a[(Math.random() * a.length) | 0];
   const m = defaultMods(id);
   for (const s of MOD_SLOTS) if (Math.random() < 0.5) m[s] = pick(opts[s]);
+  if (Math.random() < 0.4) m.camo = pick(CAMO_IDS.slice(1)); // bots show off camos too
   return m;
 }
 

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { M, box, rbox, cyl, grp, anchor, modelQuality } from './modelkit.js';
 import { GUNS, finishGun } from './guns.js';
+import { camoOf } from './camos.js';
 
 export { modelQuality };
 
@@ -226,6 +227,7 @@ export function buildGun(id, mods = null) {
   const key = builders[id] ? id : 'ar';
   const spec = builders[key](g);
   if (spec) finishGun(g, key, spec, mods);
+  if (mods && mods.camo) applyCamo(g, mods.camo);
   g.traverse((o) => { if (o.isMesh) o.castShadow = o.material !== M.glass; });
   mergeStatic(g);
   const parts = {};
@@ -268,4 +270,69 @@ export function buildProjectile(kind) {
   }
   g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   return g;
+}
+
+// ---------- Camos (looks only, see camos.js) ----------
+// The gun's main body materials get the camo; black accents, metal, lenses and sights don't.
+const CAMO_BODY = () => [M.dark, M.mid, M.poly, M.gunmetal, M.olive, M.tan, M.fde, M.wood, M.woodDark];
+const camoTex = new Map(), camoMats = new Map();
+
+function camoTexture(c) {
+  if (camoTex.has(c.id)) return camoTex.get(c.id);
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = 64;
+  const g = cv.getContext('2d');
+  const col = c.colors;
+  g.fillStyle = col[0];
+  g.fillRect(0, 0, 64, 64);
+  let seed = c.id.length * 97;
+  const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+  if (c.pattern === 'digital') {
+    for (let i = 0; i < 90; i++) {
+      g.fillStyle = col[1 + ((rnd() * (col.length - 1)) | 0)];
+      const x = (rnd() * 16 | 0) * 4, y = (rnd() * 16 | 0) * 4;
+      g.fillRect(x, y, 4 * (1 + (rnd() * 3 | 0)), 4 * (1 + (rnd() * 2 | 0)));
+    }
+  } else if (c.pattern === 'stripes') {
+    g.fillStyle = col[1];
+    for (let i = -64; i < 128; i += 14) {
+      g.beginPath();
+      g.moveTo(i, 0); g.lineTo(i + 6 + rnd() * 4, 0); g.lineTo(i + 30, 64); g.lineTo(i + 24, 64);
+      g.fill();
+    }
+  } else {
+    for (let i = 0; i < 26; i++) {
+      g.fillStyle = col[1 + ((rnd() * (col.length - 1)) | 0)];
+      g.beginPath();
+      g.ellipse(rnd() * 64, rnd() * 64, 4 + rnd() * 9, 3 + rnd() * 6, rnd() * 3, 0, Math.PI * 2);
+      g.fill();
+    }
+  }
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.magFilter = THREE.NearestFilter;
+  camoTex.set(c.id, tex);
+  return tex;
+}
+
+function camoMaterial(c, base) {
+  const key = c.id + ':' + base.uuid;
+  if (!camoMats.has(key)) {
+    camoMats.set(key, new THREE.MeshStandardMaterial({
+      color: c.pattern ? '#ffffff' : c.color,
+      map: c.pattern ? camoTexture(c) : null,
+      roughness: c.rough ?? base.roughness,
+      metalness: c.metal ?? base.metalness,
+      emissive: c.glow || '#000000',
+    }));
+  }
+  return camoMats.get(key);
+}
+
+export function applyCamo(g, id) {
+  const c = camoOf(id);
+  if (c.id === 'default') return;
+  const body = new Set(CAMO_BODY());
+  g.traverse((o) => { if (o.isMesh && body.has(o.material)) o.material = camoMaterial(c, o.material); });
 }

@@ -22,6 +22,7 @@ import { moderation, REPORT_REASONS } from './moderation.js';
 import { ModPanel } from './modpanel.js';
 import { Voice } from './voice.js';
 import { Showroom } from './showroom.js';
+import { CAMOS, camoSwatch } from './camos.js';
 import { MODS, MOD_SLOTS, MOD_SLOT_NAMES, modOptions, hasMods, cleanMods, cleanModMap, statsFor } from './mods.js';
 
 const $ = (id) => document.getElementById(id);
@@ -141,7 +142,11 @@ function modsPanel(id) {
   const rows = MOD_SLOTS.filter((s) => opts[s].length > 1).map((s) =>
     `<div class="lo-mod"><span>${MOD_SLOT_NAMES[s]}</span><div class="lo-mod-opts">${opts[s].map((o) =>
       `<button class="${m[s] === o ? 'sel' : ''}" data-mod="${s}:${o}">${MODS[s][o].name}</button>`).join('')}</div></div>`).join('');
-  return `<div class="lo-mods"><h4>Attachments</h4>${rows}<p class="lo-mod-desc"></p></div>`;
+  // Camo: looks only (camos.js), saved with the gun's attachments.
+  const camo = m.camo || 'default';
+  const camos = `<div class="lo-mod lo-camo"><span>Camo</span><div class="lo-camos">${CAMOS.map((c) =>
+    `<button class="${camo === c.id ? 'sel' : ''}" data-camo="${c.id}" title="${c.name}"><i style="background:${camoSwatch(c)}"></i>${c.name}</button>`).join('')}</div></div>`;
+  return `<div class="lo-mods"><h4>Attachments</h4>${rows}${camos}<p class="lo-mod-desc"></p></div>`;
 }
 
 // One-line summary under each weapon in the picker.
@@ -178,6 +183,17 @@ function renderLoadout(el) {
     b.onmouseleave = () => { card.innerHTML = statCard(cur); if (desc) desc.textContent = ''; };
     b.onclick = () => {
       settings.mods[cur] = preview;
+      store.set('mods', settings.mods);
+      game.setMods(settings.mods);
+      renderLoadout($('menu-loadout'));
+      renderLoadout($('pause-loadout'));
+    };
+  });
+  el.querySelectorAll('[data-camo]').forEach((b) => {
+    b.onclick = () => {
+      const m = cleanMods(cur, settings.mods[cur]);
+      if (b.dataset.camo === 'default') delete m.camo; else m.camo = b.dataset.camo;
+      settings.mods[cur] = m;
       store.set('mods', settings.mods);
       game.setMods(settings.mods);
       renderLoadout($('menu-loadout'));

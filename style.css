@@ -1216,3 +1216,9 @@ body.mobile .vote-card { min-height: 80px; padding: 8px; }
 body.mobile .vote-card small { display: none; }
 body.mobile .mvp-stats div { min-width: 58px; padding: 4px 6px; }
 body.mobile .mvp-stats b { font-size: 15px; }
+
+/* Camo picker (loadout) */
+.lo-camos { display: flex; flex-wrap: wrap; gap: 4px; }
+.lo-camos button { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px 4px 4px; font-size: 11px; }
+.lo-camos button i { width: 16px; height: 16px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.25); flex: none; }
+.lo-camos button.sel { border-color: var(--accent); color: var(--accent); background: rgba(255,176,32,0.12); }
