@@ -8,11 +8,15 @@ import { esc } from './util.js';
 
 // Secret PC-only Showroom: a full-screen 3D viewer of your character, cosmetics and guns with
 // mouse orbit / pan / zoom, poses, backdrops and photo export, plus a few PC-only video settings.
-// Opened from the menus with the Konami code or by typing the secret word. Phones and tablets
-// never see it.
+// Opened from the menus (not in a text box) with any of the secret codes below. Phones and tablets
+// never see it. Arrows are written as arrow characters, everything else as the letter typed.
 
-const WORD = 'drip'; // type it anywhere on the menus (not in a text box)
-const KONAMI = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'KeyB', 'KeyA'];
+const CODES = [
+  '↑↓←→chad', // arrows + codeword
+  '↑↑↓↓←→←→ba', // Konami
+  'drip',
+];
+const ARROWS = { ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→' };
 
 const BACKDROPS = {
   studio: { name: 'Studio', top: '#3a4250', bottom: '#14181e', floor: '#2a3038', grid: true },
@@ -53,7 +57,8 @@ export class Showroom {
     this.state = { pose: 'idle', bg: opts.srBg || 'studio', spin: true, grid: true, tag: false, pitch: 0, weapon: null, tab: 'view' };
     this.cam = { theta: Math.PI * 0.85, phi: 1.36, dist: 5.2, pan: new THREE.Vector3() };
     if (mobile) return;
-    let k = 0, typed = '';
+    let typed = ''; // the last few keys, as code characters
+
     // Capture phase on window: runs before the game's and menus' key handlers.
     window.addEventListener('keydown', (e) => {
       const typing = e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName);
@@ -63,13 +68,11 @@ export class Showroom {
         return;
       }
       if (typing) return;
-      if (game.locked) { k = 0; typed = ''; return; }
-      if (e.key.length === 1) {
-        typed = (typed + e.key.toLowerCase()).slice(-WORD.length);
-        if (typed === WORD) { typed = ''; this.show(); return; }
-      }
-      k = e.code === KONAMI[k] ? k + 1 : e.code === KONAMI[0] ? 1 : 0;
-      if (k === KONAMI.length) { k = 0; e.preventDefault(); this.show(); }
+      if (game.locked) { typed = ''; return; }
+      const ch = ARROWS[e.code] || (e.key.length === 1 ? e.key.toLowerCase() : '');
+      if (!ch) return;
+      typed = (typed + ch).slice(-20);
+      if (CODES.some((c) => typed.endsWith(c))) { typed = ''; e.preventDefault(); this.show(); }
     }, true);
   }
 
