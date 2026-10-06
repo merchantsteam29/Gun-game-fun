@@ -163,6 +163,15 @@ export class Hud {
     this.timers.kb = setTimeout(() => el.classList.remove('show'), 1800);
   }
 
+  // Spectating staff: who you're watching, and the controls.
+  spectate(name, free) {
+    const key = free + '|' + name;
+    if (key === this.lastSpec) return;
+    this.lastSpec = key;
+    $('spec-bar').innerHTML = `<b>👁 SPECTATING</b>${free ? ' · Free camera' : name ? ` · <span>${esc(name)}</span>` : ''}
+      <small>${free ? 'WASD move · Space / C up / down · Shift fast · F follow players' : 'Q / E or click switch player · mouse orbit · F free camera'}</small>`;
+  }
+
   scope(v) {
     if (v === this.scoped) return;
     this.scoped = v;

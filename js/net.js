@@ -64,6 +64,13 @@ export class Net {
     conn.on('data', (m) => {
       conn.lastSeen = Date.now();
       if (!m || typeof m !== 'object' || m.t === 'ping') return;
+      if (m.t === 'hello' && !conn.gid && m.spec) { // staff spectating: no player slot, checked by the host logic
+        conn.gid = 'p' + this.nextId++;
+        this.conns.set(conn.gid, conn);
+        this.peerToGid.set(conn.peer, conn.gid);
+        this.logic.addSpectator(conn.gid, m.spec);
+        return;
+      }
       if (m.t === 'hello' && !conn.gid) {
         if (this.conns.size + 1 >= (this.maxPlayers || MAX_PLAYERS)) { // humans only; bots don't take slots
           conn.send({ t: 'full' });
@@ -108,7 +115,8 @@ export class Net {
     conn.on('error', drop);
   }
 
-  join(code, name, color, cos) {
+  // spec: a signed staff proof to watch invisibly instead of playing (see roles.js / host.js).
+  join(code, name, color, cos, spec = null) {
     return new Promise((resolve, reject) => {
       const peer = new Peer();
       this.peer = peer;
@@ -122,7 +130,7 @@ export class Net {
           done = true;
           clearTimeout(timer);
           this.code = code;
-          conn.send({ t: 'hello', name, color, cos });
+          conn.send(spec ? { t: 'hello', name, color, cos, spec } : { t: 'hello', name, color, cos });
           this.lastHostMsg = Date.now();
           // Second channel for positions (falls back to the main one until/unless it opens).
           setTimeout(() => {

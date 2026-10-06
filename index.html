@@ -58,6 +58,8 @@
     <div id="mode-bar"></div><div id="leader"></div>
   </div>
   <div id="kill-banner"></div>
+  <div id="spec-bar"></div>
+  <div id="frozen-bar">🧊 FROZEN BY STAFF<small>You can't move or shoot</small></div>
   <div id="killfeed"></div>
   <div id="notice"></div>
 
@@ -336,6 +338,7 @@
     <p id="ban-by" class="note"></p>
     <p id="ban-reason" class="mod-pop-reason"></p>
     <p id="ban-until" class="note"></p>
+    <div id="appeal-box" class="appeal-box"><p id="appeal-status" class="note"></p><textarea id="appeal-text" maxlength="400" rows="3" placeholder="Think this ban is a mistake? Explain why (one appeal per ban)."></textarea><button id="appeal-send" class="primary">Send appeal</button></div>
   </div>
 </div>
 <div id="report-pop" class="overlay hidden">
@@ -368,6 +371,7 @@
     </div>
     <details id="pause-mod" class="pause-lo pause-mod hidden" open>
       <summary><span>🛡 Moderation</span><small>warn, rename, mute or kick players in this match</small></summary>
+      <div id="mod-match" class="mod-match"><button data-mm="end">⏹ End match</button><button data-mm="restart">↻ Restart</button><select id="mm-map"></select><button data-mm="map">Change map</button></div>
       <div id="mod-list"></div>
     </details>
     <details id="pause-report" class="pause-lo pause-report hidden">

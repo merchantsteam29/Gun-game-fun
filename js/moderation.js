@@ -16,7 +16,7 @@ import { store } from './util.js';
 // game itself — clearing site data or a new gamertag gets around it.
 
 const V = 'whffa/v1/';
-const P = V + 'modrec/', ANN = V + 'announce', REP = V + 'report/', PRES = V + 'pres/';
+const P = V + 'modrec/', ANN = V + 'announce', REP = V + 'report/', PRES = V + 'pres/', FILTER = V + 'chatfilter', APPEAL = V + 'appeal/';
 const LOG_MAX = 30;
 const REPORT_MAX_AGE = 7 * 864e5;
 const ONLINE_MS = 75000;
@@ -25,6 +25,11 @@ const clip = (s, n) => String(s ?? '').replace(/[\u0000-\u001f\u007f]/g, '').tri
 const parse = (text) => { try { const env = JSON.parse(text); return { env, body: JSON.parse(env.b) }; } catch { return null; } };
 
 export const REPORT_REASONS = ['Cheating / hacking', 'Abusive chat', 'Offensive name', 'Griefing / team killing', 'Spamming', 'Other'];
+export const AUTO_FLAG = 'Auto-flag: suspicious stats'; // filed by the host's game, not offered to players
+
+// Starred out in chat for everyone (staff can turn this list off and add their own words).
+const DEFAULT_WORDS = ['fuck', 'fucking', 'shit', 'bitch', 'cunt', 'dick', 'pussy', 'asshole', 'bastard', 'slut', 'whore',
+  'fag', 'faggot', 'nigger', 'nigga', 'retard', 'kys', 'rape'];
 
 class Moderation {
   constructor() {
@@ -34,6 +39,9 @@ class Moderation {
     this.annRaw = null;
     this.reports = new Map(); // report id -> { id, from, target, lobby, reason, details, ts }
     this.online = new Map(); // lower tag -> { tag, mode, lobby, at }
+    this.appeals = new Map(); // lower tag -> { tag, banTs, text, ts }
+    this.filter = { defaults: true, words: [] }; // staff-signed chat filter settings
+    this.buildFilter();
     this.social = null;
     this.watching = new Set(); // relay topics
     this.onChange = null; // records / reports / online list changed (mod panel)
@@ -59,20 +67,23 @@ class Moderation {
     else if (t === ANN) this.receiveAnnouncement(text);
     else if (t.startsWith(REP)) this.receiveReport(t.slice(REP.length), text);
     else if (t.startsWith(PRES) && roles.myRole()) this.receivePresence(t.slice(PRES.length), text, packet);
+    else if (t === FILTER) this.receiveFilter(text);
+    else if (t.startsWith(APPEAL)) this.receiveAppeal(t.slice(APPEAL.length), text);
   }
 
   // Everyone: your own record and announcements. Staff also: all records, reports and presence.
   sync() {
     const s = this.social;
     if (!s) return;
-    const want = new Set([ANN]);
-    if (s.tag) want.add(P + low(s.tag));
-    if (roles.myRole()) for (const t of [P + '+', REP + '+', PRES + '+']) want.add(t);
+    const want = new Set([ANN, FILTER]);
+    if (s.tag) { want.add(P + low(s.tag)); want.add(APPEAL + low(s.tag)); }
+    if (roles.myRole()) for (const t of [P + '+', REP + '+', PRES + '+', APPEAL + '+']) want.add(t);
     for (const w of this.watching) if (!want.has(w)) s.relay.unsubscribe(w);
     for (const w of want) if (!this.watching.has(w)) s.relay.subscribe(w);
     this.watching = want;
     if (!roles.myRole()) { this.reports.clear(); this.online.clear(); }
     this.reverify();
+    if (this.filterRaw) this.receiveFilter(this.filterRaw);
   }
 
   // Signed by someone who is staff right now?
@@ -137,7 +148,8 @@ class Moderation {
     if (fresh.length && this.onWarn) this.onWarn(fresh[fresh.length - 1], fresh.length);
     // Ban / mute start or end.
     const ban = this.activeBan(rec), mute = this.activeMute(rec);
-    if ((ban ? ban.ts : null) !== this.lastBan) { this.lastBan = ban ? ban.ts : null; if (this.onBan) this.onBan(ban); }
+    const banKey = ban ? ban.ts + (ban.appealDenied ? 'd' : '') : null; // a denied appeal updates the ban screen
+    if (banKey !== this.lastBan) { this.lastBan = banKey; if (this.onBan) this.onBan(ban); }
     if ((mute ? mute.ts : null) !== this.lastMute) { this.lastMute = mute ? mute.ts : null; if (this.onMute) this.onMute(mute); }
     // Forced gamertag change.
     if (rec && rec.rename && rec.rename.ts > store.get('renameDone', 0) && this.onRename) {
@@ -193,6 +205,10 @@ class Moderation {
       note = rec.rename.reason;
     } else if (act === 'clearwarns') {
       rec.warns = [];
+    } else if (act === 'denyappeal') {
+      if (!rec.ban) throw new Error('They aren\'t banned.');
+      rec.ban = { ...rec.ban, appealDenied: true };
+      note = reason;
     } else if (act === 'note') {
       if (!reason) throw new Error('Type the note first.');
       rec.notes = [...rec.notes, { by: s.tag, text: reason, ts: now }].slice(-20);
@@ -201,6 +217,7 @@ class Moderation {
     rec.log = [...rec.log, { by: s.tag, act, note, ts: now }].slice(-LOG_MAX);
     const text = await s.sign(rec);
     s.relay.publish(P + k, text, { retain: true });
+    if (act === 'unban' || act === 'denyappeal') this.clearAppeal(k); // the appeal is answered
     await this.receive(k, text);
     return this.records.get(k);
   }
@@ -261,6 +278,97 @@ class Moderation {
     this.social.relay.publish(REP + id, '', { retain: true });
     this.reports.delete(id);
     if (this.onChange) this.onChange(null);
+  }
+
+  // ---------- Action log (staff) ----------
+
+  // Every staff action on every gamertag, newest first.
+  actionLog() {
+    const out = [];
+    for (const r of this.records.values()) for (const l of r.log || []) out.push({ ...l, target: r.target });
+    return out.sort((a, b) => b.ts - a.ts);
+  }
+
+  // ---------- Chat filter ----------
+
+  buildFilter() {
+    const words = [...new Set([...(this.filter.defaults ? DEFAULT_WORDS : []), ...this.filter.words].map(low).filter(Boolean))];
+    // Whole words, also with repeated letters ("fuuuck") and simple symbol swaps ("sh1t").
+    const sub = { a: '[a@4]', e: '[e3]', i: '[i1!l]', o: '[o0]', s: '[s$5]', t: '[t7]' };
+    const pat = (w) => w.replace(/[.*+?^${}()|[\]\\]/g, '').split('').map((c) => `${sub[c] || c}+`).join('');
+    this.filterRe = words.length ? new RegExp(`(^|[^a-z0-9])(${words.map(pat).join('|')})(?=$|[^a-z0-9])`, 'gi') : null;
+  }
+
+  // Replaces filtered words with stars.
+  clean(text) {
+    return this.filterRe ? String(text).replace(this.filterRe, (m, pre, word) => pre + '*'.repeat(word.length)) : String(text);
+  }
+
+  async receiveFilter(text) {
+    this.filterRaw = text || null;
+    const body = text ? await this.staffSigned(text) : null;
+    if (!body) return;
+    if (this.filterTs && this.filterTs > body.ts) return;
+    this.filterTs = body.ts;
+    this.filter = { defaults: body.defaults !== false, words: (Array.isArray(body.words) ? body.words : []).map((w) => clip(w, 30).toLowerCase()).filter(Boolean).slice(0, 300) };
+    this.buildFilter();
+    if (this.onChange) this.onChange(null);
+  }
+
+  async saveFilter(words, defaults) {
+    if (!roles.myRole()) throw new Error('Only staff can change the chat filter.');
+    const list = [...new Set(words.map((w) => clip(w, 30).toLowerCase()).filter((w) => /^[a-z0-9]{2,30}$/.test(w)))].slice(0, 300);
+    const signed = await this.social.sign({ defaults: !!defaults, words: list });
+    this.social.relay.publish(FILTER, signed, { retain: true });
+    await this.receiveFilter(signed);
+    return list.length;
+  }
+
+  defaultWords() { return DEFAULT_WORDS.slice(); }
+
+  // ---------- Ban appeals ----------
+
+  // A banned player asks for the ban to be lifted (one message per ban).
+  async appeal(text) {
+    const s = this.social, ban = this.myBan();
+    if (!ban) throw new Error('You aren\'t banned.');
+    text = clip(text, 400);
+    if (text.length < 10) throw new Error('Explain a bit more (at least 10 characters).');
+    s.relay.publish(APPEAL + low(s.tag), await s.sign({ banTs: ban.ts, text }), { retain: true });
+    store.set('appealFor', ban.ts);
+  }
+
+  appealSent() { const b = this.myBan(); return !!b && store.get('appealFor', 0) === b.ts; }
+
+  async receiveAppeal(k, text) {
+    if (!text) { if (this.appeals.delete(k) && this.onChange) this.onChange(null); return; }
+    const b = await this.social.verify(text); // signed by the banned player's own gamertag
+    if (!b || low(b.from) !== k) return;
+    this.appeals.set(k, { tag: b.from, banTs: Number(b.banTs) || 0, text: clip(b.text, 400), ts: Number(b.ts) || 0 });
+    if (this.onChange) this.onChange(null);
+  }
+
+  // Open appeals: only for bans that are still active and not already denied.
+  openAppeals() {
+    return [...this.appeals.values()].filter((a) => {
+      const ban = this.activeBan(this.records.get(low(a.tag)));
+      return ban && ban.ts === a.banTs && !ban.appealDenied;
+    }).sort((a, b) => b.ts - a.ts);
+  }
+
+  clearAppeal(k) {
+    this.social.relay.publish(APPEAL + k, '', { retain: true });
+    this.appeals.delete(k);
+  }
+
+  // ---------- Auto-flags ----------
+
+  // Filed by the host's game when a player's stats look impossible (see host.js `checkFlags`).
+  async autoFlag({ target, lobby, details }) {
+    const s = this.social;
+    if (!s.tag) return; // reports are signed with a gamertag
+    const id = `${low(s.tag)}-${Date.now().toString(36)}`;
+    s.relay.publish(REP + id, await s.sign({ id, target: clip(target, 16), lobby: clip(lobby, 8), reason: AUTO_FLAG, details: clip(details, 200) }), { retain: true });
   }
 
   // ---------- Online now (staff) ----------

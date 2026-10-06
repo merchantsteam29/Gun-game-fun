@@ -320,7 +320,7 @@ export class Game {
 
   // touch: drag-to-look from the touch controls (uses its own sensitivity).
   look(dx, dy, touch = false) {
-    if (!this.me.alive) return;
+    if (!this.me.alive && !this.spectating) return;
     if (opts.invertY) dy = -dy;
     let s = BASE_SENS * (touch ? opts.touchSens : opts.sens) * (this.camera.fov / (opts.fov * this.fovK)) * (this.ads ? opts.adsSens : 1);
     // Aim assist "friction": aim slows down while the crosshair is on an enemy.
@@ -394,6 +394,9 @@ export class Game {
     this.me.alive = false;
     this.matchOver = false;
     this.deathInfo = null;
+    this.spectating = this.frozen = false;
+    this.specPos = null;
+    this.hud.el.classList.remove('spec', 'frozen');
     this.rules = defaultSettings();
     phys.gravity = 1;
     this.zone = null;
@@ -431,6 +434,9 @@ export class Game {
       case 'welcome':
         this.myId = m.id;
         this.active = true;
+        this.spectating = !!m.spec; // staff watching invisibly (no player of our own)
+        this.frozen = false;
+        this.hud.el.classList.toggle('spec', this.spectating);
         this.applySettings(m.settings);
         this.loadMap(m.settings.map);
         this.players.clear();
@@ -483,6 +489,17 @@ export class Game {
         const r = this.remotes.get(m.id);
         if (r) r.setIdentity(m.name, p ? p.role : null);
         if (m.t === 'prole' && m.id !== this.myId) this.hud.say(`${m.role === 'owner' ? '♛ THE OWNER' : '🛡 A MODERATOR'} IS HERE: ${m.name}`);
+        break;
+      }
+      case 'frozen': // staff froze / unfroze you
+        this.frozen = !!m.on;
+        this.hud.el.classList.toggle('frozen', this.frozen);
+        this.hud.say(this.frozen ? `FROZEN BY ${m.by.toUpperCase()}` : 'YOU CAN MOVE AGAIN');
+        if (this.frozen) { this.keys.clear(); this.mouse.left = false; this.me.vel.set(0, this.me.vel.y, 0); }
+        break;
+      case 'pfrozen': {
+        const p = this.players.get(m.id);
+        if (p) p.frozen = !!m.on;
         break;
       }
       case 'warned': // a moderator warned you in this match
@@ -784,7 +801,7 @@ export class Game {
     const cam = this.camera;
     const w = this.W(this.curW);
 
-    if (me.alive && !this.matchOver) this.updateMovement(dt);
+    if (me.alive && !this.matchOver && !this.frozen) this.updateMovement(dt);
     this.assist = null;
     if ((this.touch || this.padMode) && opts.aimAssist && me.alive && !this.matchOver) this.aimAssist(dt);
 
@@ -807,6 +824,8 @@ export class Game {
         me.pitch + this.recoil + this.flinch * 0.035 + (Math.random() - 0.5) * this.shake * 0.1,
         me.yaw + (Math.random() - 0.5) * this.shake * 0.1,
         this.roll + Math.sin(this.bobPhase) * 0.004 * bob + this.flinch * 0.02);
+    } else if (this.spectating) {
+      this.specCam(dt);
     } else if (this.deathInfo) {
       this.deathCam(dt, now);
     } else {
@@ -814,7 +833,7 @@ export class Game {
     }
     cam.updateMatrixWorld();
 
-    if (me.alive && !this.matchOver) this.updateWeapon(dt);
+    if (me.alive && !this.matchOver && !this.frozen) this.updateWeapon(dt);
     else { this.ads = false; this.scoped = false; }
 
     // ADS zoom keeps the same ratio to the chosen FOV; sniper scopes use their own fixed zoom.
@@ -858,6 +877,43 @@ export class Game {
     this.updateHud(dt, now);
   }
 
+  // Spectating staff: follow a player from behind (mouse orbits, Q / E or click to switch), or
+  // F for a free camera (WASD, Space up, Ctrl / C down, Shift faster).
+  specCam(dt) {
+    const me = this.me, cam = this.camera, k = this.keys;
+    const edge = (code) => { const on = k.has(code), was = this.specKeys.has(code); if (on) this.specKeys.add(code); else this.specKeys.delete(code); return on && !was; };
+    if (!this.specKeys) this.specKeys = new Set();
+    const list = [...this.remotes.values()].filter((r) => r.alive).sort((a, b) => a.id.localeCompare(b.id));
+    if (edge('KeyF')) { this.specFree = !this.specFree; this.specPos = cam.position.clone(); }
+    const click = this.mouse.left && !this.specClick;
+    this.specClick = this.mouse.left;
+    if (edge('KeyE') || click) this.specIdx = (this.specIdx || 0) + 1;
+    if (edge('KeyQ')) this.specIdx = (this.specIdx || 0) - 1;
+    const cp = Math.cos(me.pitch);
+    if (this.specFree || !list.length) {
+      if (!this.specPos) this.specPos = cam.position.clone();
+      const sp = (k.has('ShiftLeft') || k.has('ShiftRight') ? 22 : 9) * dt;
+      const f = (k.has('KeyW') ? 1 : 0) - (k.has('KeyS') ? 1 : 0), s = (k.has('KeyD') ? 1 : 0) - (k.has('KeyA') ? 1 : 0);
+      const u = (k.has('Space') ? 1 : 0) - (k.has('ControlLeft') || k.has('KeyC') ? 1 : 0);
+      this.specPos.x += (-Math.sin(me.yaw) * cp * f + Math.cos(me.yaw) * s) * sp;
+      this.specPos.y += (Math.sin(me.pitch) * f + u) * sp;
+      this.specPos.z += (-Math.cos(me.yaw) * cp * f - Math.sin(me.yaw) * s) * sp;
+      cam.position.copy(this.specPos);
+      cam.rotation.set(me.pitch, me.yaw, 0);
+      this.specTarget = null;
+    } else {
+      const i = ((this.specIdx || 0) % list.length + list.length) % list.length;
+      const r = list[i], d = 3.4;
+      _c.set(r.pos.x, r.pos.y + 1.5, r.pos.z);
+      cam.position.set(_c.x + Math.sin(me.yaw) * cp * d, _c.y - Math.sin(me.pitch) * d + 0.4, _c.z + Math.cos(me.yaw) * cp * d);
+      cam.lookAt(_c);
+      this.specTarget = r;
+    }
+    // The minimap and sounds follow the camera.
+    me.pos.set(cam.position.x, cam.position.y - 1.6, cam.position.z);
+    const p = this.specTarget && this.players.get(this.specTarget.id);
+    this.hud.spectate(p ? p.name : null, this.specFree || !list.length);
+  }
   deathCam(dt, now) {
     const di = this.deathInfo, cam = this.camera;
     const t = (now - di.at) / 1000;

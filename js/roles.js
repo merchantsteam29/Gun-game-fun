@@ -60,7 +60,14 @@ class Roles {
     // This device's key loads asynchronously; until it has, myRole() can't match it. Re-check
     // everything (menu, badges, mod panel) once it's ready.
     social.ready.then(() => this.changed());
+    // Temporary moderators lose their tools (and badge) when their time runs out.
+    setInterval(() => {
+      const n = this.activeMods().length;
+      if (n !== this.lastActive) { this.lastActive = n; this.changed(); }
+    }, 60000);
   }
+
+  activeMods() { return [...this.mods.values()].filter((m) => !m.until || m.until > Date.now()); }
 
   async receive(k, text) {
     let env, body;
@@ -70,23 +77,29 @@ class Roles {
     if (!(await verifyWith(OWNER.pub, env))) return; // only the owner can appoint
     const prev = this.mods.get(k);
     if (prev && prev.ts > body.ts) return; // the relays may deliver an older copy late
-    if (body.role === 'mod' && body.pub && body.pub.x && body.pub.y) this.mods.set(k, { tag: body.tag, pub: body.pub, ts: body.ts });
+    if (body.role === 'mod' && body.pub && body.pub.x && body.pub.y) this.mods.set(k, { tag: body.tag, pub: body.pub, ts: body.ts, until: Number(body.until) || 0 });
     else this.mods.delete(k);
     this.changed();
   }
 
   changed() { if (this.onChange) this.onChange(); }
 
+  // A moderator appointment, if it hasn't expired (temporary moderators have an end time).
+  mod(tag) {
+    const m = this.mods.get(low(tag));
+    return m && (!m.until || m.until > Date.now()) ? m : null;
+  }
+
   // Role of a gamertag (by name only — fine for gamertags already verified by social.js, like
   // friends lists). For players in a match, use the role the host verified instead.
   roleOfTag(tag) {
     if (low(tag) === low(OWNER.tag)) return 'owner';
-    return this.mods.has(low(tag)) ? 'mod' : null;
+    return this.mod(tag) ? 'mod' : null;
   }
 
   pubOf(tag) {
     if (low(tag) === low(OWNER.tag)) return OWNER.pub;
-    const m = this.mods.get(low(tag));
+    const m = this.mod(tag);
     return m ? m.pub : null;
   }
 
@@ -118,20 +131,22 @@ class Roles {
     if (Math.abs(Date.now() - Number(body.ts)) > PROOF_MAX_AGE) return null;
     const role = this.roleOfTag(body.from), pub = this.pubOf(body.from);
     if (!role || !pub || !(await verifyWith(pub, env))) return null;
-    return { tag: role === 'owner' ? OWNER.tag : this.mods.get(low(body.from)).tag, role };
+    return { tag: role === 'owner' ? OWNER.tag : this.mod(body.from).tag, role };
   }
 
   // ---------- Owner tools ----------
 
-  async appoint(tag) {
+  // hours: 0 = permanent, otherwise the moderator role ends by itself after that long.
+  async appoint(tag, hours = 0) {
     if (!this.isOwner()) throw new Error('Only the owner can appoint moderators.');
     const s = this.social;
     if (low(tag) === low(OWNER.tag)) throw new Error('You are already the owner.');
     const claim = await s.lookup(tag, true);
     if (!claim) throw new Error(`Nobody has the gamertag "${tag}".`);
-    const body = { role: 'mod', tag: claim.tag, pub: { x: claim.pub.x, y: claim.pub.y } };
+    const until = hours > 0 ? Date.now() + hours * 3600e3 : 0;
+    const body = { role: 'mod', tag: claim.tag, pub: { x: claim.pub.x, y: claim.pub.y }, until };
     s.relay.publish(P + low(claim.tag), await s.sign(body), { retain: true });
-    this.mods.set(low(claim.tag), { tag: claim.tag, pub: body.pub, ts: Date.now() });
+    this.mods.set(low(claim.tag), { tag: claim.tag, pub: body.pub, ts: Date.now(), until });
     this.changed();
     return claim.tag;
   }

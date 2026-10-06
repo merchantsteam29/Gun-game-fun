@@ -336,7 +336,7 @@ function renderFriends() {
     $('pt-follow').classList.toggle('hidden', !canFollow);
     $('pt-follow').dataset.code = p.lobby || '';
     $('pt-log').innerHTML = social.partyLog.map((l) => (l.from
-      ? `<div class="cl"><b style="color:${l.mine ? 'var(--accent)' : '#c9a2ff'}">${esc(l.from)}:</b> ${esc(l.text)}</div>`
+      ? `<div class="cl"><b style="color:${l.mine ? 'var(--accent)' : '#c9a2ff'}">${esc(l.from)}:</b> ${esc(moderation.clean(l.text))}</div>`
       : `<div class="cl sys">${esc(l.text)}</div>`)).join('') || '<div class="cl sys">Say hi to your party!</div>';
     $('pt-log').scrollTop = $('pt-log').scrollHeight;
   }
@@ -417,7 +417,7 @@ social.onChange = () => {
 let lastTag = social.tag, lastRole = null;
 social.onNotice = (text) => toast(text);
 // Party chat also shows up in the match chat; "/p message" in match chat talks to your party.
-social.onPartyChat = ({ from, text, mine }) => { if (from && net && !mine) chat.add(`[Party] ${from}`, '#c9a2ff', text); };
+social.onPartyChat = ({ from, text, mine }) => { if (from && net && !mine) chat.add(`[Party] ${from}`, '#c9a2ff', moderation.clean(text)); };
 applyGamertag();
 renderFriends();
 window.social = social; // debugging
@@ -588,8 +588,8 @@ if (typeof Peer === 'undefined') status('Networking library failed to load. Chec
 function chatOnNet(m) {
   const colorOf = (id, fallback) => { const p = game.players.get(id); return p ? game.colorFor(p) : fallback; };
   if (m.t === 'welcome') { chat.setLobby(true); chat.system(`Joined lobby ${net ? net.code : ''}. Say hi!`); }
-  else if (m.t === 'chat') chat.add((ROLE_INFO[m.role] ? ROLE_INFO[m.role].icon + ' ' : '') + m.name, colorOf(m.id, m.color), m.text, m.id === game.myId);
-  else if (m.t === 'prole' || m.t === 'pmute' || m.t === 'pname' || m.t === 'pjoin' || m.t === 'pleave') { renderModList(); renderReportList(); }
+  else if (m.t === 'chat') chat.add((ROLE_INFO[m.role] ? ROLE_INFO[m.role].icon + ' ' : '') + m.name, colorOf(m.id, m.color), moderation.clean(m.text), m.id === game.myId);
+  else if (m.t === 'prole' || m.t === 'pmute' || m.t === 'pfrozen' || m.t === 'pname' || m.t === 'pjoin' || m.t === 'pleave') { renderModList(); renderReportList(); }
   else if (m.t === 'pjoin' && !m.bot) chat.system(`${m.name} joined`);
   else if (m.t === 'pleave' && !String(m.name).startsWith('[BOT]')) chat.system(`${m.name} left`);
   // Keep a public listing's player count / mode / map current.
@@ -606,9 +606,9 @@ function newNet() {
 
 function enterGame() {
   $('menu').classList.add('hidden');
-  social.setWhere('lobby', net.code); // friends see you're in a match and can join
+  if (!game.spectating) social.setWhere('lobby', net.code); // friends see you're in a match and can join
   $('pause-code').textContent = net.code;
-  $('pause-title').textContent = net.isHost ? 'SERVER CREATED' : 'JOINED SERVER';
+  $('pause-title').textContent = game.spectating ? 'SPECTATING' : net.isHost ? 'SERVER CREATED' : 'JOINED SERVER';
   $('pause-vis').textContent = 'Code';
   $('btn-resume').textContent = game.padMode ? 'Press Ⓐ to play' : 'Click to play';
   history.replaceState(null, '', '?lobby=' + net.code);
@@ -629,6 +629,7 @@ function showPause() {
 // Staff prove who they are to the host when they join (it checks the signature, then everyone
 // sees the badge).
 game.onWelcome = async () => {
+  if (game.spectating) return;
   const proof = await roles.proof(net && net.code, game.myId);
   if (proof && net) net.send({ t: 'staff', proof });
 };
@@ -636,7 +637,7 @@ game.onWelcome = async () => {
 // Pause-menu moderation: shown once the host has verified you as staff.
 function renderModList() {
   const me = game.players.get(game.myId);
-  const mine = me && me.role;
+  const mine = (me && me.role) || (game.spectating && roles.myRole());
   $('pause-mod').classList.toggle('hidden', !net || !mine);
   if (!net || !mine) return;
   const rank = (r) => (r === 'owner' ? 2 : r === 'mod' ? 1 : 0);
@@ -644,9 +645,20 @@ function renderModList() {
   $('mod-list').innerHTML = rows.length ? rows.map((p) => {
     const can = rank(mine) > rank(p.role);
     return `<div class="mod-row"><span class="mod-name">${esc(p.name)}${badge(p.role, true)}${p.muted ? ' <em>muted</em>' : ''}</span>
-      ${can ? `<button data-mwarn="${p.id}" title="Pop up a warning on their screen">⚠ Warn</button><button data-mren="${p.id}" title="Change their name in this match">✎ Rename</button><button data-mute="${p.id}">${p.muted ? 'Unmute' : 'Mute'}</button>${p.id !== 'host' ? `<button class="danger" data-mkick="${p.id}">Kick</button>` : '<small>host</small>'}` : '<small>staff</small>'}</div>`;
+      ${can ? `<button data-mwarn="${p.id}" title="Pop up a warning on their screen">⚠ Warn</button><button data-mren="${p.id}" title="Change their name in this match">✎ Rename</button><button data-mfreeze="${p.id}">${p.frozen ? '🔥 Unfreeze' : '🧊 Freeze'}</button><button data-mute="${p.id}">${p.muted ? 'Unmute' : 'Mute'}</button>${p.id !== 'host' ? `<button class="danger" data-mkick="${p.id}">Kick</button>` : '<small>host</small>'}` : '<small>staff</small>'}</div>`;
   }).join('') : '<div class="note">No other players here yet.</div>';
   $('mod-list').querySelectorAll('[data-mute]').forEach((b) => { b.onclick = () => net.send({ t: 'modmute', id: b.dataset.mute }); });
+  $('mod-list').querySelectorAll('[data-mfreeze]').forEach((b) => { b.onclick = () => net.send({ t: 'modfreeze', id: b.dataset.mfreeze }); });
+  // Match tools work for any staff member, even when someone else is hosting.
+  const sel = $('mm-map');
+  if (!sel.options.length) sel.innerHTML = MAP_ORDER.map((id) => `<option value="${id}">${esc(MAPS[id].name)}</option>`).join('');
+  $('mod-match').querySelectorAll('[data-mm]').forEach((b) => {
+    b.onclick = () => {
+      const op = b.dataset.mm;
+      const what = { end: 'End this match for everyone?', restart: 'Restart this match for everyone?', map: `Change the map to ${MAPS[sel.value].name} for everyone?` }[op];
+      if (confirm(what)) net.send({ t: 'modmatch', op, map: sel.value });
+    };
+  });
   $('mod-list').querySelectorAll('[data-mwarn]').forEach((b) => {
     b.onclick = () => {
       const p = game.players.get(b.dataset.mwarn);
@@ -707,7 +719,7 @@ renderStaff();
 
 // var: showPane() may run before this line
 var modPanel = new ModPanel($('mod-pane'), social, {
-  joinLobby: (code) => { $('join-code').value = code; showPane('play'); joinLobby(); },
+  joinLobby: (code, spectate = false) => { $('join-code').value = code; showPane('play'); joinLobby(spectate); },
 });
 function renderModNav() {
   const staff = !!roles.myRole();
@@ -792,6 +804,7 @@ function openReport(p) {
   $('report-pop').classList.remove('hidden');
 }
 $('rp-details').addEventListener('keydown', (e) => e.stopPropagation());
+$('appeal-text').addEventListener('keydown', (e) => e.stopPropagation());
 
 // A warning, from a match (instant) or from your record (persistent, until you acknowledge it).
 function showWarning(by, reason, persistent) {
@@ -816,6 +829,18 @@ moderation.onBan = (ban) => {
   if (net) leave('You were banned.');
   $('ban-by').textContent = `Banned by ${ban.by}`;
   $('ban-reason').textContent = ban.reason;
+  // One appeal per ban; the answer shows here (denied, or the ban just ends if accepted).
+  const sent = moderation.appealSent();
+  $('appeal-status').textContent = ban.appealDenied ? 'Your appeal was denied.' : sent ? 'Appeal sent. The staff will review it.' : '';
+  $('appeal-text').classList.toggle('hidden', sent || !!ban.appealDenied);
+  $('appeal-send').classList.toggle('hidden', sent || !!ban.appealDenied);
+  $('appeal-send').onclick = async () => {
+    try {
+      await moderation.appeal($('appeal-text').value);
+      moderation.lastBan = null;
+      moderation.applyMine();
+    } catch (err) { $('appeal-status').textContent = err.message; }
+  };
   const tick = () => {
     if (ban.until && Date.now() >= ban.until) { clearInterval(banTimer); $('ban-pop').classList.add('hidden'); moderation.lastBan = null; return; }
     if (!ban.until) { $('ban-until').textContent = 'This ban is permanent.'; return; }
@@ -852,6 +877,7 @@ async function hostLobby() {
       await net.host(code, settings.name || 'Player', settings.color,
         { map: settings.map, mode: settings.mode, maxPlayers: serverCfg.max, botFill: Math.min(serverCfg.bots, serverCfg.max) }, getCos());
       net.logic.s.rotate = serverCfg.rotate;
+      net.logic.onFlag = (p, details) => moderation.autoFlag({ target: p.name, lobby: net.code, details });
       hosting = { public: false, name: $('sv-name').value.trim() || `${settings.name || 'Player'}'s server`, max: serverCfg.max, region: serverCfg.region };
       setBusy(false);
       status('');
@@ -869,7 +895,8 @@ async function hostLobby() {
   setBusy(false);
 }
 
-async function joinLobby() {
+// spectate: staff only; joins invisibly with a signed proof instead of a player.
+async function joinLobby(spectate = false) {
   if (busy) return;
   if (moderation.myBan()) { moderation.lastBan = null; moderation.applyMine(); return; }
   const code = $('join-code').value.trim().toUpperCase();
@@ -879,7 +906,10 @@ async function joinLobby() {
   status(`Joining ${code}…`);
   net = newNet();
   try {
-    await net.join(code, settings.name || 'Player', settings.color, getCos());
+    const spec = spectate ? await roles.proof(code, 'spec') : null;
+    if (spectate && !spec) throw new Error('Only staff can spectate.');
+    await net.join(code, settings.name || 'Player', settings.color, getCos(), spec);
+    game.spectating = spectate; // set before the welcome arrives so enterGame() knows
     status('');
     enterGame();
   } catch (e) {

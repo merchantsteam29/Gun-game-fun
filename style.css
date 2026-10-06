@@ -1135,3 +1135,31 @@ body.mobile #death .big { font-size: 20px; }
 .rp-reasons button.sel { border-color: var(--danger); color: #fff; background: rgba(255,70,70,0.18); }
 .rp-btns { display: flex; gap: 8px; }
 .rp-btns .primary { flex: 1; }
+/* Spectating, frozen, match tools, appeals */
+#spec-bar { position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%); display: none; text-align: center; padding: 8px 18px;
+  background: rgba(8,10,14,0.8); border: 1px solid #4fc3ff; border-radius: 999px; white-space: nowrap; }
+#spec-bar b { color: #4fc3ff; letter-spacing: 2px; }
+#spec-bar span { font-weight: 700; }
+#spec-bar small { display: block; color: var(--muted); font-size: 11px; }
+#hud.spec #spec-bar { display: block; }
+#hud.spec #health, #hud.spec #weapon-info, #hud.spec #crosshair, #hud.spec #reload-hint, #hud.spec #death { display: none; }
+#frozen-bar { position: absolute; left: 50%; top: 32%; transform: translateX(-50%); display: none; text-align: center; font-size: 26px; font-weight: 800;
+  letter-spacing: 4px; color: #9fe4ff; text-shadow: 0 0 18px rgba(80,200,255,0.8), 0 2px 3px #000; }
+#frozen-bar small { display: block; font-size: 12px; letter-spacing: 1px; color: var(--muted); font-weight: 600; }
+#hud.frozen #frozen-bar { display: block; }
+#hud.frozen #vignette { opacity: 0.4 !important; background: radial-gradient(ellipse at center, transparent 45%, rgba(80,200,255,0.6) 100%); }
+.mod-match { display: flex; flex-wrap: wrap; gap: 5px; padding: 6px 0; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.mod-match button { padding: 5px 10px; font-size: 12px; }
+.mod-match select { padding: 5px 8px; font-size: 12px; }
+.appeal-box { margin-top: 10px; text-align: left; }
+.appeal-box textarea { width: 100%; font: inherit; padding: 8px 10px; background: rgba(8,10,14,0.6); color: var(--text); border: 1px solid var(--line); border-radius: 6px; resize: vertical; }
+.appeal-box button { width: 100%; margin-top: 6px; }
+.appeal-box .hidden { display: none; }
+.mp-report.auto { border-left-color: #ffb020; }
+.mp-report.auto .mp-report-head em { color: #ffb020; background: rgba(255,176,32,0.14); }
+.mp-report.appeal { border-left-color: #4fc3ff; }
+#mp-f-words, #mp-f-test { width: 100%; font: inherit; padding: 8px 10px; background: rgba(8,10,14,0.6); color: var(--text); border: 1px solid var(--line); border-radius: 6px; margin-bottom: 6px; }
+.mp-biglog { max-height: 480px; }
+.mp-biglog a { color: var(--accent); }
+.fr-row.expired { opacity: 0.5; }
+#mp-mod-time { padding: 6px 8px; }

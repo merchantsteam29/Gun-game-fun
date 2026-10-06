@@ -93,7 +93,9 @@ export class HostLogic {
     this.rawSend = sendTo;
     this.broadcast = broadcast;
     this.onKick = null;
+    this.onFlag = null; // (player, details) suspicious stats: main.js files an auto-report
     this.players = new Map();
+    this.specs = new Map(); // staff spectating: get every update but aren't players
     this.s = defaultSettings(MODES[opts.mode] ? opts.mode : 'ffa', MAPS[opts.map] ? opts.map : MAP_ORDER[0]);
     this.botCount = 0;
     this.botFill = Math.max(0, Math.min(12, opts.botFill || 0)); // keep humans + bots at this many
@@ -232,7 +234,7 @@ export class HostLogic {
   record(id, name, color, bot = null) {
     return {
       id, name: String(name || 'Player').slice(0, 16), color, team: 0, kills: 0, deaths: 0, score: 0, level: 0,
-      hp: 100, alive: false, st: [0, -50, 0, 0, 0, 'ar', 0, 0], lastDmg: 0, respawnAt: 0, protectUntil: 0, bot,
+      hp: 100, alive: false, st: [0, -50, 0, 0, 0, 'ar', 0, 0], lastDmg: 0, respawnAt: 0, protectUntil: 0, bot, joinedAt: Date.now(),
     };
   }
 
@@ -293,7 +295,17 @@ export class HostLogic {
     return id;
   }
 
+  // Staff can watch a match invisibly. They prove who they are when connecting (signed lobby code);
+  // anyone else asking to spectate is turned away.
+  async addSpectator(id, proof) {
+    const r = typeof proof === 'string' ? await roles.check(proof, this.code, 'spec') : null;
+    if (!r) { this.rawSend(id, { t: 'kicked' }); if (this.onKick) this.onKick(id); return; }
+    this.specs.set(id, { id, name: r.tag, role: r.role, spec: true });
+    this.sendTo(id, { t: 'welcome', id, spec: true, settings: this.s, players: [...this.players.values()].map((q) => this.info(q)) });
+    if (this.phase !== 'playing') this.sendTo(id, this.endMsg());
+  }
   removePlayer(id) {
+    if (this.specs.delete(id)) return;
     const p = this.players.get(id);
     if (!p) return;
     this.dropFlagsOf(p);
@@ -393,8 +405,13 @@ export class HostLogic {
   // ---------- Messages ----------
 
   handle(id, m) {
-    const p = this.players.get(id);
-    if (!p) return;
+    let p = this.players.get(id);
+    if (!p) {
+      const sp = this.specs.get(id); // spectating staff: moderation tools only
+      if (!sp || !/^mod/.test(m.t)) return;
+      p = sp;
+    }
+    if (p.frozen && ['st', 'shot', 'proj', 'boom', 'fx', 'hit'].includes(m.t)) return; // frozen by staff
     switch (m.t) {
       case 'st':
         // q is a counter: the position channel is unordered, so ignore anything older than we have.
@@ -442,7 +459,25 @@ export class HostLogic {
         }
         break;
       }
-      case 'modkick': case 'modmute': { // moderator tools: staff only, and only on lower ranks
+      case 'modfreeze': { // stop a player moving / shooting until unfrozen
+        const v = this.players.get(m.id);
+        const rank = (q) => (q.role === 'owner' ? 2 : q.role === 'mod' ? 1 : 0);
+        if (!v || v === p || !p.role || rank(p) <= rank(v)) break;
+        v.frozen = !v.frozen;
+        const by = p.role === 'owner' ? 'the owner' : 'a moderator';
+        this.sendTo(v.id, { t: 'frozen', on: v.frozen, by });
+        this.broadcast({ t: 'pfrozen', id: v.id, on: v.frozen });
+        this.broadcast({ t: 'notice', text: `${v.name} was ${v.frozen ? 'frozen' : 'unfrozen'} by ${by}` });
+        break;
+      }
+      case 'modmatch': { // any staff member, even when not the host
+        if (!p.role) break;
+        const by = p.role === 'owner' ? 'The owner' : 'A moderator';
+        if (m.op === 'end' && this.phase === 'playing') { this.broadcast({ t: 'notice', text: `${by} ended the match` }); this.endMatch(); }
+        else if (m.op === 'restart') { this.startMatch(this.s.mode, this.s.map); this.broadcast({ t: 'notice', text: `${by} restarted the match` }); }
+        else if (m.op === 'map' && MAPS[m.map]) { this.startMatch(this.s.mode, m.map); this.broadcast({ t: 'notice', text: `${by} changed the map to ${MAPS[m.map].name}` }); }
+        break;
+      }      case 'modkick': case 'modmute': { // moderator tools: staff only, and only on lower ranks
         const v = this.players.get(m.id);
         const rank = (q) => (q.role === 'owner' ? 2 : q.role === 'mod' ? 1 : 0);
         if (!v || v === p || !p.role || rank(p) <= rank(v)) break;
@@ -495,12 +530,30 @@ export class HostLogic {
     if (dead) this.kill(attacker, v, m.w, !!m.head);
   }
 
+  // Suspicious stats → an automatic report for staff (once per player per lobby). Only gun kills
+  // count, and modes where headshots / one-hit kills are normal are skipped.
+  checkFlags(p, w, head) {
+    const W = WEAPONS[w];
+    if (!W || W.type !== 'gun' || p.flagged) return;
+    p.gunKills = (p.gunKills || 0) + 1;
+    if (head) p.gunHeads = (p.gunHeads || 0) + 1;
+    if (this.mode.instakill || this.s.headshotsOnly || this.mode.bigHead) return;
+    const mins = Math.max(0.5, (Date.now() - p.joinedAt) / 60000);
+    const hsRate = (p.gunHeads || 0) / p.gunKills, kpm = p.kills / mins;
+    const why = [];
+    if (p.gunKills >= 15 && hsRate >= 0.8) why.push(`${Math.round(hsRate * 100)}% headshot kills (${p.gunHeads}/${p.gunKills})`);
+    if (p.kills >= 20 && kpm >= 6) why.push(`${kpm.toFixed(1)} kills a minute (${p.kills} in ${mins.toFixed(1)} min)`);
+    if (!why.length) return;
+    p.flagged = true;
+    if (this.onFlag) this.onFlag(p, `${why.join(' · ')} · ${MODES[this.s.mode].name} on ${MAPS[this.s.map].name}`);
+  }
   kill(attacker, v, w, head) {
     v.alive = false;
     v.hp = 0;
     v.deaths++;
     const enemyKill = v !== attacker && this.hostile(attacker, v);
     if (enemyKill) attacker.kills++;
+    if (enemyKill && !attacker.bot) this.checkFlags(attacker, w, head);
     v.respawnAt = Date.now() + this.s.respawn * 1000;
     this.broadcast({ t: 'kill', k: attacker.id, v: v.id, w, head });
 
@@ -811,7 +864,7 @@ export class HostLogic {
       if (this.s.mode === 'rotation') this.tickRotation(now);
       if (this.flags) this.tickFlags(now);
       if (this.dom && this.phase === 'playing') this.tickDom(rdt);
-      for (const p of this.players.values()) if (p.bot) p.bot.update(dt);
+      for (const p of this.players.values()) if (p.bot && !p.frozen) p.bot.update(dt);
     } else if (now >= this.restartAt) {
       this.startMatch();
     }
