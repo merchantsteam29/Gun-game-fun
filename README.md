@@ -32,26 +32,16 @@ If the relay is down you can still create servers and join with codes.
 | Juggernaut | First kill makes you the Juggernaut (4x health, minigun). Kill it to take over. Only Juggernaut kills and Juggernaut takedowns score. First to 15 |
 | Last Man Standing | 3 lives each (the score limit), no respawns once you're out. Last player with lives wins |
 | Instagib | Every hit kills, with your own loadout. First to 25 |
-| Snipers Only | Sniper rifles and revolvers. First to 20 |
-| Shotgun Brawl | Shotgun, sawed-off and flashbangs. First to 25 |
 | Blade Party | Katana, axe, knife and throwing knives; faster movement and higher jumps. First to 20 |
 | Boom Town | Rocket launcher, grenade launcher, bat and stickies. First to 25 |
 | Roulette | A random loadout every time you spawn. First to 25 |
 | Vampire | No health regen; damage you deal heals you and kills heal more. First to 25 |
-| Moon Gravity | Low gravity and big jumps. First to 25 |
 | Kill Confirmed | Red vs Blue. Kills drop dog tags: grab enemy tags to score, your team's to deny. First team to 40 |
 | One in the Chamber | Revolver with one bullet that kills in one hit, no reloading; each kill gives a bullet back. First to 20 |
 | Weapon Rotation | Everyone has the same random weapon, changing every 40 seconds. First to 25 |
-| Hardcore | 35 health and no regeneration. First to 25 |
-| Sidearms | Hand Cannon and Revolver only. First to 25 |
 | Capture the Flag | Red vs Blue. Grab the enemy flag and bring it to your base while your own flag is home. Dropped flags return after 20s, or touch your own to return it. First to 3 captures |
 | Bounty Hunter | The leader carries a bounty (gold). Killing them is worth 3 points, anyone else 1. First to 30 |
-| Headshots Only | Guns only hurt on headshots; melee and explosives still work. First to 20 |
-| Big Heads | Everyone's head is huge — and so is the head hitbox. First to 25 |
 | Domination | Red vs Blue over three zones A, B, C. Stand in a zone with only your team to capture it; each zone you own scores a point per second. First to 200 |
-| Tank Battle | 250 health, slower movement, LMG + Hand Cannon + Sledgehammer + frags. First to 20 |
-| Speed Demons | Everyone runs and jumps much faster, own loadouts. First to 25 |
-| Railgun Arena | Railguns, katanas and vortex grenades in lighter gravity. First to 20 |
 
 ## Host panel
 
@@ -72,8 +62,6 @@ The lobby creator gets a **Host panel** button in the pause menu (Esc):
 | Desert Town | Adobe buildings you can enter, rooftops, market stalls |
 | Neon Pit | Small night arena with a central platform and jump pads |
 | Snow Outpost | Snowy base with a climbable bunker, watchtowers, huts and sandbags |
-| Office Tower | Two floors around a central atrium, offices, cubicles and staircases |
-| Jungle Ruins | Four-sided temple pyramid, broken columns and ruined walls |
 | Harbor Docks | Two quays split by a wadeable water channel, bridges, boats, brick sheds with roof access, a gantry crane |
 | Colosseum | Sand arena with raised stands all round, a central dais, obelisks and broken walls |
 | Military Compound | Walled base: rooms off a central yard, doorways, a catwalk, sandbags and crates |
@@ -81,9 +69,6 @@ The lobby creator gets a **Host panel** button in the pause menu (Esc):
 | Space Station | Four-way sci-fi deck around a glowing reactor with a raised ring walkway and corner rooms |
 | Canyon | Two mesas facing each other across a canyon floor, joined by a rope bridge |
 | Construction Site | Three-storey concrete frame with stairs and an open atrium, containers, pipes and a tower crane |
-| Cargo Ship | Deck of a container ship at sea: cargo stacks, hatches, a mast and bridge houses with roof access at both ends |
-| Train Yard | Parked train cars across four tracks, platforms on both sides and a footbridge over everything |
-| Frozen Lake | Open ice with fishing huts and ice blocks, snowy shore banks with ramps and pine trees |
 | Castle | Walled courtyard with four gates, a central keep with a rooftop, rampart walkways and corner towers |
 | Airplane Hangar | A parked plane inside a big open hangar, side catwalks, and tarmac with fuel trucks out both doors |
 | Shopping Mall | Two floors of shops around an atrium with a fountain, escalators and a skylight |
@@ -173,6 +158,12 @@ Switching holsters your current weapon before drawing the next (heavier weapons 
 immediately and then puts your previous weapon back in your hands. When you throw your last grenade you go back to
 the weapon you had out before.
 
+## Banners
+
+Your **banner** is the card shown behind your name on the death screen of everyone you kill
+("**[BOT] Razor** — KILLED YOU", with the weapon and a headshot tag). Pick one in **Character → Banner**:
+Standard and Carbon are free; Tiger, Woodland / Arctic Camo, Ocean, Sunset, Hazard, Bloodbath, Neon Grid, Code Rain,
+Inferno, Galaxy, Dragon Scale, Rainbow, Solid Gold and Diamond cost tokens (several are animated). Bots wear random ones.
 ## HUD
 
 - **Minimap** (top-left; top-right on phones and tablets): rotates with you and shows the map layout, teammates (blue
@@ -195,8 +186,8 @@ Open **Settings** from the main menu or the pause menu. Everything is saved in y
 | Video | Field of view, weapon field of view, view bobbing, graphics High/Low, FPS counter |
 | HUD & Audio | Volume, party chat, voice chat, minimap on/off, HUD size, crosshair color, size and center dot |
 | Mobile | Edit button layout (drag any touch button anywhere, resize each one), button size, button opacity |
-| Missions | 37 missions (kills, headshots, sniper / shotgun / melee / secondary / explosive kills, streaks, matches, wins, maps and modes played, mode-specific goals). Each one pays tokens 🪙 |
-| Customize | 17 hats, 7 hair styles (+ colors), 8 face items and 8 back items. Tap anything to preview it on your character, then spend tokens on whatever you want. Other players see what you wear |
+| Missions | 50 missions (kills, headshots, sniper / shotgun / melee / secondary / explosive kills, streaks, multi-kills, long shots, revenge, airborne, suppressed and low-health kills, matches, wins, team wins, maps and modes played, mode-specific goals, collecting cosmetics). Each one pays tokens 🪙 |
+| Customize | 23 hats, 9 hair styles (+ colors), 12 face items, 12 back items and 17 banners. Tap anything to preview it, then spend tokens on whatever you want. Other players see what you wear |
 
 ## Mobile
 

@@ -23,6 +23,17 @@ const M = {
   olive: new THREE.MeshStandardMaterial({ color: '#3b4030', roughness: 0.85 }),
   woodDark: new THREE.MeshStandardMaterial({ color: '#53321a', roughness: 0.75 }),
   orb: new THREE.MeshStandardMaterial({ color: '#9fe4ff', emissive: '#3fb8ff', emissiveIntensity: 1.5 }),
+  beret: new THREE.MeshStandardMaterial({ color: '#8a1c24', roughness: 0.9 }),
+  blue: new THREE.MeshStandardMaterial({ color: '#2f6fd8', roughness: 0.6 }),
+  yellow: new THREE.MeshStandardMaterial({ color: '#ffd23f', roughness: 0.6 }),
+  antler: new THREE.MeshStandardMaterial({ color: '#8a6a44', roughness: 0.85 }),
+  lacquer: new THREE.MeshStandardMaterial({ color: '#1c1416', roughness: 0.35, metalness: 0.3 }),
+  glass: new THREE.MeshStandardMaterial({ color: '#bfe6ff', roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.28, depthWrite: false }),
+  visor: new THREE.MeshStandardMaterial({ color: '#3ff0ff', emissive: '#19d6ff', emissiveIntensity: 1.8 }),
+  bone: new THREE.MeshStandardMaterial({ color: '#ece6d6', roughness: 0.7 }),
+  surf: new THREE.MeshStandardMaterial({ color: '#29c4b8', roughness: 0.4 }),
+  demon: new THREE.MeshStandardMaterial({ color: '#3a0a12', roughness: 0.6, emissive: '#2a0006' }),
+  beard: new THREE.MeshStandardMaterial({ color: '#4a3220', roughness: 0.95 }),
 };
 const hairMats = new Map();
 const hairMat = (c) => { if (!hairMats.has(c)) hairMats.set(c, new THREE.MeshStandardMaterial({ color: c, roughness: 0.9 })); return hairMats.get(c); };
@@ -40,7 +51,7 @@ const C = (r0, r1, h, s = 16) => new THREE.CylinderGeometry(r0, r1, h, s);
 const dome = (r) => new THREE.SphereGeometry(r, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2);
 
 // Hats that cover the top of the head hide spiky / mohawk hair.
-const COVERING = ['helmet', 'cap', 'beanie', 'cowboy', 'tophat', 'viking', 'pirate', 'chef', 'wizard', 'sombrero'];
+export const COVERING = ['helmet', 'cap', 'beanie', 'cowboy', 'tophat', 'viking', 'pirate', 'chef', 'wizard', 'sombrero', 'beret', 'propeller', 'santa', 'samurai', 'astro'];
 
 const HATS = {
   helmet(g, body) {
@@ -126,8 +137,44 @@ const HATS = {
     add(g, C(0.11, 0.14, 0.2), M.straw, 0, 0.41, 0);
     add(g, C(0.142, 0.142, 0.04), M.red, 0, 0.34, 0);
   },
+  beret(g) {
+    add(g, C(0.17, 0.16, 0.05, 18), M.beret, 0.03, 0.31, 0, 0, 0, -0.22).scale.set(1, 1, 0.95);
+    add(g, C(0.012, 0.012, 0.03, 6), M.beret, 0.05, 0.345, 0, 0, 0, -0.22);
+  },
+  propeller(g, body) {
+    add(g, dome(0.155), body, 0, 0.27, 0).scale.set(1, 0.6, 1);
+    for (const [i, m] of [[0, M.red], [1, M.blue], [2, M.yellow], [3, M.red]]) add(g, B(0.155, 0.12, 0.01), m, 0, 0.3, 0, 0, (i * Math.PI) / 2, 0).position.set(Math.sin((i * Math.PI) / 2) * 0.078, 0.3, Math.cos((i * Math.PI) / 2) * 0.078);
+    add(g, C(0.008, 0.008, 0.08, 6), M.dark, 0, 0.4, 0);
+    add(g, B(0.26, 0.008, 0.035), M.red, 0, 0.44, 0, 0, 0.6, 0);
+    add(g, new THREE.SphereGeometry(0.016, 8, 6), M.yellow, 0, 0.445, 0);
+  },
+  santa(g) {
+    add(g, new THREE.ConeGeometry(0.15, 0.3, 14), M.red, 0.05, 0.43, 0.02, 0.2, 0, -0.45);
+    add(g, new THREE.TorusGeometry(0.145, 0.035, 8, 20), M.white, 0, 0.3, 0, Math.PI / 2);
+    add(g, new THREE.SphereGeometry(0.045, 10, 8), M.white, 0.16, 0.52, 0.06);
+  },
+  antlers(g) {
+    for (const s of [-1, 1]) {
+      add(g, B(0.025, 0.2, 0.025), M.antler, s * 0.1, 0.38, 0, 0, 0, -s * 0.35);
+      add(g, B(0.022, 0.1, 0.022), M.antler, s * 0.14, 0.45, -0.03, 0.4, 0, -s * 1.0);
+      add(g, B(0.022, 0.12, 0.022), M.antler, s * 0.17, 0.5, 0.0, 0, 0, s * 0.2);
+      add(g, B(0.02, 0.09, 0.02), M.antler, s * 0.11, 0.5, 0.02, -0.3, 0, s * 0.5);
+    }
+    add(g, B(0.3, 0.025, 0.3), M.dark, 0, 0.3, 0);
+  },
+  samurai(g) {
+    add(g, dome(0.18), M.lacquer, 0, 0.23, 0.01).scale.set(1, 0.85, 1.05);
+    add(g, C(0.2, 0.3, 0.13, 18, 1, true), M.lacquer, 0, 0.19, 0.04).material.side = THREE.DoubleSide;
+    add(g, new THREE.TorusGeometry(0.11, 0.014, 6, 20, Math.PI), M.gold, 0, 0.39, -0.17, 0, 0, 0);
+    add(g, B(0.05, 0.05, 0.02), M.gold, 0, 0.32, -0.185);
+  },
+  astro(g) {
+    const s = add(g, new THREE.SphereGeometry(0.24, 20, 14), M.glass, 0, 0.16, 0);
+    s.castShadow = false;
+    add(g, new THREE.TorusGeometry(0.2, 0.035, 8, 24), M.white, 0, -0.04, 0, Math.PI / 2);
+    add(g, B(0.04, 0.04, 0.04), M.red, 0.16, 0.0, 0.1);
+  },
 };
-
 const HAIR = {
   short(g, mat, covered) {
     if (!covered) add(g, B(0.29, 0.05, 0.29), mat, 0, 0.305, 0);
@@ -160,6 +207,14 @@ const HAIR = {
       add(g, new THREE.ConeGeometry(0.045, 0.13, 6), mat, Math.cos(a) * 0.08, 0.37, Math.sin(a) * 0.08, Math.sin(a) * 0.4, 0, -Math.cos(a) * 0.4);
     }
     add(g, new THREE.ConeGeometry(0.05, 0.16, 6), mat, 0, 0.39, 0);
+  },
+  bun(g, mat, covered) {
+    HAIR.short(g, mat, covered);
+    if (!covered) add(g, new THREE.SphereGeometry(0.075, 12, 10), mat, 0, 0.37, 0.03);
+  },
+  mullet(g, mat, covered) {
+    HAIR.short(g, mat, covered);
+    add(g, B(0.27, 0.22, 0.06), mat, 0, 0.1, 0.16);
   },
 };
 
@@ -194,6 +249,26 @@ const FACE = {
     for (const s of [-1, 1]) add(g, C(0.035, 0.035, 0.02, 12), M.lens, s * 0.06, 0.19, -0.172, Math.PI / 2);
     add(g, C(0.05, 0.05, 0.08, 12), M.dark, 0, 0.07, -0.2, Math.PI / 2);
     add(g, B(0.29, 0.03, 0.29), M.dark, 0, 0.16, 0);
+  },
+  beard(g) {
+    add(g, B(0.27, 0.12, 0.05), M.beard, 0, 0.06, -0.135);
+    add(g, B(0.18, 0.07, 0.05), M.beard, 0, -0.01, -0.13);
+    for (const s of [-1, 1]) add(g, B(0.03, 0.14, 0.12), M.beard, s * 0.135, 0.1, -0.08);
+  },
+  monocle(g) {
+    add(g, new THREE.TorusGeometry(0.035, 0.007, 6, 18), M.gold, 0.06, 0.19, -0.152);
+    add(g, C(0.032, 0.032, 0.004, 14), M.glass, 0.06, 0.19, -0.152, Math.PI / 2).castShadow = false;
+    add(g, B(0.006, 0.12, 0.006), M.gold, 0.09, 0.11, -0.15, 0, 0, 0.3);
+  },
+  visor(g) {
+    add(g, B(0.3, 0.06, 0.06), M.visor, 0, 0.19, -0.13).castShadow = false;
+    add(g, B(0.3, 0.03, 0.29), M.dark, 0, 0.19, 0);
+  },
+  skull(g) {
+    add(g, B(0.27, 0.27, 0.03), M.bone, 0, 0.14, -0.15);
+    for (const s of [-1, 1]) add(g, B(0.075, 0.06, 0.01), M.black, s * 0.06, 0.18, -0.166);
+    add(g, B(0.03, 0.04, 0.01), M.black, 0, 0.12, -0.166);
+    for (let i = -2; i <= 2; i++) add(g, B(0.025, 0.035, 0.01), i % 2 ? M.black : M.bone, i * 0.03, 0.05, -0.166);
   },
 };
 
@@ -234,6 +309,38 @@ const BACK = {
     add(g, B(0.04, 0.5, 0.025), M.woodDark, 0.08, 0.48, 0.2, 0, 0, 0.5);
     add(g, B(0.06, 0.08, 0.03), M.black, 0.2, 0.7, 0.2, 0, 0, 0.5);
     add(g, B(0.04, 0.6, 0.02), M.leather, 0, 0.32, 0.155, 0, 0, -0.75);
+  },
+  quiver(g) {
+    add(g, C(0.06, 0.05, 0.45, 12), M.leather, 0.08, 0.3, 0.22, 0, 0, -0.35);
+    for (let i = 0; i < 4; i++) {
+      const x = 0.15 + (i % 2) * 0.03, y = 0.55 + (i > 1 ? 0.02 : 0), z = 0.2 + (i - 1.5) * 0.02;
+      add(g, B(0.012, 0.16, 0.012), M.woodDark, x, y, z, 0, 0, -0.35);
+      add(g, B(0.006, 0.05, 0.035), i % 2 ? M.red : M.white, x + 0.03, y + 0.08, z, 0, 0, -0.35);
+    }
+    add(g, B(0.04, 0.6, 0.02), M.leather, 0, 0.32, 0.155, 0, 0, 0.75);
+  },
+  surfboard(g) {
+    const b = add(g, new THREE.SphereGeometry(0.5, 18, 10), M.surf, 0, 0.3, 0.24, 0, 0, 0.12);
+    b.scale.set(0.3, 1, 0.05);
+    add(g, B(0.03, 0.9, 0.012), M.white, 0, 0.3, 0.266, 0, 0, 0.12);
+    add(g, new THREE.ConeGeometry(0.05, 0.1, 3), M.surf, 0.02, -0.12, 0.29, Math.PI / 2, 0, 0);
+  },
+  shield(g) {
+    add(g, C(0.24, 0.24, 0.035, 24), M.woodDark, 0, 0.3, 0.2, Math.PI / 2);
+    add(g, new THREE.TorusGeometry(0.235, 0.02, 6, 24), M.steel, 0, 0.3, 0.22);
+    add(g, B(0.46, 0.06, 0.01), M.red, 0, 0.3, 0.22, 0, 0, 0.785);
+    add(g, B(0.46, 0.06, 0.01), M.red, 0, 0.3, 0.22, 0, 0, -0.785);
+    add(g, new THREE.SphereGeometry(0.05, 12, 8), M.gold, 0, 0.3, 0.23);
+  },
+  demon(g) {
+    for (const s of [-1, 1]) {
+      add(g, B(0.42, 0.03, 0.02), M.black, s * 0.26, 0.55, 0.2, 0, s * 0.25, s * 0.35).castShadow = false;
+      for (let i = 0; i < 3; i++) {
+        const m = add(g, new THREE.ConeGeometry(0.09, 0.32 - i * 0.04, 3), M.demon, s * (0.16 + i * 0.12), 0.43 - i * 0.02, 0.21, 0, s * 0.25, Math.PI);
+        m.scale.set(1, 1, 0.15);
+        m.castShadow = false;
+      }
+    }
   },
 };
 

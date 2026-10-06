@@ -27,8 +27,8 @@ const settings = {
   color: store.get('color', COLORS[Math.floor(Math.random() * COLORS.length)]),
   loadout: validLoadout(store.get('loadout', null)),
   mods: cleanModMap(store.get('mods', {})), // weapon id -> attachments
-  map: store.get('map', 'warehouse'),
-  mode: store.get('mode', 'ffa'),
+  map: MAP_ORDER.includes(store.get('map')) ? store.get('map') : 'warehouse', // removed maps / modes fall back
+  mode: MODE_ORDER.includes(store.get('mode')) ? store.get('mode') : 'ffa',
 };
 // Gamertag (one per player, unique), friends and party chat over the public relays.
 const social = new Social();
@@ -412,10 +412,9 @@ social.ready.then(() => { if (!social.tag && !sessionStorage.getItem('tagLater')
 // Mode and map pickers are tap targets rather than dropdowns (much easier on touch screens).
 const MAP_BLURB = {
   warehouse: 'Indoor · mezzanines', yard: 'Outdoor · containers', town: 'Rooftops · houses', pit: 'Small · jump pads',
-  outpost: 'Snow · towers', office: 'Two floors', ruins: 'Temple · open', docks: 'Water · cranes',
+  outpost: 'Snow · towers', docks: 'Water · cranes',
   arena: 'Arena · stands', compound: 'Rooms · yard', rooftops: 'Night · bridges',
   station: 'Sci-fi · reactor', canyon: 'Mesas · bridge', construction: 'Floors · crane',
-  ship: 'Deck · containers', trains: 'Cars · footbridge', lake: 'Ice · huts',
   castle: 'Keep · ramparts', hangar: 'Plane · catwalks', mall: 'Shops · 2 floors',
   temple: 'Pyramid · jungle', oilrig: 'Decks · derrick', subway: 'Tracks · platforms',
 };
@@ -703,6 +702,7 @@ settingsUI = new SettingsUI({
   game, mobile, uiMode, uiFromUrl: !!uiFromUrl,
   editLayout: (done) => touch.edit(done),
   getColor: () => settings.color,
+  getName: () => settings.name || 'Player',
   onCos: (c) => { if (net) net.send({ t: 'cos', c }); },
 });
 $('btn-settings-menu').onclick = () => {

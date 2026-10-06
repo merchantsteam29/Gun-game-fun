@@ -918,3 +918,60 @@ body.tablet #hud:not(.nomap) #killfeed { top: 150px; }
 body.tablet .hp-icon { display: flex; }
 body.tablet .ss { width: 130px; }#hud:has(#endscreen:not(.hidden)) #minimap, #hud:has(#endscreen:not(.hidden)) #kill-banner { display: none; }
 body.mobile #hud #lobby-tag { max-width: calc(50% - 150px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- Player banners (death screen, Customize) ---------- */
+.bnr { position: relative; display: flex; align-items: center; gap: 14px; width: min(440px, calc(100vw - 32px)); min-height: 86px; padding: 10px 22px 10px 14px;
+  background: var(--bg); background-size: cover; border-left: 5px solid var(--ac); overflow: hidden; text-align: left;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 18px) 100%, 0 100%); box-shadow: 0 10px 30px rgba(0,0,0,0.45); }
+/* Darkening on the left keeps the name readable on any banner */
+.bnr::before { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,0.55), rgba(0,0,0,0.12) 70%, transparent); pointer-events: none; }
+.bnr.bnr-light::before { background: linear-gradient(90deg, rgba(0,0,0,0.45), rgba(0,0,0,0.05) 70%, transparent); }
+.bnr > * { position: relative; }
+.bnr-emblem { flex: none; width: 58px; height: 58px; display: flex; align-items: center; justify-content: center; font-size: 30px; color: var(--ac);
+  background: rgba(0,0,0,0.45); border: 2px solid var(--ac); transform: rotate(45deg); border-radius: 6px; box-shadow: 0 0 16px color-mix(in srgb, var(--ac) 50%, transparent); }
+.bnr-emblem span { display: block; transform: rotate(-45deg); line-height: 1; font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif; }
+.bnr-text { min-width: 0; }
+.bnr-top { font-size: 11px; font-weight: 800; letter-spacing: 3px; color: var(--ac); text-shadow: 0 1px 3px #000; }
+.bnr-name { font-size: 28px; font-weight: 800; letter-spacing: 1px; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-shadow: 0 2px 0 #000, 0 0 12px rgba(0,0,0,0.9); }
+.bnr-sub { display: flex; gap: 6px; margin-top: 5px; }
+.bnr-sub .chip { font-size: 11px; font-weight: 700; letter-spacing: 1px; padding: 2px 8px; background: rgba(0,0,0,0.6); border-radius: 3px; color: #fff; text-transform: uppercase; }
+.bnr-sub .chip.hs { color: #ffd23f; }
+#death-by.in { animation: bnr-in 0.45s cubic-bezier(.2,.9,.3,1.2); }
+@keyframes bnr-in { from { opacity: 0; transform: translateX(-40px) skewX(-8deg); } to { opacity: 1; transform: none; } }
+/* Animated banners */
+.bnr-scroll { animation: bnr-scroll 3s linear infinite; }
+@keyframes bnr-scroll { to { background-position: 18px 18px, 18px 18px, 0 0; } }
+.bnr-rain { animation: bnr-rain 1.2s linear infinite; }
+@keyframes bnr-rain { to { background-position: 0 0, 0 14px, 0 0; } }
+.bnr-flicker { animation: bnr-flicker 0.9s ease-in-out infinite alternate; }
+@keyframes bnr-flicker { to { filter: brightness(1.18) saturate(1.2); } }
+.bnr-twinkle { animation: bnr-flicker 1.6s ease-in-out infinite alternate; }
+.bnr-hue { animation: bnr-hue 4s linear infinite; }
+@keyframes bnr-hue { to { filter: hue-rotate(360deg); } }
+.bnr-shine::after { content: ''; position: absolute; top: 0; bottom: 0; width: 40%; left: -50%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,0.55), transparent); animation: bnr-shine 2.6s ease-in-out infinite; }
+@keyframes bnr-shine { 0%, 40% { left: -50%; } 100% { left: 120%; } }
+
+#death-by { display: flex; justify-content: center; margin: 10px 0 8px; }
+#death .big { font-size: 30px; letter-spacing: 8px; }
+.death-self { font-size: 18px; color: var(--muted); }
+body.mobile .bnr { min-height: 60px; gap: 10px; padding: 6px 16px 6px 10px; width: min(340px, calc(100vw - 32px)); }
+body.mobile .bnr-emblem { width: 38px; height: 38px; font-size: 20px; }
+body.mobile .bnr-name { font-size: 19px; }
+body.mobile #death .big { font-size: 20px; }
+
+/* Customize: banner picker shows the real banners */
+.cz-banners { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.cz-banners button { position: relative; height: 52px; padding: 0; overflow: hidden; border: 2px solid transparent; border-radius: 6px; background: var(--bg); background-size: cover; }
+.cz-banners button::before { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,0.6), transparent 80%); }
+.cz-banners button span { position: absolute; left: 8px; bottom: 5px; font-size: 12px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px #000; }
+.cz-banners button em { position: absolute; right: 8px; top: 4px; font-style: normal; font-size: 16px; }
+.cz-banners button small { position: absolute; right: 6px; bottom: 4px; font-size: 10px; background: rgba(0,0,0,0.65); padding: 1px 5px; border-radius: 3px; color: #ffd23f; }
+.cz-banners button.sel { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(255,176,32,0.35); }
+.cz-banners button.trying { border-color: #fff; }
+.cz-banners button.locked span { opacity: 0.85; }
+.cz-bnr-preview { margin-top: 8px; display: flex; justify-content: center; }
+.cz-bnr-preview .bnr { width: 100%; min-height: 64px; }
+.cz-bnr-preview .bnr-name { font-size: 20px; }
+.cz-bnr-preview .bnr-emblem { width: 40px; height: 40px; font-size: 20px; }

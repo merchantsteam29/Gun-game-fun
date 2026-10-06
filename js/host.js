@@ -19,29 +19,19 @@ export const MODES = {
   juggernaut: { name: 'Juggernaut', short: 'JUGGERNAUT', teams: false, score: 15, time: 10, desc: 'First kill makes you the Juggernaut: 4x health and a minigun. Kill the Juggernaut to take over. Only Juggernaut kills (and killing it) score.' },
   lms: { name: 'Last Man Standing', short: 'LMS', teams: false, score: 3, time: 8, desc: 'Everyone gets a few lives (the score limit). Last player with lives left wins.' },
   instagib: { name: 'Instagib', short: 'INSTAGIB', teams: false, score: 25, time: 8, instakill: true, desc: 'Every hit kills. Bring your own loadout.' },
-  snipers: { name: 'Snipers Only', short: 'SNIPERS', teams: false, score: 20, time: 10, loadout: ['sniper', 'revolver', 'knife', 'smoke'], desc: 'Sniper rifles and revolvers. Find a perch.' },
-  shotguns: { name: 'Shotgun Brawl', short: 'SHOTGUNS', teams: false, score: 25, time: 8, loadout: ['shotgun', 'sawedoff', 'knife', 'flash'], desc: 'Shotguns only. Get close and personal.' },
   blades: { name: 'Blade Party', short: 'BLADES', teams: false, score: 20, time: 8, loadout: ['katana', 'axe', 'knife', 'tknife'], preset: { moveSpeed: 1.25, jump: 1.15 }, desc: 'Melee and throwing knives only. Everyone moves faster.' },
   boom: { name: 'Boom Town', short: 'BOOM', teams: false, score: 25, time: 8, loadout: ['rocket', 'gl', 'bat', 'sticky'], desc: 'Launchers, stickies and a bat. Mind the splash.' },
   roulette: { name: 'Roulette', short: 'ROULETTE', teams: false, score: 25, time: 10, desc: 'A random loadout every time you spawn.' },
   vampire: { name: 'Vampire', short: 'VAMPIRE', teams: false, score: 25, time: 10, desc: 'No health regen. Damage you deal heals you, and kills heal more.' },
-  moon: { name: 'Moon Gravity', short: 'MOON', teams: false, score: 25, time: 10, preset: { gravity: 0.35, jump: 1.3 }, desc: 'Low gravity and huge jumps. Most kills wins.' },
   killconfirmed: { name: 'Kill Confirmed', short: 'KILL CONFIRMED', teams: true, redBlue: true, score: 40, time: 10, desc: 'Red vs Blue. Every kill drops a dog tag: grab enemy tags to score, grab your team’s to deny the point.' },
   oitc: { name: 'One in the Chamber', short: 'OITC', teams: false, score: 20, time: 10, loadout: ['revolver', 'knife'], instakill: true, noReload: true, ammoStart: 1, desc: 'One bullet that kills in one hit, and no reloading. Every kill gives you another bullet. Miss and it’s knife time.' },
   rotation: { name: 'Weapon Rotation', short: 'ROTATION', teams: false, score: 25, time: 10, desc: 'Everyone gets the same random weapon, and it changes every 40 seconds.' },
-  hardcore: { name: 'Hardcore', short: 'HARDCORE', teams: false, score: 25, time: 10, noRegen: true, preset: { health: 35 }, desc: '35 health and no regeneration. Every shot counts.' },
-  sidearms: { name: 'Sidearms', short: 'SIDEARMS', teams: false, score: 25, time: 8, loadout: ['handcannon', 'revolver', 'knife', 'flash'], desc: 'Pistols only: Hand Cannon and Revolver.' },
   ctf: { name: 'Capture the Flag', short: 'CTF', teams: true, redBlue: true, score: 3, time: 12, desc: 'Red vs Blue. Grab the enemy flag and bring it to your base while your own flag is home. Drop it if you die.' },
   bounty: { name: 'Bounty Hunter', short: 'BOUNTY', teams: false, score: 30, time: 10, desc: 'Free-for-all. Whoever is in the lead has a bounty (shown in gold): killing them is worth 3 points.' },
-  headshots: { name: 'Headshots Only', short: 'HEADSHOTS', teams: false, score: 20, time: 10, preset: { headshotsOnly: true }, desc: 'Guns only hurt on headshots. Melee and explosives still work.' },
-  bighead: { name: 'Big Heads', short: 'BIG HEADS', teams: false, score: 25, time: 10, bigHead: true, desc: 'Everyone has a giant head, with a giant headshot hitbox to match.' },
   dom: { name: 'Domination', short: 'DOMINATION', teams: true, redBlue: true, dom: true, score: 200, time: 10, desc: 'Red vs Blue over three zones (A, B, C). Stand in a zone with only your team to capture it; every zone you own scores a point per second.' },
-  tank: { name: 'Tank Battle', short: 'TANKS', teams: false, score: 20, time: 10, loadout: ['lmg', 'handcannon', 'sledge', 'frag'], preset: { health: 250, moveSpeed: 0.85 }, desc: '250 health, heavy weapons, slow and steady. Most kills wins.' },
-  speed: { name: 'Speed Demons', short: 'SPEED', teams: false, score: 25, time: 8, preset: { moveSpeed: 1.45, jump: 1.25 }, desc: 'Everyone runs and jumps way faster. Bring your own loadout.' },
-  railarena: { name: 'Railgun Arena', short: 'RAILGUNS', teams: false, score: 20, time: 8, loadout: ['railgun', 'handcannon', 'katana', 'vortex'], preset: { gravity: 0.6, jump: 1.2 }, desc: 'Railguns, katanas and vortex grenades in lighter gravity.' },
 };
 export const MODE_ORDER = ['ffa', 'tdm', 'gungame', 'koth', 'infection', 'ctf', 'dom', 'hardpoint', 'killconfirmed', 'juggernaut', 'bounty', 'lms', 'oitc',
-  'instagib', 'headshots', 'hardcore', 'bighead', 'tank', 'speed', 'rotation', 'snipers', 'railarena', 'shotguns', 'sidearms', 'blades', 'boom', 'roulette', 'vampire', 'moon'];
+  'instagib', 'rotation', 'blades', 'boom', 'roulette', 'vampire'];
 const FLAG_RETURN_MS = 20000;
 
 // Runs fn every ms. Browsers slow main-thread timers to once a second in background tabs, which

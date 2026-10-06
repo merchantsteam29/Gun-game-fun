@@ -644,6 +644,9 @@ export class Game {
         track.kill({
           weapon: m.w, weaponType: W && W.type, head: !!m.head, mode: this.rules.mode,
           secondary: SLOTS[1].includes(m.w),
+          multi: this.multi, revenge: m.v === this.lastKiller, air: !this.me.onGround, lowHp: this.me.hp <= 25,
+          silent: !!(WEAPONS[m.w] && WEAPONS[m.w].type === 'gun' && this.W(m.w).quiet),
+          dist: this.remotes.get(m.v) ? this.remotes.get(m.v).pos.distanceTo(this.me.pos) : 0,
           explosive: ['gl', 'rocket', 'flare', 'frag', 'sticky', 'vortex'].includes(m.w),
           juggernaut: this.rules.mode === 'juggernaut' && pv && pv.team === JUGG_TEAM,
         });
@@ -655,6 +658,7 @@ export class Game {
       this.me.alive = false;
       this.headStreak = 0;
       this.lifeKills = 0;
+      if (m.k !== this.myId) this.lastKiller = m.k; // for revenge kills
       this.deathInfo = {
         killer: m.k !== this.myId ? m.k : null, w: m.w, at: performance.now(), head: !!m.head && m.k !== this.myId,
         pos: this.me.pos.clone(), eye: this.me.eye, roll: Math.random() > 0.5 ? 1 : -1,
@@ -721,7 +725,7 @@ export class Game {
     else won = !!m.scores && m.scores[0] && m.scores[0].id === this.myId;
     const mine = (m.scores || []).find((s) => s.id === this.myId);
     track.matchEnd({
-      mode, won, map: this.mapId,
+      mode, won, map: this.mapId, teams: !!MODES[mode].redBlue,
       survived: mode === 'infection' && team === 1 && m.title === 'SURVIVORS WIN',
       hillPoints: mode === 'koth' && mine ? mine.sc : 0,
     });
@@ -1797,7 +1801,9 @@ export class Game {
       const killer = this.deathInfo.killer && this.players.get(this.deathInfo.killer);
       const mine = this.players.get(this.myId);
       const out = this.rules.mode === 'lms' && mine && mine.sc <= 0;
-      hud.death(true, killer ? killer.name : null, this.deathInfo.w, secs, out ? 'Out of lives · spectating until the next round' : null, this.deathInfo.head);
+      const kr = killer && this.remotes.get(killer.id);
+      hud.death(true, killer ? killer.name : null, this.deathInfo.w, secs, out ? 'Out of lives · spectating until the next round' : null, this.deathInfo.head,
+        killer ? this.colorFor(killer) : '#fff', (kr && kr.cos && kr.cos.banner) || 'standard');
     }
     if (this.matchOver && this.endInfo) {
       const next = MAPS[this.endInfo.nextMap];

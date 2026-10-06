@@ -21,6 +21,12 @@ export const COSMETICS = {
     { id: 'viking', name: 'Viking Helmet', price: 400 },
     { id: 'halo', name: 'Halo', price: 500 },
     { id: 'crown', name: 'Crown', price: 600 },
+    { id: 'beret', name: 'Beret', price: 150 },
+    { id: 'propeller', name: 'Propeller Cap', price: 200 },
+    { id: 'santa', name: 'Santa Hat', price: 250 },
+    { id: 'antlers', name: 'Antlers', price: 300 },
+    { id: 'samurai', name: 'Samurai Helmet', price: 450 },
+    { id: 'astro', name: 'Space Helmet', price: 550 },
   ],
   hair: [
     { id: 'none', name: 'Buzz Cut', free: true },
@@ -30,6 +36,8 @@ export const COSMETICS = {
     { id: 'ponytail', name: 'Ponytail', price: 150 },
     { id: 'spiky', name: 'Spiky', price: 200 },
     { id: 'afro', name: 'Afro', price: 200 },
+    { id: 'bun', name: 'Top Bun', price: 150 },
+    { id: 'mullet', name: 'Mullet', price: 200 },
   ],
   face: [
     { id: 'goggles', name: 'Goggles', free: true },
@@ -40,6 +48,10 @@ export const COSMETICS = {
     { id: 'bandana', name: 'Bandana', price: 150 },
     { id: 'eyepatch', name: 'Eyepatch', price: 150 },
     { id: 'gasmask', name: 'Gas Mask', price: 300 },
+    { id: 'beard', name: 'Beard', price: 150 },
+    { id: 'monocle', name: 'Monocle', price: 200 },
+    { id: 'visor', name: 'Cyber Visor', price: 350 },
+    { id: 'skull', name: 'Skull Mask', price: 400 },
   ],
   back: [
     { id: 'backpack', name: 'Backpack', free: true },
@@ -50,11 +62,35 @@ export const COSMETICS = {
     { id: 'staff', name: 'Wizard Staff', price: 350 },
     { id: 'jetpack', name: 'Jetpack', price: 400 },
     { id: 'wings', name: 'Angel Wings', price: 600 },
+    { id: 'quiver', name: 'Quiver', price: 250 },
+    { id: 'surfboard', name: 'Surfboard', price: 300 },
+    { id: 'shield', name: 'Shield', price: 350 },
+    { id: 'demon', name: 'Demon Wings', price: 650 },
+  ],
+  // Shown behind your name on the death screen of everyone you kill (see banners.js).
+  banner: [
+    { id: 'standard', name: 'Standard', free: true },
+    { id: 'carbon', name: 'Carbon', free: true },
+    { id: 'tiger', name: 'Tiger', price: 150 },
+    { id: 'camo', name: 'Woodland Camo', price: 150 },
+    { id: 'arctic', name: 'Arctic Camo', price: 150 },
+    { id: 'ocean', name: 'Ocean', price: 200 },
+    { id: 'sunset', name: 'Sunset', price: 200 },
+    { id: 'toxic', name: 'Hazard', price: 200 },
+    { id: 'blood', name: 'Bloodbath', price: 250 },
+    { id: 'neon', name: 'Neon Grid', price: 300 },
+    { id: 'matrix', name: 'Code Rain', price: 300 },
+    { id: 'flames', name: 'Inferno', price: 350 },
+    { id: 'galaxy', name: 'Galaxy', price: 350 },
+    { id: 'dragon', name: 'Dragon Scale', price: 400 },
+    { id: 'rainbow', name: 'Rainbow', price: 450 },
+    { id: 'gold', name: 'Solid Gold', price: 600 },
+    { id: 'diamond', name: 'Diamond', price: 800 },
   ],
 };
-export const SLOT_LABELS = { hat: 'Hat', hair: 'Hair', face: 'Face', back: 'Back' };
+export const SLOT_LABELS = { hat: 'Hat', hair: 'Hair', face: 'Face', back: 'Back', banner: 'Banner' };
 export const HAIR_COLORS = ['#3b2a1e', '#111111', '#e3c16f', '#b5462a', '#3d6fd8', '#e86fb6', '#e8e8e8'];
-export const DEFAULT_COS = { hat: 'helmet', hair: 'none', hairColor: HAIR_COLORS[0], face: 'goggles', back: 'backpack' };
+export const DEFAULT_COS = { hat: 'helmet', hair: 'none', hairColor: HAIR_COLORS[0], face: 'goggles', back: 'backpack', banner: 'standard' };
 
 // Each mission tracks one lifetime stat and pays tokens once when finished.
 export const MISSIONS = [
@@ -95,6 +131,19 @@ export const MISSIONS = [
   { id: 'variety', name: 'Variety Gamer', desc: 'Play 12 different game modes', stat: 'modesPlayed', goal: 12, tokens: 300 },
   { id: 'tourist', name: 'Tourist', desc: 'Play matches on 8 different maps', stat: 'mapsPlayed', goal: 8, tokens: 150 },
   { id: 'traveler', name: 'World Traveler', desc: 'Play matches on 15 different maps', stat: 'mapsPlayed', goal: 15, tokens: 300 },
+  { id: 'mythic', name: 'Mythic', desc: 'Get 1000 kills', stat: 'kills', goal: 1000, tokens: 1000 },
+  { id: 'headhunter', name: 'Headhunter', desc: 'Get 150 headshot kills', stat: 'headshots', goal: 150, tokens: 600 },
+  { id: 'godlike', name: 'Godlike', desc: 'Get 15 kills in one life', stat: 'bestStreak', goal: 15, tokens: 500 },
+  { id: 'double', name: 'Double Trouble', desc: 'Get 5 multi-kills (2+ kills within 4 seconds)', stat: 'multiKills', goal: 5, tokens: 150 },
+  { id: 'triple', name: 'Triple Threat', desc: 'Get 3 triple kills', stat: 'tripleKills', goal: 3, tokens: 300 },
+  { id: 'longshot', name: 'Long Shot', desc: 'Get 10 kills from 40+ meters away', stat: 'longKills', goal: 10, tokens: 200 },
+  { id: 'payback', name: 'Payback', desc: 'Get 10 revenge kills on whoever killed you last', stat: 'revenge', goal: 10, tokens: 150 },
+  { id: 'skyfall', name: 'Sky Fall', desc: 'Get 10 kills while in the air', stat: 'airKills', goal: 10, tokens: 200 },
+  { id: 'silent', name: 'Silent Assassin', desc: 'Get 25 kills with a suppressed gun', stat: 'silentKills', goal: 25, tokens: 200 },
+  { id: 'clutch', name: 'Clutch', desc: 'Get 10 kills with 25 health or less', stat: 'clutchKills', goal: 10, tokens: 200 },
+  { id: 'teamplayer', name: 'Team Player', desc: 'Win 5 team matches', stat: 'teamWins', goal: 5, tokens: 250 },
+  { id: 'collector', name: 'Collector', desc: 'Buy 10 cosmetics or banners', stat: 'bought', goal: 10, tokens: 150 },
+  { id: 'fashion', name: 'Fashionista', desc: 'Buy 25 cosmetics or banners', stat: 'bought', goal: 25, tokens: 400 },
 ];
 
 // Before tokens, these missions unlocked these items. Players who finished them keep the item.
@@ -117,7 +166,7 @@ const claimed = new Set(store.get('claimed', []));
 let tokens = store.get('tokens', 0);
 let streak = 0;
 
-export const getStat = (k) => (k === 'modesPlayed' ? modes.size : k === 'mapsPlayed' ? maps.size : stats[k] || 0);
+export const getStat = (k) => (k === 'modesPlayed' ? modes.size : k === 'mapsPlayed' ? maps.size : k === 'bought' ? owned.size : stats[k] || 0);
 export const missionDone = (m) => getStat(m.stat) >= m.goal;
 export const getTokens = () => tokens;
 
@@ -164,6 +213,7 @@ export function buy(slot, id) {
   tokens -= price;
   owned.add(slot + ':' + id);
   save();
+  for (const m of claimMissions()) onComplete(m); // Collector missions
   return true;
 }
 
@@ -206,7 +256,7 @@ function bump(updates, pre = null) {
 }
 
 export const track = {
-  kill({ weapon, weaponType, head, secondary, explosive, juggernaut, mode }) {
+  kill({ weapon, weaponType, head, secondary, explosive, juggernaut, mode, multi = 1, dist = 0, revenge, air, silent, lowHp }) {
     streak++;
     const u = { kills: 1, bestStreak: streak };
     if (head) u.headshots = 1;
@@ -218,14 +268,22 @@ export const track = {
     if (SHOTGUNS.includes(weapon)) u.shotgunKills = 1;
     if (mode === 'gungame') u.gungameKills = 1;
     if (mode === 'oitc') u.oitcKills = 1;
+    if (multi >= 2) u.multiKills = 1;
+    if (multi === 3) u.tripleKills = 1;
+    if (dist >= 40) u.longKills = 1;
+    if (revenge) u.revenge = 1;
+    if (air) u.airKills = 1;
+    if (silent) u.silentKills = 1;
+    if (lowHp) u.clutchKills = 1;
     bump(u);
   },
   died() { streak = 0; },
   tag() { bump({ tags: 1 }); },
-  matchEnd({ mode, map, won, survived, hillPoints }) {
+  matchEnd({ mode, map, won, survived, hillPoints, teams }) {
     streak = 0;
     const u = { matches: 1 };
     if (won) u.wins = 1;
+    if (won && teams) u.teamWins = 1;
     if (survived) u.survived = 1;
     if (hillPoints) u.hillPoints = hillPoints;
     bump(u, () => {

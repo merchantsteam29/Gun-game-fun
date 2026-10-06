@@ -1,6 +1,7 @@
 import { WEAPONS, SLOT_NAMES, SHORT } from './weapons.js';
 import { esc } from './util.js';
 import { Radar } from './radar.js';
+import { bannerHtml } from './banners.js';
 
 const $ = (id) => document.getElementById(id);
 const W_LABEL = SHORT;
@@ -250,10 +251,21 @@ export class Hud {
     }).join('');
   }
 
-  death(show, killerName, weapon, secs, status = null, head = false) {
+  // Death screen: the killer's banner with their name, the weapon and a headshot tag.
+  death(show, killerName, weapon, secs, status = null, head = false, killerColor = '#fff', banner = 'standard') {
     $('death').classList.toggle('hidden', !show);
-    if (!show) return;
-    $('death-by').innerHTML = killerName ? `by <b>${esc(killerName)}</b> · ${W_LABEL[weapon] || ''}${head ? ' · <span class="hs">HEADSHOT</span>' : ''}` : '';
+    if (!show) { this.lastDeath = ''; return; }
+    const key = [killerName, weapon, head, killerColor, banner].join('|');
+    if (key !== this.lastDeath) {
+      this.lastDeath = key;
+      const wl = W_LABEL[weapon] || weapon || '';
+      $('death-by').innerHTML = killerName
+        ? bannerHtml(banner, killerName, killerColor, 'KILLED YOU', `<span class="chip">${esc(wl)}</span>${head ? '<span class="chip hs">⌖ HEADSHOT</span>' : ''}`)
+        : `<div class="death-self">${weapon ? esc(wl) + ' · ' : ''}You took yourself out</div>`;
+      // Replay the slide-in each time a new death screen opens.
+      const card = $('death-by');
+      card.classList.remove('in'); void card.offsetWidth; card.classList.add('in');
+    }
     $('death-timer').textContent = status || (secs > 0 ? `Respawning in ${secs}` : 'Respawning…');
   }
 

@@ -1,5 +1,7 @@
 import { opts, setOpt, resetOpts } from './settings.js';
 import { store, esc } from './util.js';
+import { bannerOf, bannerHtml } from './banners.js';
+import { COVERING } from './cosmetics.js';
 import { COSMETICS, SLOT_LABELS, HAIR_COLORS, MISSIONS, getStat, missionDone, isOwned, priceOf, buy, getTokens, getCos, setCos } from './missions.js';
 
 const $ = (id) => document.getElementById(id);
@@ -64,13 +66,14 @@ const TABS = [
 export class SettingsUI {
   // game: for graphics changes; editLayout(done): opens the touch layout editor.
   // onCos(cos): called when the player equips a cosmetic (to tell the lobby).
-  constructor({ game, mobile, uiMode, uiFromUrl, editLayout, getColor, onCos }) {
+  constructor({ game, mobile, uiMode, uiFromUrl, editLayout, getColor, getName, onCos }) {
     this.game = game;
     this.mobile = mobile;
     this.uiMode = uiMode; // the mode actually in use right now
     this.uiFromUrl = uiFromUrl;
     this.editLayout = editLayout;
     this.getColor = getColor;
+    this.getName = getName || (() => 'Player');
     this.onCos = onCos;
     this.tab = 0;
     this.onClose = null;
@@ -199,6 +202,15 @@ export class SettingsUI {
       for (const slot of Object.keys(COSMETICS)) {
         const row = document.createElement('div');
         row.className = 'cz-row';
+        if (slot === 'banner') {
+          // Banners are picked from real previews; the big one shows how your kills will see you.
+          row.innerHTML = `<div class="set-label">Banner<small>Shown behind your name on the death screen of everyone you kill</small></div>
+            <div class="cz-bnr-preview">${bannerHtml(shown.banner, this.getName(), this.getColor(), 'KILLED YOU', '<span class="chip">Assault Rifle</span>')}</div>
+            <div class="cz-banners">${COSMETICS.banner.map((c) => {
+              const have = isOwned(slot, c.id), trying = t && t.slot === slot && t.id === c.id, b = bannerOf(c.id);
+              return `<button class="${cos.banner === c.id && !t ? 'sel' : ''} ${trying ? 'trying' : ''} ${have ? '' : 'locked'}" data-id="${c.id}" style="--bg:${b.bg}" title="${esc(c.name)}"><em>${b.emblem}</em><span>${esc(c.name)}</span>${have ? '' : `<small>🪙 ${c.price}</small>`}</button>`;
+            }).join('')}</div>`;
+        } else
         row.innerHTML = `<div class="set-label">${SLOT_LABELS[slot]}</div><div class="cz-items">${COSMETICS[slot].map((c) => {
           const have = isOwned(slot, c.id), trying = t && t.slot === slot && t.id === c.id;
           return `<button class="${cos[slot] === c.id && !t ? 'sel' : ''} ${trying ? 'trying' : ''} ${have ? '' : 'locked'}" data-id="${c.id}">${esc(c.name)}${have ? '' : `<small>🪙 ${c.price}</small>`}</button>`;
@@ -273,6 +285,13 @@ function drawAvatar(canvas, cos, body) {
   if (cos.back === 'sword') { R(30, 84, 6, 60, '#cfd5da'); R(24, 140, 18, 5, '#e8b923'); R(30, 145, 6, 18, '#141518'); }
   if (cos.back === 'staff') { R(38, 60, 5, 120, '#7a4f2a'); g.fillStyle = '#7dd3ff'; g.beginPath(); g.arc(cx + 40, 58, 8, 0, 7); g.fill(); }
   if (cos.back === 'guitar') { g.fillStyle = '#b5462a'; g.beginPath(); g.ellipse(cx - 38, 150, 16, 20, 0.2, 0, 7); g.fill(); R(-42, 96, 6, 46, '#53321a'); }
+  if (cos.back === 'quiver') { R(30, 70, 12, 70, '#7a4f2a'); for (let i = 0; i < 3; i++) { R(31 + i * 4, 58, 2, 14, '#53321a'); R(30 + i * 4, 52, 4, 7, i % 2 ? '#c0262d' : '#f4f4f4'); } }
+  if (cos.back === 'surfboard') { g.fillStyle = '#29c4b8'; g.beginPath(); g.ellipse(cx + 40, 118, 18, 76, 0.35, 0, 7); g.fill(); }
+  if (cos.back === 'shield') { g.fillStyle = '#53321a'; g.beginPath(); g.arc(cx - 40, 140, 30, 0, 7); g.fill(); g.strokeStyle = '#9aa1a8'; g.lineWidth = 4; g.stroke(); g.fillStyle = '#e8b923'; g.beginPath(); g.arc(cx - 40, 140, 7, 0, 7); g.fill(); }
+  if (cos.back === 'demon') {
+    g.fillStyle = '#3a0a12';
+    for (const s of [-1, 1]) { g.beginPath(); g.moveTo(cx + s * 30, 112); g.lineTo(cx + s * 80, 84); g.lineTo(cx + s * 72, 118); g.lineTo(cx + s * 62, 108); g.lineTo(cx + s * 58, 138); g.lineTo(cx + s * 46, 124); g.lineTo(cx + s * 30, 150); g.fill(); }
+  }
   // Legs, body, vest, arms
   R(-26, 168, 22, 40, '#2b2f36'); R(4, 168, 22, 40, '#2b2f36');
   R(-36, 106, 72, 66, body);
@@ -282,13 +301,15 @@ function drawAvatar(canvas, cos, body) {
   R(-50, 160, 14, 12, '#1e1f22'); R(36, 160, 14, 12, '#1e1f22');
   // Head
   const hx = -28, hy = 48, hs = 56;
-  const covered = ['helmet', 'cap', 'beanie', 'cowboy', 'tophat', 'viking', 'pirate', 'chef', 'wizard', 'sombrero'].includes(cos.hat);
+  const covered = COVERING.includes(cos.hat);
   if (cos.hair === 'long') R(hx - 4, hy + 6, hs + 8, 58, hair);
   if (cos.hair === 'ponytail') R(hx + hs - 4, hy + 18, 10, 40, hair);
+  if (cos.hair === 'mullet') R(hx - 2, hy + 30, hs + 4, 34, hair);
   if (cos.hair === 'afro' && !covered) { g.fillStyle = hair; g.beginPath(); g.arc(cx, hy + 10, 42, 0, 7); g.fill(); }
   R(hx, hy, hs, hs, skin);
   R(hx + 14, hy + 22, 8, 8, '#222'); R(hx + 34, hy + 22, 8, 8, '#222');
-  if (['short', 'ponytail'].includes(cos.hair) || (covered && ['mohawk', 'spiky', 'afro'].includes(cos.hair))) R(hx, hy - 6, hs, 12, hair);
+  if (cos.hair === 'bun' && !covered) { g.fillStyle = hair; g.beginPath(); g.arc(cx, hy - 14, 13, 0, 7); g.fill(); }
+  if (['short', 'ponytail', 'bun', 'mullet'].includes(cos.hair) || (covered && ['mohawk', 'spiky', 'afro'].includes(cos.hair))) R(hx, hy - 6, hs, 12, hair);
   if (cos.hair === 'long' && !covered) R(hx - 2, hy - 6, hs + 4, 12, hair);
   if (cos.hair === 'mohawk' && !covered) R(-6, hy - 24, 12, 26, hair);
   if (cos.hair === 'spiky' && !covered) {
@@ -303,6 +324,13 @@ function drawAvatar(canvas, cos, body) {
   if (cos.face === 'eyepatch') { R(hx + 30, hy + 19, 16, 13, '#141518'); R(hx, hy + 14, hs, 3, '#141518'); }
   if (cos.face === 'clown') { g.fillStyle = '#e8262d'; g.beginPath(); g.arc(cx, hy + 33, 7, 0, 7); g.fill(); }
   if (cos.face === 'gasmask') { R(hx + 4, hy + 16, hs - 8, 36, '#3b4030'); R(hx + 9, hy + 20, 14, 10, '#1a3a5a'); R(hx + 33, hy + 20, 14, 10, '#1a3a5a'); g.fillStyle = '#2c3036'; g.beginPath(); g.arc(cx, hy + 44, 9, 0, 7); g.fill(); }
+  if (cos.face === 'beard') { R(hx - 2, hy + 34, hs + 4, 26, '#4a3220'); R(hx - 2, hy + 18, 6, 18, '#4a3220'); R(hx + hs - 4, hy + 18, 6, 18, '#4a3220'); R(hx + 18, hy + 38, 20, 4, skin); }
+  if (cos.face === 'monocle') { g.strokeStyle = '#e8b923'; g.lineWidth = 3; g.beginPath(); g.arc(cx + 10, hy + 26, 9, 0, 7); g.stroke(); R(18, hy + 34, 2, 22, '#e8b923'); }
+  if (cos.face === 'visor') { R(hx - 2, hy + 18, hs + 4, 12, '#19d6ff'); R(hx - 2, hy + 22, hs + 4, 3, '#bff8ff'); }
+  if (cos.face === 'skull') {
+    R(hx + 2, hy + 4, hs - 4, hs - 4, '#ece6d6'); R(hx + 10, hy + 18, 14, 12, '#141518'); R(hx + 32, hy + 18, 14, 12, '#141518'); R(-3, hy + 33, 6, 7, '#141518');
+    for (let i = 0; i < 5; i++) R(hx + 12 + i * 7, hy + 44, 4, 6, '#141518');
+  }
   // Hat
   const hat = {
     helmet: () => { R(hx - 4, hy - 16, hs + 8, 24, body); R(hx - 6, hy + 4, hs + 12, 6, dark); },
@@ -341,6 +369,29 @@ function drawAvatar(canvas, cos, body) {
     sombrero: () => {
       g.fillStyle = '#d9a441'; g.beginPath(); g.ellipse(cx, hy + 2, 62, 10, 0, 0, 7); g.fill();
       R(hx + 8, hy - 26, hs - 16, 28, '#d9a441'); R(hx + 8, hy - 8, hs - 16, 6, '#c0262d');
+    },
+    beret: () => { g.fillStyle = '#8a1c24'; g.beginPath(); g.ellipse(cx + 6, hy - 2, 36, 12, -0.15, 0, 7); g.fill(); R(4, hy - 16, 5, 6, '#8a1c24'); },
+    propeller: () => {
+      R(hx, hy - 12, hs, 16, body); R(-2, hy - 26, 4, 14, '#2c3036');
+      R(-28, hy - 30, 26, 5, '#c0262d'); R(2, hy - 30, 26, 5, '#2f6fd8'); g.fillStyle = '#ffd23f'; g.beginPath(); g.arc(cx, hy - 28, 4, 0, 7); g.fill();
+    },
+    santa: () => {
+      g.fillStyle = '#c0262d'; g.beginPath(); g.moveTo(cx - 30, hy); g.lineTo(cx + 34, hy - 40); g.lineTo(cx + 30, hy); g.fill();
+      R(hx - 4, hy - 4, hs + 8, 12, '#f4f4f4'); g.fillStyle = '#f4f4f4'; g.beginPath(); g.arc(cx + 36, hy - 40, 8, 0, 7); g.fill();
+    },
+    antlers: () => {
+      for (const s of [-1, 1]) {
+        R(s * 18 - 2, hy - 30, 5, 32, '#8a6a44'); R(s > 0 ? 16 : -32, hy - 30, 16, 5, '#8a6a44'); R(s * 30 - 2, hy - 44, 5, 16, '#8a6a44'); R(s * 10 - 2, hy - 42, 5, 14, '#8a6a44');
+      }
+    },
+    samurai: () => {
+      g.fillStyle = '#1c1416'; g.beginPath(); g.moveTo(cx - 46, hy + 22); g.lineTo(cx - 32, hy - 4); g.lineTo(cx + 32, hy - 4); g.lineTo(cx + 46, hy + 22); g.fill();
+      R(hx - 4, hy - 18, hs + 8, 22, '#1c1416');
+      g.strokeStyle = '#e8b923'; g.lineWidth = 4; g.beginPath(); g.arc(cx, hy - 14, 24, Math.PI * 1.1, Math.PI * 1.9); g.stroke();
+    },
+    astro: () => {
+      g.fillStyle = 'rgba(191,230,255,0.28)'; g.strokeStyle = '#e8eef4'; g.lineWidth = 3; g.beginPath(); g.arc(cx, hy + 28, 46, 0, 7); g.fill(); g.stroke();
+      R(-40, hy + 66, 80, 10, '#f4f4f4');
     },
   }[cos.hat];
   if (hat) hat();
