@@ -257,12 +257,27 @@ becomes free again.
     resolve the report.
   - **Announce:** post a message, either Info or Important, for 1 hour up to "until cleared". Every player sees it at
     the top of the menu, and players in a match get it in chat when it's posted.
-  - **Staff** (owner only): appoint and remove moderators.
+  - **Appeals:** banned players can send one appeal per ban from their ban screen. Staff can **Unban** or **Deny**,
+    and denied players see it was denied.
+  - **Chat filter:** a built-in swear word and slur list (can be switched off) plus your own words. They're starred out
+    in lobby and party chat for everyone, and spellings like "sh1t" and "fuuuck" are caught too.
+  - **Log:** every staff action with its time, filterable by moderator.
+  - **Staff** (owner only): appoint and remove moderators, permanently or for 1, 7 or 30 days.
+
+  Auto-flags: when you host, your game reports players with impossible-looking stats (80%+ headshot kills over 15+ gun
+  kills, or 6+ kills a minute over 20+ kills). They show in Reports, marked as automatic.
+- **👁 Spectate:** staff can watch any match invisibly from the Online, Reports or player views. There's no player,
+  avatar or scoreboard entry.
+  - Follow camera: Q / E or click to switch players, mouse to orbit.
+  - Free camera: F, then WASD, Space / C for up and down, Shift to go faster.
+
+  Moderation tools still work while spectating.
 
   Every action is signed by the staff member who made it, and players only accept actions from staff ranked above
   them.
-- **In a match:** staff get a **Moderation** section in the pause menu to **warn**, **rename**, **mute** or **kick**
-  anyone in that match, even players without a gamertag.
+- **In a match:** staff get a **Moderation** section in the pause menu to **warn**, **rename**, **freeze** (they can't
+  move or shoot), **mute** or **kick** anyone in that match, even players without a gamertag. Staff can also **end**,
+  **restart** or **change the map** of the match, even when someone else is hosting.
   - Moderators can act on regular players.
   - The owner can also act on moderators.
   - Nobody can kick the host, whose browser runs the match.
