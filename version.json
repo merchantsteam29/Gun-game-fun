@@ -1,9 +1,10 @@
 {
-  "version": "2026.10.07.6",
+  "version": "2026.10.07.7",
   "notes": [
+    "Practice Range in the main menu: every weapon, moving targets, damage numbers",
     "New weapons: Flamethrower, Nailgun and the Frying Pan",
-    "Watch your killer and teammates while waiting to respawn",
-    "Weapon camos, match MVP card, next-map voting and medals"
+    "Weapon camos, match MVP card, next-map voting and medals",
+    "Watch your killer and teammates while waiting to respawn"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json",

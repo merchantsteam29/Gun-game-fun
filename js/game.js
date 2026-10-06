@@ -699,6 +699,7 @@ export class Game {
       this.hud.hit('kill', !!m.head);
       if (m.head) sfx.headKill(0.9); else sfx.kill(0.8);
       if (!this.teams || (pk && pv && pk.team !== pv.team)) {
+        const practice = this.rules.mode === 'practice'; // targets don't count for missions
         const W = WEAPONS[m.w];
         const revenge = m.v === this.lastKiller;
         const dist = this.remotes.get(m.v) ? this.remotes.get(m.v).pos.distanceTo(this.me.pos) : 0;
@@ -708,7 +709,7 @@ export class Game {
           multi: this.multi, streak: this.lifeKills, firstBlood: !!m.fb, victimStreak,
         }), { longshot: `${Math.round(dist)} m` });
         if (revenge) this.lastKiller = null; // one REVENGE per death
-        track.kill({
+        if (!practice) track.kill({
           weapon: m.w, weaponType: W && W.type, head: !!m.head, mode: this.rules.mode,
           secondary: SLOTS[1].includes(m.w),
           multi: this.multi, revenge, air: !this.me.onGround, lowHp: this.me.hp <= 25,
@@ -783,6 +784,15 @@ export class Game {
   }
 
   // Mission progress from the end-of-match result.
+  // Practice Range: show the damage we just dealt over the target.
+  showHit(vid, dmg, head) {
+    if (this.rules.mode !== 'practice' || !dmg) return;
+    const r = this.remotes.get(vid);
+    if (!r) return;
+    if (head) r.headPos(_c); else r.center(_c);
+    this.hud.dmgNum(_c, Math.round(dmg), !!head);
+  }
+
   // End-of-match map vote (one vote, final). i: 0..2
   voteMap(i) {
     const v = this.endInfo && this.endInfo.vote, now = performance.now();
@@ -913,6 +923,7 @@ export class Game {
       adsSpeed: w.adsSpeed || 1,
     });
     this.updateHud(dt, now);
+    this.hud.updateDmgNums(this.camera, dt);
   }
 
   // Spectating staff: follow a player from behind (mouse orbits, Q / E or click to switch), or
@@ -1313,6 +1324,7 @@ export class Game {
     }
     for (const [vid, h] of hits) {
       this.net.send({ t: 'hit', v: vid, dmg: Math.round(h.dmg), w: id, head: h.head });
+      this.showHit(vid, Math.round(h.dmg), h.head);
       this.hud.hit(h.head ? 'head' : null);
       (h.head ? sfx.head : sfx.hit)(0.8);
     }
@@ -1366,6 +1378,7 @@ export class Game {
       imp = [r2(_f.x * k), r2(Math.max(0.3, _f.y) * k * 0.4 + 4), r2(_f.z * k)];
     }
     this.net.send({ t: 'hit', v: best.id, dmg: back ? w.backstab : w.dmg, w: w.id, head: back, imp });
+    this.showHit(best.id, back ? w.backstab : w.dmg, false);
     this.fx.blood(best.center(_c));
     this.hud.hit(back ? 'head' : null);
     this.shake = Math.max(this.shake, 0.15);
@@ -1471,6 +1484,7 @@ export class Game {
           if (victim) {
             const dmg = Math.round(W.directDmg * (head && W.head ? W.head : 1));
             this.net.send({ t: 'hit', v: victim.id, dmg, w: p.kind, head });
+            this.showHit(victim.id, dmg, head);
             this.hud.hit(head || dmg >= 100 ? 'head' : null);
             (head ? sfx.head : sfx.hit)(0.8);
             if (W.bolt) { this.fx.blood(p.pos); this.net.send({ t: 'boom', pid: p.pid, p: arr(p.pos), k: p.kind }); this.removeProjectile(p); }
@@ -1600,6 +1614,7 @@ export class Game {
       const push = W.pull ? -11 * (0.4 + k) : 9 * k;
       const imp = [r2(dir.x * push), r2(dir.y * push * 0.3 + 3 * k), r2(dir.z * push)];
       this.net.send({ t: 'hit', v: rp.id, dmg: Math.round(W.splash * k), w: p.kind, imp });
+      this.showHit(rp.id, Math.round(W.splash * k), false);
       any = true;
     }
     if (any && !directId) { this.hud.hit(null); sfx.hit(0.8); }
@@ -1816,6 +1831,7 @@ export class Game {
 
   modeBar() {
     const mode = this.rules.mode, me = this.players.get(this.myId);
+    if (mode === 'practice') return `PRACTICE RANGE<span class="lim"> · Esc to pick any weapon · targets respawn</span>`;
     if (MODES[mode].redBlue && this.teamScore) {
       // The team scores themselves are in the score strip above; this line only adds objective info.
       let bar = `<span class="lim">${MODES[mode].short} · FIRST TO ${this.rules.scoreLimit}</span>`;
@@ -1883,7 +1899,7 @@ export class Game {
   // Two-sided score strip around the timer: your team vs theirs, or you vs the best other player.
   scoreStrip() {
     const mode = this.rules.mode, me = this.players.get(this.myId), lim = this.rules.scoreLimit;
-    if (!me) return null;
+    if (!me || mode === 'practice') return null;
     if (MODES[mode].redBlue && this.teamScore) {
       const mineT = me.team === 2 ? 2 : 1, other = 3 - mineT;
       const side = (t, label) => ({ label, score: this.teamScore[t - 1], pct: this.teamScore[t - 1] / lim, color: TEAM_COLORS[t] });
@@ -1947,7 +1963,8 @@ export class Game {
     hud.timer(this.timeLeft, null);
     hud.strip(this.scoreStrip());
     hud.modeBar(this.modeBar());
-    hud.lobby(this.net.code, this.players.size, `${MODES[this.rules.mode].short} · ${MAPS[this.mapId].name}`);
+    if (this.rules.mode === 'practice') hud.lobby(null, 0, 'Solo · offline');
+    else hud.lobby(this.net.code, this.players.size, `${MODES[this.rules.mode].short} · ${MAPS[this.mapId].name}`);
     hud.scoreboard(this.showScores && !this.matchOver, this.players, this.myId, this.rules.mode, (p) => this.colorFor(p));
     if (!me.alive && this.deathInfo && !this.matchOver) {
       const secs = Math.ceil(this.rules.respawn - (now - this.deathInfo.at) / 1000);

@@ -115,6 +115,17 @@ export class Net {
     conn.on('error', drop);
   }
 
+  // Single-player (Practice Range): the host logic runs in this browser with no network at all.
+  offline(name, color, opts, cos) {
+    this.isHost = true;
+    this.practice = true;
+    this.code = 'RANGE';
+    this.logic = new HostLogic((id, m) => this.sendTo(id, m), (m, except) => this.broadcast(m, except), opts);
+    this.logic.code = this.code;
+    this.logic.addPlayer('host', name, color, cos);
+    return Promise.resolve();
+  }
+
   // spec: a signed staff proof to watch invisibly instead of playing (see roles.js / host.js).
   join(code, name, color, cos, spec = null) {
     return new Promise((resolve, reject) => {

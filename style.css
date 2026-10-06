@@ -1228,3 +1228,15 @@ body.mobile .mvp-stats b { font-size: 15px; }
 #hud.dspec #crosshair, #hud.dspec #reload-hint { display: none; }
 #hud.dspec #death { top: 9%; transform: translateX(-50%) scale(0.78); transform-origin: top center; }
 #hud.dspec #death .big { font-size: 26px; }
+
+/* Practice Range */
+#dmg-nums { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.dmg-num { position: absolute; left: 0; top: 0; font-size: 20px; font-weight: 800; color: #fff; text-shadow: 0 2px 0 #000, 0 0 8px rgba(0,0,0,0.8); white-space: nowrap; will-change: transform, opacity; }
+.dmg-num.head { color: #ffd23f; font-size: 25px; }
+.pause-practice summary span { color: #4dff9a; }
+.pause-practice .check { display: flex; align-items: center; gap: 8px; margin: 6px 0 8px; font-size: 13px; }
+.pr-slot h4 { margin: 8px 0 4px; font-size: 11px; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; }
+.pr-grid { display: flex; flex-wrap: wrap; gap: 4px; }
+.pr-grid button { padding: 5px 9px; font-size: 12px; }
+.pr-grid button.sel { border-color: var(--accent); color: var(--accent); background: rgba(255,176,32,0.12); }
+#btn-practice .ic { color: #4dff9a; }

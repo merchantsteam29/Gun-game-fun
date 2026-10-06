@@ -59,6 +59,7 @@
   </div>
   <div id="kill-banner"></div>
   <div id="medals"></div>
+  <div id="dmg-nums"></div>
   <div id="spec-bar"></div>
   <div id="frozen-bar">🧊 FROZEN BY STAFF<small>You can't move or shoot</small></div>
   <div id="killfeed"></div>
@@ -147,6 +148,7 @@
         <button data-pane="missions"><span class="ic">★</span><span class="lbl">Missions<small>Earn tokens</small></span><b id="nav-missions-count"></b></button>
         <button data-pane="friends"><span class="ic">☻</span><span class="lbl">Friends<small>Gamertags &amp; party chat</small></span><b id="nav-friends-count" class="alert"></b></button>
         <button data-pane="mod" id="nav-mod" class="hidden"><span class="ic">🛡</span><span class="lbl">Mod Panel<small>Warn, ban, rename players</small></span></button>
+        <button id="btn-practice"><span class="ic">🎯</span><span class="lbl">Practice Range<small>Solo · every weapon · targets</small></span></button>
         <button id="btn-settings-menu"><span class="ic">⚙</span><span class="lbl">Settings<small>Controls, video, audio</small></span></button>
       </nav>
       <div class="rail-foot">
@@ -376,6 +378,11 @@
       <summary><span>🛡 Moderation</span><small>warn, rename, mute or kick players in this match</small></summary>
       <div id="mod-match" class="mod-match"><button data-mm="end">⏹ End match</button><button data-mm="restart">↻ Restart</button><select id="mm-map"></select><button data-mm="map">Change map</button></div>
       <div id="mod-list"></div>
+    </details>
+    <details id="pause-practice" class="pause-lo pause-practice hidden" open>
+      <summary><span>🎯 Practice</span><small>pick any weapon: it's equipped straight away</small></summary>
+      <label class="check"><input type="checkbox" id="pr-inf"> Infinite ammo</label>
+      <div id="pr-weapons"></div>
     </details>
     <details id="pause-report" class="pause-lo pause-report hidden">
       <summary><span>🚩 Report a player</span><small>staff will take a look</small></summary>

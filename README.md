@@ -14,7 +14,22 @@ Everything starts in the **Servers** tab:
   max players (2–12), fill with bots (bots leave as real players join), a region tag, map rotation, the game mode and
   the starting map. The host can switch public/private any time from the Host panel.
 
-The creator's browser is the host: if they leave, the server closes. The next match starts automatically on the next map.
+The creator's browser is the host: if they leave, the server closes.
+
+**End of match:** first the **MVP card** shows the best player of the match: kills, deaths, K/D, score, headshots and
+best streak, on their banner. Then (with map rotation on) everyone **votes for the next map** out of 3 random ones.
+- **Voting:** click a card, press 1 / 2 / 3, or use X / Y / B on a controller. One vote each, and it's final.
+- **Counts:** they update live for everyone.
+- **Winner:** most votes wins, and ties are settled at random.
+
+With rotation off, the same map comes back.
+
+**🎯 Practice Range** (main menu): solo and offline, on its own range map.
+- **Targets:** standing targets at 4, 10, 20, 30, 50 and 75 m, plus moving ones at 15, 25 and 40 m. Stripes on the
+  floor mark every 10 m.
+- **Damage numbers:** they pop up on every hit, gold for headshots.
+- **Weapons:** the pause menu (Esc) lists every weapon, and picking one equips it straight away.
+- **Rules:** an infinite-ammo toggle, no timer and no score limit. Practice kills don't count for missions.
 
 The server list uses a free public relay (no account needed), so public server names are visible to anyone.
 If the relay is down you can still create servers and join with codes.
@@ -93,19 +108,20 @@ Every gun has an **Attachments** panel on its card in Loadout (hover an option t
 
 | Slot | Options |
 |---|---|
-| Optic | Iron sights (fastest to aim) Â· Red dot Â· Holographic (steadier) Â· 2.5Ã— scope (magnified, slower to aim) Â· 6Ã— sniper scope (snipers / DMR / energy weapons) |
-| Muzzle | Standard Â· Suppressor (quiet, no muzzle flash for others, damage drops off a bit sooner) Â· Compensator (30% less recoil) |
-| Magazine | Standard Â· Extended (+50% ammo, slower reload, slightly slower movement) Â· Fast mag (25% faster reload) |
-| Underbarrel | None Â· Vertical grip (less recoil, steadier on the move) Â· Laser (tighter hip-fire) |
+| Optic | Iron sights (fastest to aim) · Red dot · Holographic (steadier) · 2.5× scope (magnified, slower to aim) · 6× sniper scope (snipers / DMR / energy weapons) |
+| Muzzle | Standard · Suppressor (quiet, no muzzle flash for others, damage drops off a bit sooner) · Compensator (30% less recoil) |
+| Magazine | Standard · Extended (+50% ammo, slower reload, slightly slower movement) · Fast mag (25% faster reload) |
+| Underbarrel | None · Vertical grip (less recoil, steadier on the move) · Laser (tighter hip-fire) |
+| Camo | Default · Crimson · Cobalt · Blackout · Arctic · Gold · Digital · Urban Digital · Desert · Tiger · Neon. Looks only: camos never change stats, and other players see yours. Saved per gun. |
 
 Which options a gun takes depends on its type (pistols can't take scopes, break-action shotguns have no muzzle
 slot, and so on). Attachments show on the gun model, and other players see yours too.
 
 | Slot | Options |
 |---|---|
-| Primary | Assault Rifle, Carbine, Battle Rifle, Burst Rifle, Laser Rifle, SMG, PDW, Vector, LMG, Minigun, DMR, Sniper Rifle, Anti-Materiel Rifle, Railgun, Shotgun, Auto Shotgun, Slug Shotgun, Double Barrel, Grenade Launcher, Rocket Launcher, Crossbow, Harpoon Gun |
-| Secondary | Pistol, Burst Pistol, Hand Cannon, Revolver, Auto Revolver, Machine Pistol, Micro SMG, Sawed-Off, Flare Gun |
-| Melee | Combat Knife, Katana, Baseball Bat (knockback), Fire Axe, Sledgehammer (one-shot, knockback) — backstabs one-shot |
+| Primary | Assault Rifle, Carbine, Battle Rifle, Burst Rifle, Laser Rifle, SMG, PDW, Vector, LMG, Minigun, DMR, Sniper Rifle, Anti-Materiel Rifle, Railgun, Shotgun, Auto Shotgun, Slug Shotgun, Double Barrel, Grenade Launcher, Rocket Launcher, Crossbow, Harpoon Gun, Flamethrower (short-range stream of fire, no headshot bonus) |
+| Secondary | Pistol, Burst Pistol, Hand Cannon, Revolver, Auto Revolver, Machine Pistol, Micro SMG, Sawed-Off, Flare Gun, Nailgun (rapid-fire nails that stick) |
+| Melee | Combat Knife, Katana, Baseball Bat (knockback), Fire Axe, Sledgehammer (one-shot, knockback), Frying Pan (two hits, *clang*) — backstabs one-shot |
 | Utility | Frag, Sticky, Throwing Knives, Smoke, Flashbang, Vortex (pulls players in) |
 
 ## Party chat
@@ -171,10 +187,15 @@ Inferno, Galaxy, Dragon Scale, Rainbow, Solid Gold and Diamond cost tokens (seve
   unsuppressed gun. Suppressors keep you off it.
 - **Score strip** around the timer: your team vs. the enemy team, or you vs. the best other player in free-for-all
   modes, with progress bars toward the score limit.
-- **Kill banner** for every kill, with multi-kill (double, triple, quad, mega) and streak (killing spree, rampage,
-  unstoppable, legendary, godlike) call-outs.
+- **Medals** for real kill events, queued one at a time near the top of the screen (clear of the crosshair): First
+  Blood, Double / Triple / Multi Kill, Killing Spree, Rampage, Unstoppable, Legendary, Godlike, Shutdown (ending
+  someone's streak), Revenge, Headshot, Melee Kill, Boom (explosives) and Longshot (40 m+).
+- **Kill confirm:** a small "ELIMINATED <name>" line under the crosshair for each of your kills.
+- **After dying:** the camera shows your killer. With a longer respawn (or once you're out in Last Man Standing), you
+  then watch living players (teammates in team modes) until you respawn. Q / E or click to switch.
 - **Reload ring** around the crosshair that fills as you reload.
 - Scoreboard (Tab) with rank and K/D; the end screen shows a podium for the top three.
+
 ## Settings
 
 Open **Settings** from the main menu or the pause menu. Everything is saved in your browser.

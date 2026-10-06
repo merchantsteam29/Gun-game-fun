@@ -31,6 +31,8 @@ export const MODES = {
   bounty: { name: 'Bounty Hunter', short: 'BOUNTY', teams: false, score: 30, time: 10, desc: 'Free-for-all. Whoever is in the lead has a bounty (shown in gold): killing them is worth 3 points.' },
   dom: { name: 'Domination', short: 'DOMINATION', teams: true, redBlue: true, dom: true, score: 200, time: 10, desc: 'Red vs Blue over three zones (A, B, C). Stand in a zone with only your team to capture it; every zone you own scores a point per second.' },
 };
+// Single-player only (main menu → Practice Range): no timer, no score limit, target dummies.
+MODES.practice = { name: 'Practice Range', short: 'PRACTICE', teams: false, practice: true, score: 0, time: 0, desc: 'Solo target practice with every weapon.' };
 export const MODE_ORDER = ['ffa', 'tdm', 'gungame', 'koth', 'infection', 'ctf', 'dom', 'hardpoint', 'killconfirmed', 'juggernaut', 'bounty', 'lms', 'oitc',
   'instagib', 'rotation', 'blades', 'boom', 'roulette', 'vampire'];
 const FLAG_RETURN_MS = 20000;
@@ -132,7 +134,7 @@ export class HostLogic {
     this.firstBlood = false;
     this.vote = null; // end-of-match map vote (see endMatch)
     this.mvp = null;
-    this.endsAt = Date.now() + this.s.timeLimit * 60000;
+    this.endsAt = this.s.timeLimit > 0 ? Date.now() + this.s.timeLimit * 60000 : Infinity; // 0 = no timer (practice)
     this.restartAt = 0;
     this.endTitle = '';
     this.teamScore = [0, 0, 0];
@@ -244,7 +246,7 @@ export class HostLogic {
   }
 
   info(p) {
-    return { id: p.id, name: p.name, color: p.color, team: p.team, k: p.kills, d: p.deaths, sc: Math.floor(p.score), bot: !!p.bot, cos: p.cos, mods: p.mods || {}, role: p.role || null };
+    return { id: p.id, name: p.name, color: p.color, team: p.team, k: p.kills, d: p.deaths, sc: Math.floor(p.score), bot: !!p.bot || !!p.dummy, cos: p.cos, mods: p.mods || {}, role: p.role || null };
   }
 
   addPlayer(id, name, color, cos) {
@@ -396,6 +398,12 @@ export class HostLogic {
   }
 
   spawn(p) {
+    if (p.dummy) { // practice target: back at its own spot, full health
+      p.alive = true;
+      p.hp = this.maxHp(p);
+      p.st = [p.home.x, p.home.y, p.home.z, p.home.yaw, 0, 'pan', 0, 0];
+      return;
+    }
     const s = this.pickSpawn(p);
     p.alive = true;
     p.hp = this.maxHp(p);
@@ -538,6 +546,34 @@ export class HostLogic {
     if (dead) this.kill(attacker, v, m.w, !!m.head);
   }
 
+  // ---------- Practice range ----------
+
+  // Target dummies: [name, x, z, moving side to side by this many meters (0 = still), speed]
+  addDummies(list) {
+    for (const [name, x, z, sway = 0, speed = 1] of list) {
+      const id = 'd' + ++this.botCount;
+      const p = this.record(id, name, sway ? '#ff8a1a' : '#e8edf3');
+      p.dummy = true;
+      p.home = { x, y: 0, z, yaw: Math.PI }; // facing the firing line (+z)
+      p.sway = sway;
+      p.speed = speed;
+      p.phase = Math.random() * 6;
+      p.cos = { hat: 'none', hair: 'none', face: 'none', back: 'none', banner: 'standard', hairColor: '#111111' };
+      p.mods = {};
+      this.players.set(id, p);
+      this.broadcast({ t: 'pjoin', ...this.info(p) });
+      this.spawn(p);
+    }
+  }
+
+  tickDummies(now) {
+    for (const p of this.players.values()) {
+      if (!p.dummy || !p.alive || !p.sway) continue;
+      const x = p.home.x + Math.sin(now / 1000 * p.speed + p.phase) * p.sway;
+      p.st = [x, p.home.y, p.home.z, p.home.yaw, 0, 'pan', 0, 2]; // flag 2: running pose
+    }
+  }
+
   // Suspicious stats → an automatic report for staff (once per player per lobby). Only gun kills
   // count, and modes where headshots / one-hit kills are normal are skipped.
   checkFlags(p, w, head) {
@@ -568,7 +604,7 @@ export class HostLogic {
     }
     v.streak = 0;
     if (enemyKill && !attacker.bot) this.checkFlags(attacker, w, head);
-    v.respawnAt = Date.now() + this.s.respawn * 1000;
+    v.respawnAt = Date.now() + (v.dummy ? 1200 : this.s.respawn * 1000);
     const fb = enemyKill && !this.firstBlood; // first kill of the match (medal)
     if (fb) this.firstBlood = true;
     this.broadcast(fb ? { t: 'kill', k: attacker.id, v: v.id, w, head, fb: 1 } : { t: 'kill', k: attacker.id, v: v.id, w, head });
@@ -634,6 +670,8 @@ export class HostLogic {
           if (enemyKill) attacker.score += 1;
         }
         this.checkInfectionEnd();
+        break;
+      case 'practice':
         break;
       default: // ffa and the kill-count variants
         if (this.s.mode === 'vampire' && enemyKill && attacker.alive) attacker.hp = Math.min(this.maxHp(attacker), attacker.hp + 30);
@@ -919,6 +957,7 @@ export class HostLogic {
       if (this.flags) this.tickFlags(now);
       if (this.dom && this.phase === 'playing') this.tickDom(rdt);
       for (const p of this.players.values()) if (p.bot && !p.frozen) p.bot.update(dt);
+      if (this.mode.practice) this.tickDummies(now);
     } else {
       if (this.vote && !this.vote.winner && now >= this.vote.endsAt) this.closeVote();
       if (now >= this.restartAt) this.startMatch(undefined, this.vote && this.vote.winner ? this.vote.winner : undefined);
@@ -930,7 +969,7 @@ export class HostLogic {
       s[p.id] = [r2(st[0]), r2(st[1]), r2(st[2]), r2(st[3]), r2(st[4]), st[5], st[6], p.alive ? 1 : 0,
         Math.ceil(p.hp), p.kills, p.deaths, st[7], p.team, Math.floor(p.score)];
     }
-    const msg = { t: 'snap', tm: now, s, tl:this.phase === 'playing' ? Math.max(0, Math.ceil((this.endsAt - now) / 1000)) : 0 };
+    const msg = { t: 'snap', tm: now, s, tl: this.endsAt === Infinity ? -1 : this.phase === 'playing' ? Math.max(0, Math.ceil((this.endsAt - now) / 1000)) : 0 };
     if (this.mode.redBlue) msg.ts = [Math.floor(this.teamScore[1]), Math.floor(this.teamScore[2])];
     if (this.s.mode === 'infection') msg.inf = this.infected ? 0 : Math.max(0, Math.ceil((this.infectAt - now) / 1000));
     if (this.s.mode === 'killconfirmed') msg.tg = this.tags.map((t) => [t.id, r2(t.x), r2(t.y), r2(t.z), t.team]);

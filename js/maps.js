@@ -118,6 +118,30 @@ function makeApi() {
 // ---------- Maps ----------
 
 export const MAPS = {
+  // Practice Range (not in MAP_ORDER: only used by the Practice Range). You stand behind the
+  // firing line at z = 22; targets stand 4–75 m away down the lane, with a stripe every 10 m.
+  range: {
+    name: 'Practice Range',
+    theme: { sky: '#9fb2c6', fog: [70, 160], hemi: ['#e4edf7', '#6a5d50', 2.0], sun: ['#fff1da', 2.4, [22, 40, 14]] },
+    bounds: 62,
+    hills: [[0, 0, 0, 4]],
+    build({ add, spawn }) {
+      add(-26, -1, -62, 26, 0, 30, 'floor');
+      add(-26, 0, -62, -25, 7, 30, 'concreteWall');
+      add(25, 0, -62, 26, 7, 30, 'concreteWall');
+      add(-26, 0, -62, 26, 9, -61, 'concreteWall');
+      add(-26, 0, 29, 26, 7, 30, 'concreteWall');
+      add(-24, 0, 19.6, -2, 1.1, 20, 'barrier'); // firing line (gap in the middle to walk through)
+      add(2, 0, 19.6, 24, 1.1, 20, 'barrier');
+      for (const d of [10, 20, 30, 40, 50, 60, 75]) add(-24, 0, 22 - d - 0.15, 24, 0.02, 22 - d + 0.15, 'barrier'); // distance stripes
+      for (const x of [-14, 14]) { add(x - 0.6, 0, -11, x + 0.6, 1.2, -9.8, 'crate'); add(x - 0.6, 0, -36, x + 0.6, 1.2, -34.8, 'crate'); }
+      add(-24, 0, 26, -20, 1.2, 28, 'sandbag');
+      add(20, 0, 26, 24, 1.2, 28, 'sandbag');
+      spawn(0, 0, 24);
+      spawn(-4, 0, 24);
+      spawn(4, 0, 24);
+    },
+  },
   warehouse: {
     name: 'Warehouse',
     theme: { sky: '#9fb2c6', fog: [45, 120], hemi: ['#e4edf7', '#6a5d50', 2.0], sun: ['#fff1da', 2.4, [22, 40, 14]] },

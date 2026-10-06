@@ -595,7 +595,7 @@ if (typeof Peer === 'undefined') status('Networking library failed to load. Chec
 // Chat lines for lobby events and messages (team / zombie colors match the scoreboard).
 function chatOnNet(m) {
   const colorOf = (id, fallback) => { const p = game.players.get(id); return p ? game.colorFor(p) : fallback; };
-  if (m.t === 'welcome') { chat.setLobby(true); chat.system(`Joined lobby ${net ? net.code : ''}. Say hi!`); }
+  if (m.t === 'welcome') { chat.setLobby(true); chat.system(net && net.practice ? 'Practice Range: pick any weapon from the pause menu (Esc).' : `Joined lobby ${net ? net.code : ''}. Say hi!`); }
   else if (m.t === 'chat') chat.add((ROLE_INFO[m.role] ? ROLE_INFO[m.role].icon + ' ' : '') + m.name, colorOf(m.id, m.color), moderation.clean(m.text), m.id === game.myId);
   else if (m.t === 'prole' || m.t === 'pmute' || m.t === 'pfrozen' || m.t === 'pname' || m.t === 'pjoin' || m.t === 'pleave') { renderModList(); renderReportList(); }
   else if (m.t === 'pjoin' && !m.bot) chat.system(`${m.name} joined`);
@@ -615,19 +615,21 @@ function newNet() {
 
 function enterGame() {
   $('menu').classList.add('hidden');
-  if (!game.spectating) social.setWhere('lobby', net.code); // friends see you're in a match and can join
+  if (!game.spectating && !net.practice) social.setWhere('lobby', net.code); // friends see you're in a match and can join
   $('pause-code').textContent = net.code;
-  $('pause-title').textContent = game.spectating ? 'SPECTATING' : net.isHost ? 'SERVER CREATED' : 'JOINED SERVER';
+  $('pause-title').textContent = net.practice ? 'PRACTICE RANGE' : game.spectating ? 'SPECTATING' : net.isHost ? 'SERVER CREATED' : 'JOINED SERVER';
   $('pause-vis').textContent = 'Code';
   $('btn-resume').textContent = game.padMode ? 'Press Ⓐ to play' : 'Click to play';
-  history.replaceState(null, '', '?lobby=' + net.code);
+  if (!net.practice) history.replaceState(null, '', '?lobby=' + net.code);
   showPause();
 }
 
 function showPause() {
   chat.setPaused(true);
   renderLoadout($('pause-loadout'));
-  $('btn-hostpanel').classList.toggle('hidden', !(net && net.isHost));
+  $('btn-hostpanel').classList.toggle('hidden', !(net && net.isHost) || !!(net && net.practice));
+  $('pause-code').parentElement.classList.toggle('hidden', !!(net && net.practice));
+  renderPractice();
   renderModList();
   renderReportList();
   $('pause').classList.remove('hidden');
@@ -645,6 +647,7 @@ game.onWelcome = async () => {
 
 // Pause-menu moderation: shown once the host has verified you as staff.
 function renderModList() {
+  if (net && net.practice) { $('pause-mod').classList.add('hidden'); return; }
   const me = game.players.get(game.myId);
   const mine = (me && me.role) || (game.spectating && roles.myRole());
   $('pause-mod').classList.toggle('hidden', !net || !mine);
@@ -872,6 +875,48 @@ moderation.onRename = (r) => {
   msg.className = 'tag-msg bad';
   msg.textContent = `${r.by} asked you to change your gamertag "${old}": ${r.reason}`;
 };
+
+// ---------- Practice Range (single player, offline) ----------
+
+// Targets: [name, x, z (you stand at z 24), side-to-side sway in meters, speed]
+const PRACTICE_TARGETS = [
+  ['4 m', 3, 20], ['10 m', -6, 12], ['20 m', -2, 2], ['30 m', 2, -8], ['50 m', 6, -28], ['75 m', -4, -53],
+  ['Mover · 25 m', 0, -3, 7, 1.1], ['Mover · 40 m', 0, -18, 9, 0.8], ['Fast · 15 m', 0, 7, 5, 2.2],
+];
+
+async function startPractice() {
+  if (busy || net) return;
+  if (moderation.myBan()) { moderation.lastBan = null; moderation.applyMine(); return; }
+  initAudio();
+  net = newNet();
+  await net.offline(settings.name || 'Player', settings.color, { mode: 'practice', map: 'range' }, getCos());
+  net.logic.applySettings({ infiniteAmmo: store.get('practiceInf', true), respawn: 1 });
+  net.logic.addDummies(PRACTICE_TARGETS);
+  enterGame();
+}
+$('btn-practice').onclick = () => startPractice();
+
+// Pause menu in practice: every weapon, equipped (and refilled) as soon as you pick it.
+function renderPractice() {
+  const on = !!(net && net.practice);
+  $('pause-practice').classList.toggle('hidden', !on);
+  if (!on) return;
+  $('pr-inf').checked = !!net.logic.s.infiniteAmmo;
+  $('pr-inf').onchange = () => { store.set('practiceInf', $('pr-inf').checked); net.logic.applySettings({ infiniteAmmo: $('pr-inf').checked }); };
+  $('pr-weapons').innerHTML = SLOTS.map((ids, slot) => `<div class="pr-slot"><h4>${slot + 1} · ${SLOT_NAMES[slot]}</h4><div class="pr-grid">${ids.map((id) =>
+    `<button class="${settings.loadout[slot] === id ? 'sel' : ''}" data-pw="${slot}:${id}">${esc(WEAPONS[id].name)}</button>`).join('')}</div></div>`).join('');
+  $('pr-weapons').querySelectorAll('[data-pw]').forEach((b) => {
+    b.onclick = () => {
+      const [slot, id] = b.dataset.pw.split(':');
+      settings.loadout[Number(slot)] = id;
+      store.set('loadout', settings.loadout);
+      game.nextLoadout = settings.loadout.slice();
+      if (game.me.alive) { game.setLoadout(settings.loadout); game.switchSlot(Number(slot), true); }
+      renderPractice();
+      renderLoadout($('pause-loadout'));
+    };
+  });
+}
 
 async function hostLobby() {
   if (busy) return;

@@ -63,7 +63,7 @@ export class Hud {
   }
 
   lobby(code, count, mapName) {
-    const html = `LOBBY <b>${esc(code)}</b> · ${count} player${count === 1 ? '' : 's'} · ${esc(mapName)}`;
+    const html = code === null ? `<b>PRACTICE</b> · ${esc(mapName)}` : `LOBBY <b>${esc(code)}</b> · ${count} player${count === 1 ? '' : 's'} · ${esc(mapName)}`;
     if (html !== this.lastLobby) { this.lastLobby = html; $('lobby-tag').innerHTML = html; }
   }
 
@@ -166,6 +166,30 @@ export class Hud {
     this.timers.kb = setTimeout(() => el.classList.remove('show'), 1800);
   }
 
+  // Practice Range: a floating number at each hit (gold for headshots), rising and fading.
+  dmgNum(pos, dmg, head) {
+    if (!this.nums) this.nums = [];
+    const el = document.createElement('div');
+    el.className = 'dmg-num' + (head ? ' head' : '');
+    el.textContent = head ? `${dmg} ⌖` : String(dmg);
+    $('dmg-nums').appendChild(el);
+    this.nums.push({ pos: pos.clone(), el, t: 0, dx: (Math.random() - 0.5) * 30 });
+    if (this.nums.length > 40) this.nums.shift().el.remove();
+  }
+
+  updateDmgNums(camera, dt) {
+    if (!this.nums || !this.nums.length) return;
+    const w = innerWidth, h = innerHeight;
+    for (const n of this.nums) {
+      n.t += dt;
+      const p = n.pos.clone().project(camera);
+      const vis = p.z < 1 && n.t < 1;
+      n.el.style.opacity = vis ? String(Math.min(1, 1.6 - n.t * 1.6)) : '0';
+      if (vis) n.el.style.transform = `translate(${(p.x * 0.5 + 0.5) * w + n.dx * n.t}px, ${(-p.y * 0.5 + 0.5) * h - n.t * 60}px) translate(-50%, -50%) scale(${n.t < 0.12 ? 1.4 - n.t * 3.3 : 1})`;
+    }
+    this.nums = this.nums.filter((n) => { if (n.t >= 1) { n.el.remove(); return false; } return true; });
+  }
+
   // Queue medals (ids from medals.js) — shown one at a time near the top of the screen.
   medals(ids, extra = {}) { if (ids.length) this.medalQ.add(ids, extra); }
 
@@ -251,7 +275,7 @@ export class Hud {
 
   timer(sec, leader) {
     const m = Math.floor(sec / 60), s = sec % 60;
-    $('timer').textContent = `${m}:${String(s).padStart(2, '0')}`;
+    $('timer').textContent = sec < 0 ? '∞' : `${m}:${String(s).padStart(2, '0')}`; // -1: no time limit (practice)
     $('leader').innerHTML = leader ? `Leader: <span style="color:${esc(leader.color)}">${esc(leader.name)}</span> · ${leader.sc}` : '';
   }
 
