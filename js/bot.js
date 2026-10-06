@@ -7,7 +7,7 @@ const DIFF = {
   normal: { react: 0.85, err: 0.11, turn: 4, see: 38, pause: 0.55, fov: 1.4, head: 0.03, forget: 0.25 },
   hard: { react: 0.5, err: 0.055, turn: 6.5, see: 52, pause: 0.3, fov: 1.6, head: 0.1, forget: 0.1 },
 };
-export const BOT_PRIMARIES = ['ar', 'smg', 'burst', 'lmg', 'shotgun', 'dmr', 'br', 'vector', 'doublebarrel', 'carbine', 'pdw', 'laser', 'autoshot', 'slug'];
+export const BOT_PRIMARIES = ['ar', 'smg', 'burst', 'lmg', 'shotgun', 'dmr', 'br', 'vector', 'doublebarrel', 'carbine', 'pdw', 'laser', 'autoshot', 'slug', 'flamethrower'];
 export const BOT_NAMES = ['Viper', 'Ghost', 'Razor', 'Blaze', 'Echo', 'Havoc', 'Nova', 'Raptor', 'Specter', 'Talon', 'Onyx', 'Fang', 'Jinx', 'Rook'];
 
 const angDiff = (a, b) => ((((b - a + Math.PI) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)) - Math.PI;
@@ -16,7 +16,9 @@ const v3 = () => ({ x: 0, y: 0, z: 0 });
 // Bot stats for a weapon; projectile weapons are approximated as heavy hitscan.
 function stats(id) {
   const w = WEAPONS[id] || WEAPONS.ar;
-  if (w.type === 'proj') return { ...w, type: 'gun', dmg: 65, head: 1, pellets: 1, spread: 0.03, range: 60, auto: false };
+  if (w.type === 'proj') return w.auto
+    ? { ...w, type: 'gun', dmg: w.directDmg, head: w.head || 1, pellets: 1, spread: 0.02, range: 60 } // e.g. the nailgun
+    : { ...w, type: 'gun', dmg: 65, head: 1, pellets: 1, spread: 0.03, range: 60, auto: false };
   return w;
 }
 

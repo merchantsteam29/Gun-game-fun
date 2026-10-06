@@ -72,6 +72,22 @@ const builders = {
     box(g, M.steel, 0.008, 0.038, 0.06, 0, 0.0, -0.785, 0.35);
     anchor(g, 'muzzle', 0, 0, -0.8);
   },
+  pan(g) {
+    cyl(g, M.woodDark, 0.018, 0.22, 0, 0, -0.03, 10); // handle
+    cyl(g, M.steel, 0.012, 0.08, 0, 0, -0.17, 8);
+    const pan = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.13, 0.04, 24), M.black);
+    pan.rotation.x = Math.PI / 2;
+    pan.rotation.z = Math.PI / 2;
+    pan.position.set(0, 0, -0.34);
+    g.add(pan);
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.005, 24), M.gunmetal);
+    base.rotation.x = Math.PI / 2;
+    base.rotation.z = Math.PI / 2;
+    base.position.set(-0.022, 0, -0.34);
+    g.add(base);
+    anchor(g, 'fore', 0, 0, -0.1);
+    anchor(g, 'muzzle', 0, 0, -0.48);
+  },
   bat(g) {
     const m = new THREE.Mesh(new THREE.CylinderGeometry(0.046, 0.019, 0.75, 14), M.wood);
     m.rotation.x = Math.PI / 2;
@@ -248,6 +264,9 @@ export function buildProjectile(kind) {
     nose.rotation.x = -Math.PI / 2;
     nose.position.z = -0.04;
     g.add(nose);
+  } else if (kind === 'nailgun') {
+    cyl(g, M.steel, 0.004, 0.07, 0, 0, 0, 6);
+    cyl(g, M.steel, 0.009, 0.004, 0, 0, 0.035, 8);
   } else if (kind === 'rocket') {
     cyl(g, M.olive, 0.05, 0.4, 0, 0, 0, 12);
     cyl(g, M.tape, 0.052, 0.03, 0, 0, -0.1, 12);

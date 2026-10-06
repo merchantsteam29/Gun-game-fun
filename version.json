@@ -1,10 +1,9 @@
 {
-  "version": "2026.10.07.5",
+  "version": "2026.10.07.6",
   "notes": [
-    "After dying, watch your killer and teammates until you respawn (longer respawns and Last Man Standing)",
-    "Weapon camos: pick one per gun in Loadout",
-    "Match MVP card and next-map voting",
-    "Medals: First Blood, multi-kills, streaks and more"
+    "New weapons: Flamethrower, Nailgun and the Frying Pan",
+    "Watch your killer and teammates while waiting to respawn",
+    "Weapon camos, match MVP card, next-map voting and medals"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json",

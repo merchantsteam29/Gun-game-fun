@@ -65,6 +65,7 @@ const KIND = {
   revolver: ['revolver', 'irons'], autorev: ['revolver', 'irons'],
   gl: ['launcher', 'irons'], rocket: ['launcher', 'irons'], flare: ['launcher', 'irons'],
   crossbow: ['bow', 'irons'], harpoon: ['bow', 'irons'],
+  flamethrower: ['heavy', 'irons'], nailgun: ['launcher', 'irons'],
 };
 
 export const modOptions = (id) => (KIND[id] ? PROFILES[KIND[id][0]] : null);

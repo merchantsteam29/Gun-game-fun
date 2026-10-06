@@ -266,6 +266,27 @@ export const WEAPONS = {
     spread: 0.03, moveSpread: 0.02, adsMul: 0, range: 400, adsFov: 38,
     recoil: 0.07, speedMul: 0.9, switch: 0.55, reloadStyle: 'mag',
   },
+  // ---------- Fun / experimental ----------
+  flamethrower: {
+    // Short range, continuous: many tiny hits that fall off fast. No headshot bonus.
+    id: 'flamethrower', name: 'Flamethrower', type: 'gun', auto: true, flame: true,
+    rate: 0.06, dmg: 11, head: 1, pellets: 1, mag: 90, reload: 3.2,
+    spread: 0.06, moveSpread: 0.02, adsMul: 0.8, range: 13, falloff: [4, 13, 0.35],
+    recoil: 0.002, speedMul: 0.85, switch: 0.55, reloadStyle: 'box',
+  },
+  nailgun: {
+    // Rapid-fire nails: small, fast projectiles that stick where they land.
+    id: 'nailgun', name: 'Nailgun', type: 'proj', auto: true, bolt: true, nail: true,
+    rate: 0.1, mag: 32, reload: 1.9,
+    projSpeed: 85, projGravity: 2, directDmg: 16, head: 1.6, nailSpread: 0.012,
+    spread: 0, moveSpread: 0, adsMul: 1,
+    recoil: 0.012, speedMul: 1.0, switch: 0.3, reloadStyle: 'mag',
+  },
+  pan: {
+    id: 'pan', name: 'Frying Pan', type: 'melee', style: 'chop',
+    rate: 0.7, dmg: 65, backstab: 100, range: 2.6, hitDelay: 0.24, knockback: 16,
+    spread: 0, moveSpread: 0, speedMul: 1.05, switch: 0.3,
+  },
   sledge: {
     id: 'sledge', name: 'Sledgehammer', type: 'melee', style: 'chop',
     rate: 1.2, dmg: 100, backstab: 150, range: 3.0, hitDelay: 0.4, knockback: 17,
@@ -282,9 +303,9 @@ export const WEAPONS = {
 // What players can pick. (Zombie Claws exist only in Infection.)
 export const SLOTS = [
   ['ar', 'carbine', 'br', 'burst', 'laser', 'smg', 'pdw', 'vector', 'lmg', 'minigun', 'dmr', 'sniper', 'amr', 'railgun',
-    'shotgun', 'autoshot', 'slug', 'doublebarrel', 'gl', 'rocket', 'crossbow', 'harpoon'],
-  ['pistol', 'bpistol', 'handcannon', 'revolver', 'autorev', 'mpistol', 'microsmg', 'sawedoff', 'flare'],
-  ['knife', 'katana', 'bat', 'axe', 'sledge'],
+    'shotgun', 'autoshot', 'slug', 'doublebarrel', 'gl', 'rocket', 'crossbow', 'harpoon', 'flamethrower'],
+  ['pistol', 'bpistol', 'handcannon', 'revolver', 'autorev', 'mpistol', 'microsmg', 'sawedoff', 'flare', 'nailgun'],
+  ['knife', 'katana', 'bat', 'axe', 'sledge', 'pan'],
   ['frag', 'sticky', 'tknife', 'smoke', 'flash', 'vortex'],
 ];
 export const SLOT_NAMES = ['Primary', 'Secondary', 'Melee', 'Utility'];
@@ -303,7 +324,7 @@ export const SHORT = {
   dmr: 'DMR', minigun: 'Minigun', rocket: 'Rocket', br: 'Battle', vector: 'Vector', doublebarrel: 'Dbl Barrel',
   railgun: 'Railgun', sledge: 'Sledge', vortex: 'Vortex', carbine: 'Carbine', pdw: 'PDW', laser: 'Laser', amr: 'AMR',
   autoshot: 'Auto-SG', slug: 'Slug SG', crossbow: 'Crossbow', harpoon: 'Harpoon', bpistol: 'B-Pistol', autorev: 'Auto-Rev',
-  microsmg: 'Micro SMG', flare: 'Flare',
+  microsmg: 'Micro SMG', flare: 'Flare', flamethrower: 'Flamer', nailgun: 'Nailgun', pan: 'Pan',
   handcannon: 'H-Cannon', sawedoff: 'Sawed-Off', katana: 'Katana', bat: 'Bat', flash: 'Flash', tknife: 'T-Knives',
 };
 
@@ -315,12 +336,13 @@ export const CLASSES = [
   ['Long range', ['dmr', 'sniper', 'amr', 'railgun']],
   ['Shotguns', ['shotgun', 'autoshot', 'slug', 'doublebarrel']],
   ['Launchers & bows', ['gl', 'rocket', 'crossbow', 'harpoon']],
+  ['Experimental', ['flamethrower']],
   ['Pistols', ['pistol', 'bpistol', 'handcannon']],
   ['Revolvers', ['revolver', 'autorev']],
   ['Machine pistols', ['mpistol', 'microsmg']],
-  ['Special', ['sawedoff', 'flare']],
+  ['Special', ['sawedoff', 'flare', 'nailgun']],
   ['Quick', ['knife', 'katana']],
-  ['Heavy', ['bat', 'axe', 'sledge']],
+  ['Heavy', ['bat', 'axe', 'sledge', 'pan']],
   ['Lethal', ['frag', 'sticky', 'tknife']],
   ['Tactical', ['smoke', 'flash', 'vortex']],
 ];

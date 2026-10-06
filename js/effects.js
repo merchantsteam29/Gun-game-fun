@@ -69,6 +69,15 @@ export class Effects {
     }
   }
 
+  // Flamethrower: a short stream of fire puffs along the shot.
+  flame(from, to) {
+    const n = 5;
+    for (let i = 0; i < n; i++) {
+      const p = from.clone().lerp(to, (i + Math.random()) / n);
+      this.burst(p, null, i < 2 ? '#ffe28a' : Math.random() < 0.5 ? '#ff8a1a' : '#ff4a12', 2, 1.2, 0.09 + i * 0.03, 0.22);
+    }
+  }
+
   impact(pos, normal) { this.burst(pos, normal, '#d8d0c0', 5, 2.5, 0.04, 0.35); }
   blood(pos) { this.burst(pos, null, '#b3121b', 8, 3, 0.06, 0.45); }
 

@@ -1305,10 +1305,10 @@ export class Game {
         h.head = h.head || best.head;
         hits.set(best.rp.id, h);
         this.fx.blood(end);
-      } else if (wh) {
+      } else if (wh && !w.flame) {
         this.fx.impact(end, _n.set(wh.nx, wh.ny, wh.nz));
       }
-      this.fx.tracer(muzzle, end, w.tracer);
+      if (w.flame) this.fx.flame(muzzle, end); else this.fx.tracer(muzzle, end, w.tracer);
       ends.push(arr(end));
     }
     for (const [vid, h] of hits) {
@@ -1383,7 +1383,9 @@ export class Game {
   launchProjectile(id) {
     const w = WEAPONS[id];
     const p = this.launchPoint(0.5);
-    const v = _f.clone().multiplyScalar(w.projSpeed);
+    const v = _f.clone();
+    if (w.nailSpread) v.x += (Math.random() - 0.5) * w.nailSpread * 2, v.y += (Math.random() - 0.5) * w.nailSpread * 2, v.z += (Math.random() - 0.5) * w.nailSpread * 2;
+    v.normalize().multiplyScalar(w.projSpeed);
     const pid = ++this.pid;
     this.spawnProjectile(id, p, v, true, this.myId, pid);
     this.net.send({ t: 'proj', pid, k: id, p: arr(p), v: arr(v) });
@@ -1634,6 +1636,7 @@ export class Game {
     const W = WEAPONS[m.w];
     for (const e of m.e || []) {
       const end = new THREE.Vector3(...e);
+      if (W && W.flame) { this.fx.flame(o, end); continue; }
       this.fx.tracer(o, end, W && W.tracer);
       this.fx.impact(end, null);
     }

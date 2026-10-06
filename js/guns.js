@@ -918,6 +918,42 @@ export const GUNS = {
       muzzle: [0.05, -0.333, 0], under: [-0.02, -0.14],
     };
   },
+  flamethrower(g) {
+    // Body, nozzle and a fuel tank under the barrel (the "mag", swapped on reload).
+    rbox(g, M.dark, 0.08, 0.1, 0.36, 0, 0.0, -0.08);
+    cyl(g, M.gunmetal, 0.028, 0.34, 0, 0.02, -0.4, 12);
+    cyl(g, M.black, 0.04, 0.06, 0, 0.02, -0.57, 12);
+    for (let i = 0; i < 4; i++) ring(g, M.black, 0.031, 0.006, 0, 0.02, -0.3 - i * 0.05, 14);
+    sphere(g, M.led, 0.008, 0, -0.012, -0.6, 6, 4); // pilot light
+    const mag = grp(g, 'mag', 0, -0.1, -0.12);
+    cyl(mag, M.red, 0.045, 0.24, 0, 0, 0, 14);
+    cyl(mag, M.black, 0.047, 0.02, 0, 0, -0.1, 14);
+    cyl(mag, M.black, 0.047, 0.02, 0, 0, 0.1, 14);
+    box(g, M.black, 0.03, 0.08, 0.03, 0, -0.06, -0.24); // tank strap
+    cyl(g, M.rubber, 0.012, 0.18, 0.05, -0.04, -0.15, 8); // hose
+    grip(g, M.poly, 0, -0.07, 0.06, 0.12, -0.25);
+    trigger(g, 0.03, -0.03);
+    rbox(g, M.poly, 0.05, 0.08, 0.2, 0, -0.01, 0.17); // stock
+    rbox(g, M.dark, 0.03, 0.06, 0.08, 0, 0.08, -0.12); // carry handle
+    anchor(g, 'fore', 0, -0.06, -0.3);
+    return { ironY: 0.12, irons: () => box(g, M.black, 0.01, 0.02, 0.012, 0, 0.11, -0.12), muzzle: [0.02, -0.6, 0] };
+  },
+  nailgun(g) {
+    // Chunky power-tool look: yellow body, nail strip as the magazine.
+    rbox(g, M.dark, 0.06, 0.12, 0.26, 0, 0.02, -0.08);
+    box(g, M.gold, 0.062, 0.05, 0.2, 0, 0.065, -0.08);
+    cyl(g, M.gunmetal, 0.018, 0.1, 0, 0.0, -0.25, 10);
+    box(g, M.black, 0.05, 0.05, 0.03, 0, 0.0, -0.31); // nose
+    const mag = grp(g, 'mag', 0, -0.05, -0.12);
+    box(mag, M.steel, 0.02, 0.025, 0.2, 0, 0, 0, 0.35);
+    box(mag, M.black, 0.024, 0.01, 0.2, 0, -0.016, 0, 0.35);
+    grip(g, M.rubber, 0, -0.06, 0.06, 0.12, -0.25);
+    trigger(g, 0.03, -0.02);
+    rbox(g, M.dark, 0.05, 0.05, 0.08, 0, -0.17, 0.07); // battery
+    box(g, M.gold, 0.052, 0.014, 0.082, 0, -0.14, 0.07);
+    anchor(g, 'fore', 0, -0.03, -0.16);
+    return { rail: [0.09, -0.1], small: true, ironY: 0.1, irons: () => box(g, M.black, 0.008, 0.014, 0.01, 0, 0.095, -0.22), muzzle: [0.0, -0.33, 0], under: [-0.02, -0.22], magMods: false };
+  },
   flare(g) {
     rbox(g, M.orange, 0.05, 0.06, 0.12, 0, 0.04, -0.02);
     cyl(g, M.orange, 0.03, 0.2, 0, 0.055, -0.17, 14);
