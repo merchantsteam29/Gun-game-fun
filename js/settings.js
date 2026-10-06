@@ -18,6 +18,11 @@ const DEFAULTS = {
   crossDot: true,
   showFps: false,
   minimap: true,
+  // PC-only extras from the secret Showroom (js/showroom.js)
+  renderScale: 1,
+  ultraShadows: false,
+  rgbCross: false,
+  srBg: 'studio',
   hudScale: 1,
   bobbing: 1,         // head and weapon bob amount
   btnScale: 1,        // touch button size

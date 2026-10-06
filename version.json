@@ -1,15 +1,13 @@
 {
-  "version": "2026.10.05.3",
+  "version": "2026.10.05.4",
   "notes": [
-    "Trimmed the look-alike modes (19 left) and maps (18 left)",
-    "Banners: your killer's banner shows on the death screen. 17 to collect",
-    "16 new accessories (Santa hat, samurai helmet, space helmet, skull mask, demon wings and more) and 13 new missions"
+    "PC players: there's a secret hidden in the menus now. Old-school gamers know the code"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json",
     "js/audio.js", "js/banners.js", "js/bot.js", "js/chat.js", "js/cosmetics.js", "js/effects.js", "js/game.js", "js/gamepad.js", "js/guns.js", "js/host.js",
     "js/hostpanel.js", "js/hud.js", "js/main.js", "js/maps.js", "js/missions.js", "js/radar.js", "js/mods.js", "js/modelkit.js", "js/models.js", "js/nav.js",
-    "js/net.js", "js/physics.js", "js/relay.js", "js/remote.js", "js/rig.js", "js/servers.js", "js/settings.js", "js/settingsui.js", "js/social.js",
+    "js/net.js", "js/physics.js", "js/relay.js", "js/remote.js", "js/rig.js", "js/servers.js", "js/settings.js", "js/settingsui.js", "js/showroom.js", "js/social.js",
     "js/touch.js", "js/updater.js", "js/util.js", "js/version.js", "js/viewmodel.js", "js/voice.js", "js/weapons.js"
   ]
 }

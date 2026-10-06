@@ -10,7 +10,7 @@ import { HostPanel } from './hostpanel.js';
 import { modelQuality } from './models.js';
 import { SettingsUI } from './settingsui.js';
 import { getCos, MISSIONS, missionDone, getTokens } from './missions.js';
-import { opts } from './settings.js';
+import { opts, onOpts } from './settings.js';
 import { ServerBrowser, ServerAnnouncer, REGIONS, guessRegion } from './servers.js';
 import { Updater } from './updater.js';
 import { esc } from './util.js';
@@ -18,6 +18,7 @@ import { Chat } from './chat.js';
 import { GamepadInput } from './gamepad.js';
 import { Social, TAG_RULES, validTag } from './social.js';
 import { Voice } from './voice.js';
+import { Showroom } from './showroom.js';
 import { MODS, MOD_SLOTS, MOD_SLOT_NAMES, modOptions, hasMods, cleanMods, cleanModMap, statsFor } from './mods.js';
 
 const $ = (id) => document.getElementById(id);
@@ -56,6 +57,8 @@ if (mobile) {
   document.querySelector('#death .small').innerHTML = 'Tap <kbd>II</kbd> to change your loadout';
 }
 
+// PC-only Ultra shadows (secret Showroom setting) take effect from the next map built.
+onOpts((o) => { if (!mobile) quality.shadowSize = o.ultraShadows ? 4096 : 2048; });
 const game = new Game($('game'), { mobile, tablet });
 game.setMods(settings.mods);
 window.game = game; // handy for debugging from the console
@@ -698,6 +701,14 @@ $('btn-resume').onclick = () => {
 $('btn-leave').onclick = () => leave();
 
 // Settings: from the main menu or the pause menu; returns to whichever opened it.
+// Secret PC-only Showroom (Konami code on the menus).
+new Showroom({
+  game, mobile,
+  getColor: () => settings.color,
+  getName: () => settings.name || 'Player',
+  getLoadout: () => settings.loadout,
+  getMods: () => settings.mods,
+});
 settingsUI = new SettingsUI({
   game, mobile, uiMode, uiFromUrl: !!uiFromUrl,
   editLayout: (done) => touch.edit(done),

@@ -23,7 +23,8 @@ export class Hud {
   show(v) { this.el.classList.toggle('hidden', !v); }
 
   applyOpts(o) {
-    this.crosshair.style.setProperty('--cross', o.crossColor);
+    this.crosshair.style.setProperty('--cross', o.rgbCross ? '#ff3b3b' : o.crossColor);
+    this.crosshair.classList.toggle('rgb', !!o.rgbCross);
     this.crosshair.style.setProperty('--cross-scale', o.crossSize);
     this.crosshair.classList.toggle('nodot', !o.crossDot);
     $('fps').classList.toggle('hidden', !o.showFps);

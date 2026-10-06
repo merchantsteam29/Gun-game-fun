@@ -228,6 +228,26 @@ This runs over the same free public relays as the server list (no account or ser
 message and status update is signed with a key stored on your device, so nobody can send things as you. Clearing the
 browser's site data loses that key (and with it your gamertag on that device). A gamertag nobody uses for 120 days
 becomes free again.
+## Secret: Showroom (PC only)
+
+On a computer, type the Konami code on any menu: **↑ ↑ ↓ ↓ ← → ← → B A**. It opens the **Showroom**, a full-screen
+3D viewer of your character exactly as others see it (color, cosmetics, banner, and guns with your attachments):
+
+- **Mouse:** left-drag to rotate, right-drag (or Shift-drag) to pan, scroll to zoom, double-click to reset.
+- **Model:** any of your loadout guns (keys 1–4) or any weapon in the game, plus poses (idle, walk, sprint, crouch,
+  reload, jump), actions (fire, melee swing, throw, headshot) and look up / down.
+- **Scene:** backdrops (Studio, Night, Sunset, Neon, Snow, Green screen), light angle, auto-spin (Space), floor grid,
+  name tag.
+- **Photo:** **P** saves a PNG of the view and **H** hides the UI.
+- **PC settings** (these apply to the game too):
+  - Render scale from 50% to 200% (supersampling).
+  - Field of view unlocked up to 130°.
+  - Ultra 4K shadows.
+  - A rainbow crosshair.
+  - FPS counter.
+
+Phones, tablets and the touch interface never open it.
+
 ## Run locally
 
 `node serve.js` → http://localhost:8080

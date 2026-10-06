@@ -168,7 +168,8 @@ export class Game {
 
   applyGfx() {
     const r = this.renderer, low = this.lowGfx;
-    r.setPixelRatio(Math.min(devicePixelRatio, low ? 1 : this.tablet ? 1.5 : this.mobile ? 1.25 : 2));
+    const base = Math.min(devicePixelRatio, low ? 1 : this.tablet ? 1.5 : this.mobile ? 1.25 : 2);
+    r.setPixelRatio(Math.max(0.5, Math.min(3, base * (this.mobile ? 1 : opts.renderScale || 1)))); // render scale: PC-only Showroom setting
     modelQuality.remoteShadows = !low && !this.mobile; // other players' shadows are the priciest part on phones
     if (r.shadowMap.enabled === !low) return;
     r.shadowMap.enabled = !low;
