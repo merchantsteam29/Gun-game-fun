@@ -1,8 +1,7 @@
 {
-  "version": "2026.10.06.3",
+  "version": "2026.10.06.4",
   "notes": [
-    "Mod Panel for staff: warnings, bans and forced gamertag changes",
-    "Moderators can now warn and rename players in a match"
+    "Fix: the Mod Panel and staff badge now show up for staff right after the game loads"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json",

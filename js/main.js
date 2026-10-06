@@ -406,8 +406,14 @@ window.addEventListener('keyup', (e) => { if (e.code === 'KeyV') setTimeout(rend
 window.voice = voice; // debugging
 $('pt-follow').onclick = () => { if ($('pt-follow').dataset.code) { $('join-code').value = $('pt-follow').dataset.code; joinLobby(); } };
 
-social.onChange = () => { renderFriends(); applyGamertag(); if (social.tag !== lastTag) { lastTag = social.tag; moderation.sync(); renderModNav(); } };
-let lastTag = social.tag;
+social.onChange = () => {
+  renderFriends();
+  applyGamertag();
+  // Gamertag claimed / released, or this device's key just loaded: the staff role may have changed.
+  const role = roles.myRole();
+  if (social.tag !== lastTag || role !== lastRole) { lastTag = social.tag; lastRole = role; roles.changed(); }
+};
+let lastTag = social.tag, lastRole = null;
 social.onNotice = (text) => toast(text);
 // Party chat also shows up in the match chat; "/p message" in match chat talks to your party.
 social.onPartyChat = ({ from, text, mine }) => { if (from && net && !mine) chat.add(`[Party] ${from}`, '#c9a2ff', text); };
@@ -669,6 +675,9 @@ function renderStaff() {
     mods.map((m) => `<div class="fr-row"><span class="fr-name">${esc(m.tag)}</span>${badge('mod')}${owner ? `<button class="ghost fr-x" data-unmod="${esc(m.tag)}" title="Remove moderator">✕</button>` : ''}</div>`).join('') +
     (mods.length ? '' : '<div class="note">No moderators yet.</div>');
   $('staff-add').classList.toggle('hidden', !owner);
+  // Signed in with a staff gamertag on a device that doesn't hold its key (another browser).
+  const wrongDevice = social.tag && roles.roleOfTag(social.tag) && !roles.myRole() && social.pub;
+  $('staff-msg').textContent = wrongDevice ? `You're ${social.tag}, but this browser doesn't have the key that gamertag was claimed with, so staff tools are off here. Use the browser you claimed it on.` : $('staff-msg').textContent;
   $('staff-list').querySelectorAll('[data-unmod]').forEach((b) => {
     b.onclick = async () => {
       if (!confirm(`Remove ${b.dataset.unmod} as a moderator?`)) return;

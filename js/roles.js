@@ -57,6 +57,9 @@ class Roles {
     social.relay.subscribe(P + '+');
     const resub = social.relay.onConnect;
     social.relay.onConnect = () => { if (resub) resub(); social.relay.subscribe(P + '+'); };
+    // This device's key loads asynchronously; until it has, myRole() can't match it. Re-check
+    // everything (menu, badges, mod panel) once it's ready.
+    social.ready.then(() => this.changed());
   }
 
   async receive(k, text) {

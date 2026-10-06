@@ -71,6 +71,7 @@ export class Social {
 
   async init() {
     await this.loadKeys();
+    this.changed(); // key loaded: anything that depends on it (staff role) can update now
     await this.relay.start();
     if (this.tag) this.goOnline();
     // Tell friends you left (best effort); otherwise you show as offline after ~75 s.
