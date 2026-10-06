@@ -1163,3 +1163,23 @@ body.mobile #death .big { font-size: 20px; }
 .mp-biglog a { color: var(--accent); }
 .fr-row.expired { opacity: 0.5; }
 #mp-mod-time { padding: 6px 8px; }
+/* Medals (queue near the top, clear of the crosshair) */
+#medals { position: absolute; left: 50%; top: 19%; transform: translateX(-50%); pointer-events: none; height: 64px; width: 0; }
+.medal { position: absolute; left: 50%; top: 0; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; white-space: nowrap;
+  padding: 6px 18px 6px 8px; border-radius: 999px; background: linear-gradient(90deg, rgba(8,10,14,0.85), rgba(8,10,14,0.55));
+  border: 1px solid var(--mc, #fff); box-shadow: 0 0 22px color-mix(in srgb, var(--mc, #fff) 35%, transparent);
+  animation: medal-in 0.32s cubic-bezier(.2,1.4,.4,1) both; }
+.medal.out { animation: medal-out 0.4s ease-in forwards; }
+.medal-ico { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 19px; font-weight: 800;
+  color: #0b0d11; background: var(--mc, #fff); letter-spacing: -2px; font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Chakra Petch', sans-serif; }
+.medal-txt b { display: block; font-size: 19px; letter-spacing: 3px; color: var(--mc, #fff); text-shadow: 0 2px 3px #000; }
+.medal-txt small { display: block; font-size: 11px; color: var(--muted); letter-spacing: 1px; }
+.medal.t1 { --mc: #e8edf3; }
+.medal.t2 { --mc: #4fc3ff; }
+.medal.t3 { --mc: #ffb020; }
+.medal.t4 { --mc: #ff4fd8; }
+@keyframes medal-in { from { opacity: 0; transform: translateX(-50%) scale(1.6); } to { opacity: 1; transform: translateX(-50%) scale(1); } }
+@keyframes medal-out { to { opacity: 0; transform: translateX(-50%) translateY(-14px) scale(0.9); } }
+body.mobile #medals { top: 22%; }
+body.mobile .medal-ico { width: 30px; height: 30px; font-size: 14px; }
+body.mobile .medal-txt b { font-size: 14px; }

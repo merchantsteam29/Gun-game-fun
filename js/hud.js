@@ -3,6 +3,8 @@ import { esc } from './util.js';
 import { Radar } from './radar.js';
 import { bannerHtml } from './banners.js';
 import { badge, ROLE_INFO } from './roles.js';
+import { MedalQueue } from './medals.js';
+import { sfx } from './audio.js';
 
 const roleIcon = (r) => (ROLE_INFO[r] ? `<b class="role-ico ${r}" title="${ROLE_INFO[r].label}">${ROLE_INFO[r].icon}</b>` : '');
 
@@ -21,6 +23,7 @@ export class Hud {
     this.timers = {};
     this.lastSlots = '';
     this.radarView = new Radar($('radar'));
+    this.medalQ = new MedalQueue($('medals'), (d) => sfx.medal(0.2 + d.tier * 0.06));
   }
 
   show(v) { this.el.classList.toggle('hidden', !v); }
@@ -150,18 +153,20 @@ export class Hud {
   }
 
   // Center-screen banner for each of your kills, with multi-kill and streak call-outs.
-  killBanner(name, color, head, multi, streak) {
-    const MULTI = { 2: 'DOUBLE KILL', 3: 'TRIPLE KILL', 4: 'QUAD KILL' };
-    const STREAK = { 3: 'KILLING SPREE', 5: 'RAMPAGE', 7: 'UNSTOPPABLE', 10: 'LEGENDARY', 15: 'GODLIKE' };
-    const call = multi >= 5 ? 'MEGA KILL' : MULTI[multi] || STREAK[streak] || '';
+  // Small "ELIMINATED <name>" line under the crosshair for each of your kills. Call-outs like
+  // DOUBLE KILL / RAMPAGE are medals now (see medals()).
+  killBanner(name, color, head) {
     const el = $('kill-banner');
-    el.innerHTML = `${call ? `<div class="kb-call">${call}</div>` : ''}<div class="kb-main"><span class="kb-x">${head ? '⌖' : '✕'}</span>ELIMINATED <b style="color:${esc(color)}">${esc(name)}</b></div>${streak > 1 ? `<div class="kb-streak">${streak} KILL STREAK</div>` : ''}`;
+    el.innerHTML = `<div class="kb-main"><span class="kb-x">${head ? '⌖' : '✕'}</span>ELIMINATED <b style="color:${esc(color)}">${esc(name)}</b></div>`;
     el.classList.remove('show');
     void el.offsetWidth;
     el.classList.add('show');
     clearTimeout(this.timers.kb);
     this.timers.kb = setTimeout(() => el.classList.remove('show'), 1800);
   }
+
+  // Queue medals (ids from medals.js) — shown one at a time near the top of the screen.
+  medals(ids, extra = {}) { if (ids.length) this.medalQ.add(ids, extra); }
 
   // Spectating staff: who you're watching, and the controls.
   spectate(name, free) {

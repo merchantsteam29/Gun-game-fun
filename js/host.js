@@ -127,6 +127,7 @@ export class HostLogic {
 
   beginMatchState() {
     this.phase = 'playing';
+    this.firstBlood = false;
     this.endsAt = Date.now() + this.s.timeLimit * 60000;
     this.restartAt = 0;
     this.endTitle = '';
@@ -555,7 +556,9 @@ export class HostLogic {
     if (enemyKill) attacker.kills++;
     if (enemyKill && !attacker.bot) this.checkFlags(attacker, w, head);
     v.respawnAt = Date.now() + this.s.respawn * 1000;
-    this.broadcast({ t: 'kill', k: attacker.id, v: v.id, w, head });
+    const fb = enemyKill && !this.firstBlood; // first kill of the match (medal)
+    if (fb) this.firstBlood = true;
+    this.broadcast(fb ? { t: 'kill', k: attacker.id, v: v.id, w, head, fb: 1 } : { t: 'kill', k: attacker.id, v: v.id, w, head });
 
     switch (this.s.mode) {
       case 'tdm':

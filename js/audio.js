@@ -76,6 +76,7 @@ export const sfx = {
   throw: play((o) => { nz(o, { dur: 0.25, f0: 500, f1: 2000, type: 'bandpass', q: 1.5, gain: 0.4, attack: 0.08 }); }),
   bounce: play((o) => { tone(o, { dur: 0.06, f0: 900, f1: 500, type: 'triangle', gain: 0.4 }); }),
   hit: play((o) => { tone(o, { dur: 0.05, f0: 1900, gain: 0.35, type: 'triangle' }); }),
+  medal: play((o) => { tone(o, { dur: 0.1, f0: 660, gain: 0.3, type: 'triangle' }); tone(o, { dur: 0.1, f0: 990, gain: 0.3, type: 'triangle', delay: 0.07 }); tone(o, { dur: 0.22, f0: 1320, gain: 0.3, type: 'triangle', delay: 0.14 }); }),
   kill: play((o) => { tone(o, { dur: 0.12, f0: 880, gain: 0.35, type: 'triangle' }); tone(o, { dur: 0.2, f0: 1320, gain: 0.35, type: 'triangle', delay: 0.08 }); }),
   hurt: play((o) => { nz(o, { dur: 0.15, f0: 400, f1: 120, gain: 0.7 }); }),
   empty: play((o) => { tone(o, { dur: 0.03, f0: 1500, gain: 0.3, type: 'square' }); }),

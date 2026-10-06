@@ -10,6 +10,7 @@ import { RemotePlayer, netClock } from './remote.js';
 import { Effects } from './effects.js';
 import { Hud } from './hud.js';
 import { sfx } from './audio.js';
+import { medalsFor } from './medals.js';
 import { buildProjectile, modelQuality } from './models.js';
 import { clamp, esc, store } from './util.js';
 import { opts, onOpts } from './settings.js';
@@ -106,6 +107,7 @@ export class Game {
     });
 
     this.remotes = new Map(); // id -> RemotePlayer
+    this.streaks = new Map(); // id -> kills since their last death (SHUTDOWN medals)
     this.players = new Map(); // id -> {id, name, color, k, d}
     this.projectiles = [];
     this.net = null;
@@ -388,6 +390,7 @@ export class Game {
     for (const r of this.remotes.values()) r.dispose();
     this.remotes.clear();
     this.players.clear();
+    this.streaks.clear();
     for (const p of this.projectiles) this.scene.remove(p.mesh);
     this.projectiles = [];
     this.fx.clear();
@@ -588,6 +591,7 @@ export class Game {
         this.hud.scope(false);
         break;
       case 'start':
+        this.streaks.clear();
         this.loadMap(m.map);
         this.matchOver = false;
         this.endInfo = null;
@@ -661,30 +665,34 @@ export class Game {
     const pk = this.players.get(m.k), pv = this.players.get(m.v);
     const k = pk && { ...pk, color: this.colorFor(pk) }, v = pv && { ...pv, color: this.colorFor(pv) };
     if (v) this.hud.feed(k, v, m.w, m.head, m.k === this.myId || m.v === this.myId);
+    // Everyone's current kill streak (for SHUTDOWN medals), from the kills we've seen.
+    const victimStreak = this.streaks.get(m.v) || 0;
+    if (m.k !== m.v) this.streaks.set(m.k, (this.streaks.get(m.k) || 0) + 1);
+    this.streaks.set(m.v, 0);
     if (m.k === this.myId && m.v !== this.myId && v) {
       const t = performance.now();
       this.lifeKills = (this.lifeKills || 0) + 1;
       this.multi = t - (this.lastKillAt || 0) < 4000 ? (this.multi || 1) + 1 : 1;
       this.lastKillAt = t;
-      this.hud.killBanner(v.name, v.color, !!m.head, this.multi, this.lifeKills);
+      this.hud.killBanner(v.name, v.color, !!m.head);
       this.hud.hit('kill', !!m.head);
-      if (m.head) {
-        this.headStreak = (this.headStreak || 0) + 1;
-        this.hud.headshot(this.headStreak);
-        sfx.headKill(0.9);
-      } else {
-        this.headStreak = 0;
-        sfx.kill(0.8);
-      }
+      if (m.head) sfx.headKill(0.9); else sfx.kill(0.8);
       if (!this.teams || (pk && pv && pk.team !== pv.team)) {
         const W = WEAPONS[m.w];
+        const revenge = m.v === this.lastKiller;
+        const dist = this.remotes.get(m.v) ? this.remotes.get(m.v).pos.distanceTo(this.me.pos) : 0;
+        const explosive = ['gl', 'rocket', 'flare', 'frag', 'sticky', 'vortex'].includes(m.w);
+        this.hud.medals(medalsFor({
+          head: !!m.head, melee: !!W && W.type === 'melee', explosive, dist, revenge,
+          multi: this.multi, streak: this.lifeKills, firstBlood: !!m.fb, victimStreak,
+        }), { longshot: `${Math.round(dist)} m` });
+        if (revenge) this.lastKiller = null; // one REVENGE per death
         track.kill({
           weapon: m.w, weaponType: W && W.type, head: !!m.head, mode: this.rules.mode,
           secondary: SLOTS[1].includes(m.w),
-          multi: this.multi, revenge: m.v === this.lastKiller, air: !this.me.onGround, lowHp: this.me.hp <= 25,
-          silent: !!(WEAPONS[m.w] && WEAPONS[m.w].type === 'gun' && this.W(m.w).quiet),
-          dist: this.remotes.get(m.v) ? this.remotes.get(m.v).pos.distanceTo(this.me.pos) : 0,
-          explosive: ['gl', 'rocket', 'flare', 'frag', 'sticky', 'vortex'].includes(m.w),
+          multi: this.multi, revenge, air: !this.me.onGround, lowHp: this.me.hp <= 25,
+          silent: !!(W && W.type === 'gun' && this.W(m.w).quiet),
+          dist, explosive,
           juggernaut: this.rules.mode === 'juggernaut' && pv && pv.team === JUGG_TEAM,
         });
       }
