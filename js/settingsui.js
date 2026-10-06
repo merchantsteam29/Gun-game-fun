@@ -3,7 +3,12 @@ import { ACTIONS, binds, setBind, resetBinds, keyName, mouseCode } from './binds
 import { store, esc } from './util.js';
 import { bannerOf, bannerHtml } from './banners.js';
 import { COVERING } from './cosmetics.js';
-import { COSMETICS, SLOT_LABELS, HAIR_COLORS, MISSIONS, getStat, missionDone, isOwned, priceOf, buy, getTokens, getCos, setCos } from './missions.js';
+import * as THREE from 'three';
+import { CAMOS, camoOf, camoSwatch } from './camos.js';
+import { buildGun } from './models.js';
+import { WEAPONS } from './weapons.js';
+import { hasMods, cleanMods } from './mods.js';
+import { COSMETICS, SLOT_LABELS, HAIR_COLORS, MISSIONS, getStat, missionDone, isOwned, priceOf, buy, getTokens, getCos, setCos, ownsWrap, buyWrap } from './missions.js';
 
 const $ = (id) => document.getElementById(id);
 const pct = (v) => Math.round(v * 100) + '%';
@@ -68,7 +73,7 @@ const TABS = [
 export class SettingsUI {
   // game: for graphics changes; editLayout(done): opens the touch layout editor.
   // onCos(cos): called when the player equips a cosmetic (to tell the lobby).
-  constructor({ game, mobile, uiMode, uiFromUrl, editLayout, getColor, getName, onCos }) {
+  constructor({ game, mobile, uiMode, uiFromUrl, editLayout, getColor, getName, onCos, getMods, onMods }) {
     this.game = game;
     this.mobile = mobile;
     this.uiMode = uiMode; // the mode actually in use right now
@@ -77,6 +82,8 @@ export class SettingsUI {
     this.getColor = getColor;
     this.getName = getName || (() => 'Player');
     this.onCos = onCos;
+    this.getMods = getMods || (() => ({}));
+    this.onMods = onMods || (() => {});
     this.tab = 0;
     this.onClose = null;
     $('set-close').onclick = () => this.close();
@@ -126,6 +133,114 @@ export class SettingsUI {
       el.querySelectorAll('[data-c]').forEach((b) => { b.onclick = () => { setOpt(r.key, b.dataset.c); this.render(); }; });
     }
     return el;
+  }
+
+  // ---------- Weapon wraps (Customize) ----------
+  // Pick a gun, preview any wrap on it in 3D, buy premium ones with tokens, and apply it to that
+  // gun or to every gun. Wraps are looks only and are saved with the gun's attachments.
+  wrapsView(rerender) {
+    const guns = Object.keys(WEAPONS).filter(hasMods).sort((a, b) => WEAPONS[a].name.localeCompare(WEAPONS[b].name));
+    if (!guns.includes(this.wrapGun)) this.wrapGun = guns.includes('ar') ? 'ar' : guns[0];
+    const mods = this.getMods();
+    const cur = (mods[this.wrapGun] && mods[this.wrapGun].camo) || 'default';
+    if (!this.wrapTry || !CAMOS.some((c) => c.id === this.wrapTry)) this.wrapTry = cur;
+    const pick = camoOf(this.wrapTry), have = ownsWrap(pick.id), tokens = getTokens();
+    const box = document.createElement('div');
+    box.className = 'cz-wraps';
+    const gunOpts = guns.map((id) => {
+      const w = mods[id] && mods[id].camo;
+      return `<option value="${id}" ${id === this.wrapGun ? 'selected' : ''}>${esc(WEAPONS[id].name)}${w ? ' · ' + esc(camoOf(w).name) : ''}</option>`;
+    }).join('');
+    const grid = CAMOS.map((c) => {
+      const own = ownsWrap(c.id);
+      return `<button class="${c.id === this.wrapTry ? 'trying' : ''} ${c.id === cur ? 'sel' : ''} ${own ? '' : 'locked'}" data-wrap="${c.id}" title="${esc(c.name)}"><i style="background:${camoSwatch(c)}"></i><span>${esc(c.name)}</span>${own ? '' : `<small>🪙 ${c.price}</small>`}</button>`;
+    }).join('');
+    let actions;
+    if (have) actions = `<button class="primary" data-act="one" ${pick.id === cur ? 'disabled' : ''}>Apply to ${esc(WEAPONS[this.wrapGun].name)}</button><button data-act="all">Apply to all guns</button>`;
+    else if (tokens >= pick.price) actions = `<button class="primary" data-act="buy">Buy ${esc(pick.name)} · 🪙 ${pick.price}</button>`;
+    else actions = `<span class="wr-need">${esc(pick.name)} costs 🪙 ${pick.price}. You need ${pick.price - tokens} more: complete Missions to earn tokens.</span>`;
+    box.innerHTML = `<div class="set-label">Weapon wraps<small>Looks only: wraps never change stats. Other players see them.</small></div>
+      <div class="wr-body">
+        <div class="wr-preview"><div class="wr-canvas"></div><select class="wr-gun">${gunOpts}</select></div>
+        <div class="wr-side"><div class="wr-grid">${grid}</div><div class="wr-actions">${actions}</div></div>
+      </div>`;
+    box.querySelector('.wr-canvas').appendChild(this.wrapCanvas());
+    this.showWrap(this.wrapGun, this.wrapTry);
+    box.querySelector('.wr-gun').onchange = (e) => { this.wrapGun = e.target.value; this.wrapTry = null; rerender(); };
+    box.querySelectorAll('[data-wrap]').forEach((b) => { b.onclick = () => { this.wrapTry = b.dataset.wrap; rerender(); }; });
+    const save = (ids) => {
+      const m = { ...this.getMods() };
+      for (const id of ids) {
+        const g = cleanMods(id, m[id]);
+        if (pick.id === 'default') delete g.camo; else g.camo = pick.id;
+        m[id] = g;
+      }
+      this.onMods(m);
+      rerender();
+    };
+    box.querySelectorAll('[data-act]').forEach((b) => {
+      b.onclick = () => {
+        if (b.dataset.act === 'buy') { if (buyWrap(pick.id)) save([this.wrapGun]); }
+        else if (b.dataset.act === 'one') save([this.wrapGun]);
+        else if (confirm(`Put ${pick.name} on every gun?`)) save(guns);
+      };
+    });
+    return box;
+  }
+
+  // One small 3D view, reused: a slowly turning gun.
+  wrapCanvas() {
+    if (!this.wr) {
+      const canvas = document.createElement('canvas');
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+      renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      const scene = new THREE.Scene();
+      scene.add(new THREE.HemisphereLight('#ffffff', '#40434a', 2.2));
+      const key = new THREE.DirectionalLight('#fff4e0', 2.2);
+      key.position.set(2, 3, 2);
+      const rim = new THREE.DirectionalLight('#9fd0ff', 1.4);
+      rim.position.set(-3, 1, -2);
+      scene.add(key, rim);
+      const camera = new THREE.PerspectiveCamera(30, 2, 0.05, 20);
+      camera.position.set(0, 0.25, 2.1);
+      camera.lookAt(0, 0, 0);
+      const pivot = new THREE.Group();
+      scene.add(pivot);
+      this.wr = { canvas, renderer, scene, camera, pivot, gun: null, key: '', raf: 0 };
+      const loop = () => {
+        if (!canvas.isConnected) { this.wr.raf = 0; return; }
+        const w = canvas.clientWidth, h = canvas.clientHeight;
+        if (w && canvas.width !== Math.round(w * renderer.getPixelRatio())) {
+          renderer.setSize(w, h, false);
+          camera.aspect = w / h;
+          camera.updateProjectionMatrix();
+        }
+        pivot.rotation.y += 0.008;
+        renderer.render(scene, camera);
+        this.wr.raf = requestAnimationFrame(loop);
+      };
+      this.wr.start = () => { if (!this.wr.raf) this.wr.raf = requestAnimationFrame(loop); };
+    }
+    setTimeout(() => this.wr.start(), 0);
+    return this.wr.canvas;
+  }
+
+  showWrap(gunId, camo) {
+    const wr = this.wr, key = gunId + ':' + camo;
+    if (!wr || wr.key === key) return;
+    wr.key = key;
+    if (wr.gun) { wr.pivot.remove(wr.gun); wr.gun.traverse((o) => { if (o.geometry) o.geometry.dispose(); }); }
+    const g = buildGun(gunId, { ...(this.getMods()[gunId] || {}), camo });
+    // Center it and scale it to fit the view.
+    const bb = new THREE.Box3().setFromObject(g), size = bb.getSize(new THREE.Vector3()), mid = bb.getCenter(new THREE.Vector3());
+    g.position.sub(mid);
+    const holder = new THREE.Group();
+    holder.add(g);
+    holder.scale.setScalar(1.3 / Math.max(size.x, size.y, size.z, 0.01));
+    holder.rotation.y = Math.PI / 2;
+    wr.pivot.add(holder);
+    wr.gun = holder;
   }
 
   // ctx lets the main menu host these views: rerender() after a change, goCustomize() for the link.
@@ -237,6 +352,7 @@ export class SettingsUI {
       note.className = 'cz-note';
       note.textContent = 'Tap anything to preview it. Earn tokens from Missions and spend them on whatever you like. Other players see what you wear.';
       slots.appendChild(note);
+      el.appendChild(this.wrapsView(rerender));
     } else if (kind === 'keybinds') {
       // Two keys per action. Click one, then press a key or a mouse button (middle / side
       // buttons); Esc cancels, Backspace clears. A key used elsewhere moves to this action.

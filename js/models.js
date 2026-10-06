@@ -312,6 +312,27 @@ function camoTexture(c) {
       const x = (rnd() * 16 | 0) * 4, y = (rnd() * 16 | 0) * 4;
       g.fillRect(x, y, 4 * (1 + (rnd() * 3 | 0)), 4 * (1 + (rnd() * 2 | 0)));
     }
+  } else if (c.pattern === 'carbon') {
+    for (let y = 0; y < 64; y += 4) for (let x = 0; x < 64; x += 4) {
+      g.fillStyle = ((x + y) / 4) % 2 ? col[1] : col[0];
+      g.fillRect(x, y, 4, 2);
+    }
+  } else if (c.pattern === 'stars') {
+    const grd = g.createLinearGradient(0, 0, 64, 64);
+    grd.addColorStop(0, col[0]); grd.addColorStop(0.6, col[1]); grd.addColorStop(1, col[2]);
+    g.fillStyle = grd; g.fillRect(0, 0, 64, 64);
+    g.fillStyle = col[3];
+    for (let i = 0; i < 40; i++) g.fillRect(rnd() * 64 | 0, rnd() * 64 | 0, rnd() < 0.2 ? 2 : 1, rnd() < 0.2 ? 2 : 1);
+  } else if (c.pattern === 'cracks') {
+    g.lineWidth = 2;
+    for (let i = 0; i < 14; i++) {
+      g.strokeStyle = rnd() < 0.5 ? col[1] : col[2];
+      g.beginPath();
+      let x = rnd() * 64, y = rnd() * 64;
+      g.moveTo(x, y);
+      for (let j = 0; j < 4; j++) { x += (rnd() - 0.5) * 22; y += (rnd() - 0.5) * 22; g.lineTo(x, y); }
+      g.stroke();
+    }
   } else if (c.pattern === 'stripes') {
     g.fillStyle = col[1];
     for (let i = -64; i < 128; i += 14) {

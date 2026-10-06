@@ -1,9 +1,9 @@
 {
-  "version": "2026.10.07.9",
+  "version": "2026.10.08.1",
   "notes": [
+    "Weapon wraps in Character > Customize: 3D preview, apply to one gun or all, 8 new premium wraps",
     "Key bindings: change any keyboard key (and mouse side buttons) in Settings > Controls",
-    "Phones: a cleaner, less crowded in-match screen",
-    "Practice Range, new weapons, camos, MVP card, map voting and medals"
+    "Phones: a cleaner, less crowded in-match screen"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json",

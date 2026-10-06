@@ -9,7 +9,7 @@ import { MODES, MODE_ORDER } from './host.js';
 import { HostPanel } from './hostpanel.js';
 import { modelQuality } from './models.js';
 import { SettingsUI } from './settingsui.js';
-import { getCos, MISSIONS, missionDone, getTokens } from './missions.js';
+import { getCos, ownsWrap, MISSIONS, missionDone, getTokens } from './missions.js';
 import { opts, onOpts } from './settings.js';
 import { ServerBrowser, ServerAnnouncer, REGIONS, guessRegion } from './servers.js';
 import { Updater } from './updater.js';
@@ -145,8 +145,8 @@ function modsPanel(id) {
       `<button class="${m[s] === o ? 'sel' : ''}" data-mod="${s}:${o}">${MODS[s][o].name}</button>`).join('')}</div></div>`).join('');
   // Camo: looks only (camos.js), saved with the gun's attachments.
   const camo = m.camo || 'default';
-  const camos = `<div class="lo-mod lo-camo"><span>Camo</span><div class="lo-camos">${CAMOS.map((c) =>
-    `<button class="${camo === c.id ? 'sel' : ''}" data-camo="${c.id}" title="${c.name}"><i style="background:${camoSwatch(c)}"></i>${c.name}</button>`).join('')}</div></div>`;
+  const camos = `<div class="lo-mod lo-camo"><span>Camo</span><div class="lo-camos">${CAMOS.filter((c) => ownsWrap(c.id)).map((c) =>
+    `<button class="${camo === c.id ? 'sel' : ''}" data-camo="${c.id}" title="${c.name}"><i style="background:${camoSwatch(c)}"></i>${c.name}</button>`).join('')}<button class="lo-more-wraps" data-morewraps>More wraps →</button></div></div>`;
   return `<div class="lo-mods"><h4>Attachments</h4>${rows}${camos}<p class="lo-mod-desc"></p></div>`;
 }
 
@@ -190,6 +190,7 @@ function renderLoadout(el) {
       renderLoadout($('pause-loadout'));
     };
   });
+  el.querySelectorAll('[data-morewraps]').forEach((b) => { b.onclick = () => { if (net) { $('pause').classList.add('hidden'); settingsUI.onClose = () => $('pause').classList.remove('hidden'); settingsUI.open('Customize'); } else showPane('character'); }; });
   el.querySelectorAll('[data-camo]').forEach((b) => {
     b.onclick = () => {
       const m = cleanMods(cur, settings.mods[cur]);
@@ -1055,6 +1056,16 @@ settingsUI = new SettingsUI({
   getColor: () => settings.color,
   getName: () => settings.name || 'Player',
   onCos: (c) => { game.myBanner = c.banner; if (net) net.send({ t: 'cos', c }); },
+  // Weapon wraps from Customize: saved with the attachments (looks only).
+  getMods: () => settings.mods,
+  onMods: (m) => {
+    settings.mods = cleanModMap(m);
+    store.set('mods', settings.mods);
+    game.setMods(settings.mods);
+    renderLoadout($('menu-loadout'));
+    renderLoadout($('pause-loadout'));
+    renderChip();
+  },
 });
 $('btn-settings-menu').onclick = () => {
   $('menu').classList.add('hidden');

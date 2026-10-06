@@ -1303,3 +1303,25 @@ body.mobile .vc-key { display: none; }
 .kb-key.listen { border-color: var(--accent); color: var(--accent); background: rgba(255,176,32,0.12); animation: kb-blink 0.9s ease-in-out infinite; }
 @keyframes kb-blink { 50% { box-shadow: 0 0 0 2px rgba(255,176,32,0.35); } }
 .kb-change { display: inline-block; margin-top: 6px; font-size: 11px; color: var(--accent); }
+
+/* Weapon wraps (Customize) */
+.cz-wraps { grid-column: 1 / -1; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.wr-body { display: grid; grid-template-columns: minmax(220px, 300px) 1fr; gap: 14px; margin-top: 8px; }
+.wr-preview { display: flex; flex-direction: column; gap: 8px; }
+.wr-canvas { aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; border: 1px solid var(--line);
+  background: radial-gradient(ellipse at center, #2e3540, #12151b 75%); }
+.wr-canvas canvas { width: 100%; height: 100%; display: block; }
+.wr-gun { width: 100%; }
+.wr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 5px; }
+.wr-grid button { display: flex; align-items: center; gap: 6px; padding: 5px 6px; font-size: 11px; text-align: left; position: relative; }
+.wr-grid button i { width: 22px; height: 22px; border-radius: 4px; flex: none; border: 1px solid rgba(255,255,255,0.25); }
+.wr-grid button span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wr-grid button small { color: #ffd23f; font-size: 10px; }
+.wr-grid button.sel { border-color: var(--accent); color: var(--accent); }
+.wr-grid button.trying { box-shadow: 0 0 0 2px #fff inset; }
+.wr-grid button.locked span { opacity: 0.75; }
+.wr-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; align-items: center; }
+.wr-need { font-size: 12px; color: var(--muted); }
+.lo-camos .lo-more-wraps { color: var(--accent); }
+@media (max-width: 700px) { .wr-body { grid-template-columns: 1fr; } .wr-canvas { max-height: 180px; } }
+body.mobile:not(.tablet) .wr-body { grid-template-columns: 200px 1fr; }

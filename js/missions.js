@@ -1,4 +1,5 @@
 import { store } from './util.js';
+import { camoOf } from './camos.js';
 
 // Cosmetics shown on your character to other players. `free` items are owned from the start;
 // everything else is bought with tokens earned from missions (`price`).
@@ -212,6 +213,19 @@ export function buy(slot, id) {
   if (!findItem(slot, id) || tokens < price) return false;
   tokens -= price;
   owned.add(slot + ':' + id);
+  save();
+  for (const m of claimMissions()) onComplete(m); // Collector missions
+  return true;
+}
+
+// Weapon wraps (camos.js): free ones are always yours; premium ones are bought with tokens.
+export const ownsWrap = (id) => { const c = camoOf(id); return c.id === id && (!c.price || owned.has('wrap:' + id)); };
+export function buyWrap(id) {
+  if (ownsWrap(id)) return true;
+  const c = camoOf(id);
+  if (c.id !== id || tokens < c.price) return false;
+  tokens -= c.price;
+  owned.add('wrap:' + id);
   save();
   for (const m of claimMissions()) onComplete(m); // Collector missions
   return true;
