@@ -1240,3 +1240,56 @@ body.mobile .mvp-stats b { font-size: 15px; }
 .pr-grid button { padding: 5px 9px; font-size: 12px; }
 .pr-grid button.sel { border-color: var(--accent); color: var(--accent); background: rgba(255,176,32,0.12); }
 #btn-practice .ic { color: #4dff9a; }
+
+/* ---------- Phones: a calmer in-match HUD ----------
+   Fewer things on screen and nothing stacked on top of the touch buttons. The lobby code and
+   mode details live in the pause menu; the top-left buttons move up into the free corner. */
+body.mobile:not(.tablet) #hud #lobby-tag { display: none; }
+body.mobile:not(.tablet) .b-score, body.mobile:not(.tablet) .b-pause, body.mobile:not(.tablet) #touch .b-chat { top: calc(8px + env(safe-area-inset-top)); width: 36px; height: 36px; }
+/* Objective line only when it shows something useful (Domination zones, CTF flags, hills) */
+body.mobile:not(.tablet) #mode-bar { display: none; }
+body.mobile:not(.tablet) #mode-bar:has(.dom-pip), body.mobile:not(.tablet) #mode-bar:has(.red), body.mobile:not(.tablet) #mode-bar:has(.blue) { display: block; font-size: 10px; margin-top: 3px; padding: 2px 8px; }
+/* Score strip: numbers and bars, no names */
+body.mobile:not(.tablet) .ss { width: 58px; padding: 3px 6px; }
+body.mobile:not(.tablet) .ss-name { display: none; }
+body.mobile:not(.tablet) .ss-top { justify-content: center; }
+body.mobile:not(.tablet) .ss-num { font-size: 15px; }
+body.mobile:not(.tablet) #timer { font-size: 15px; min-width: 54px; padding: 1px 8px; }
+body.mobile:not(.tablet) #match-info { top: 6px; }
+/* Small minimap in the top-right corner, clear of the action buttons */
+body.mobile:not(.tablet) #minimap { width: 70px; height: 70px; top: calc(6px + env(safe-area-inset-top)); right: calc(8px + env(safe-area-inset-right)); }
+/* Kill feed: top-left under the buttons, three lines at most */
+body.mobile:not(.tablet) #hud #killfeed { left: calc(12px + env(safe-area-inset-left)); right: auto; top: calc(52px + env(safe-area-inset-top)); align-items: flex-start; }
+body.mobile:not(.tablet) #killfeed div { font-size: 10px; padding: 1px 6px; }
+body.mobile:not(.tablet) #killfeed div:nth-child(n+4) { display: none; }
+body.mobile:not(.tablet) #killfeed .w { margin: 0 5px; font-size: 9px; padding: 0 4px; }
+/* Weapon panel: just the ammo count; the name shows briefly when you switch */
+body.mobile:not(.tablet) #wname { display: none; }
+body.mobile:not(.tablet) #weapon-info.changed #wname { display: block; }
+body.mobile:not(.tablet) .wrow { padding: 3px 10px 2px 14px; gap: 8px; }
+body.mobile:not(.tablet) #ammo-cur { font-size: 22px; }
+body.mobile:not(.tablet) #health { padding: 4px 10px 4px 8px; }
+body.mobile:not(.tablet) #health .bar { width: 90px; }
+/* Chat: two recent lines unless it's open */
+body.mobile:not(.tablet) #chat:not(.open) #chat-log { max-height: 40px; }
+body.mobile:not(.tablet) #chat .cl { font-size: 11px; padding: 1px 6px; }
+/* Pop-ups smaller and higher so they don't sit on the crosshair */
+body.mobile:not(.tablet) #notice { font-size: 13px; top: 26%; }
+body.mobile:not(.tablet) #kill-banner { top: 62%; }
+body.mobile:not(.tablet) .kb-main { font-size: 11px; padding: 3px 10px; }
+body.mobile:not(.tablet) #medals { top: 17%; }
+body.mobile:not(.tablet) #mission-toast { top: 12%; transform: translate(-50%, 0) scale(0.8); }
+/* Phone tab bar: small corner badges that don't cover the icons */
+body.mobile:not(.tablet) .menu-nav button b { top: 7px; transform: translateX(30px); font-size: 9px; padding: 0 5px; line-height: 15px; }
+/* End of match (MVP / vote): no touch controls or health / ammo over it */
+body:has(#endscreen:not(.hidden)) #touch,
+#hud:has(#endscreen:not(.hidden)) #health, #hud:has(#endscreen:not(.hidden)) #weapon-info,
+#hud:has(#endscreen:not(.hidden)) #crosshair, #hud:has(#endscreen:not(.hidden)) #killfeed { display: none; }
+body.mobile:not(.tablet) #endscreen { padding: 10px 14px; top: 54%; }
+body.mobile:not(.tablet) #endscreen .big { font-size: 20px; margin-bottom: 4px; }
+body.mobile:not(.tablet) #mvp-card .bnr { min-height: 50px; }
+body.mobile:not(.tablet) #mvp-card .bnr-name { font-size: 17px; }
+body.mobile:not(.tablet) #mvp-card .bnr-emblem { width: 34px; height: 34px; font-size: 17px; }
+body.mobile:not(.tablet) #endscreen.vote-phase #podium { display: none; }
+body.mobile:not(.tablet) .vote-cards { margin-bottom: 6px; }
+body.mobile .vc-key { display: none; }

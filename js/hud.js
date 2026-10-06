@@ -362,7 +362,7 @@ export class Hud {
       }
       const left = Math.max(0, Math.ceil((vote.endsAt - now) / 1000));
       $('end-timer').textContent = vote.winner ? `Next match on ${MAPS[vote.winner].name} in ${secs}s`
-        : now < vote.opensAt ? '' : vote.mine === null ? `Pick a map: click, 1 / 2 / 3, or Ⓧ Ⓨ Ⓑ · ${left}s` : `Vote counted · results in ${left}s`;
+        : now < vote.opensAt ? '' : vote.mine === null ? `${document.body.classList.contains('mobile') ? 'Tap a map' : 'Pick a map: click, 1 / 2 / 3, or Ⓧ Ⓨ Ⓑ'} · ${left}s` : `Vote counted · results in ${left}s`;
     } else {
       $('vote-box').innerHTML = '';
       this.lastVote = '';

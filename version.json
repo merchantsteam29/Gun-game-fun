@@ -1,10 +1,10 @@
 {
-  "version": "2026.10.07.7",
+  "version": "2026.10.07.8",
   "notes": [
+    "Phones: a cleaner, less crowded in-match screen",
     "Practice Range in the main menu: every weapon, moving targets, damage numbers",
     "New weapons: Flamethrower, Nailgun and the Frying Pan",
-    "Weapon camos, match MVP card, next-map voting and medals",
-    "Watch your killer and teammates while waiting to respawn"
+    "Weapon camos, match MVP card, next-map voting and medals"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json",
