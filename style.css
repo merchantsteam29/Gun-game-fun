@@ -1325,3 +1325,11 @@ body.mobile .vc-key { display: none; }
 .lo-camos .lo-more-wraps { color: var(--accent); }
 @media (max-width: 700px) { .wr-body { grid-template-columns: 1fr; } .wr-canvas { max-height: 180px; } }
 body.mobile:not(.tablet) .wr-body { grid-template-columns: 200px 1fr; }
+
+/* Staff chat (Mod Panel) */
+.sc-log { display: flex; flex-direction: column; gap: 6px; max-height: 380px; overflow-y: auto; margin: 10px 0; padding-right: 4px; }
+.sc-msg { padding: 7px 10px; border-radius: 8px; background: rgba(255,255,255,0.04); border: 1px solid var(--line); max-width: 85%; }
+.sc-msg.mine { align-self: flex-end; background: rgba(255,176,32,0.08); border-color: rgba(255,176,32,0.3); }
+.sc-msg small { color: var(--muted); font-size: 10px; margin-left: 6px; }
+.sc-msg p { margin: 3px 0 0; font-size: 13px; white-space: pre-wrap; word-break: break-word; }
+.mod-row .gt { color: var(--muted); font-size: 10px; margin-left: 4px; }

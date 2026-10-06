@@ -112,7 +112,7 @@ Every gun has an **Attachments** panel on its card in Loadout (hover an option t
 | Muzzle | Standard · Suppressor (quiet, no muzzle flash for others, damage drops off a bit sooner) · Compensator (30% less recoil) |
 | Magazine | Standard · Extended (+50% ammo, slower reload, slightly slower movement) · Fast mag (25% faster reload) |
 | Underbarrel | None · Vertical grip (less recoil, steadier on the move) · Laser (tighter hip-fire) |
-| Camo | Default · Crimson · Cobalt · Blackout · Arctic · Gold · Digital · Urban Digital · Desert · Tiger · Neon. Looks only: camos never change stats, and other players see yours. Saved per gun. |
+| Camo | (also in **Character → Customize → Weapon wraps**, with a 3D preview, "apply to all guns", and premium wraps for tokens: Carbon Fiber, Zebra, Toxic, Glacier, Lava, Galaxy, Chrome, Diamond) Default · Crimson · Cobalt · Blackout · Arctic · Gold · Digital · Urban Digital · Desert · Tiger · Neon. Looks only: camos never change stats, and other players see yours. Saved per gun. |
 
 Which options a gun takes depends on its type (pistols can't take scopes, break-action shotguns have no muzzle
 slot, and so on). Attachments show on the gun model, and other players see yours too.
@@ -197,6 +197,10 @@ Inferno, Galaxy, Dragon Scale, Rainbow, Solid Gold and Diamond cost tokens (seve
 - Scoreboard (Tab) with rank and K/D; the end screen shows a podium for the top three.
 
 ## Settings
+
+**Key bindings:** Settings → Controls on a computer. Every action can have two keys, and mouse buttons 3 / 4 / 5
+(middle and side buttons) work too. Picking a key that's already used moves it to the new action. Controllers and
+touch controls aren't affected. The "Keyboard & mouse" help in the menu shows your current keys.
 
 Open **Settings** from the main menu or the pause menu. Everything is saved in your browser.
 
@@ -284,6 +288,15 @@ becomes free again.
     in lobby and party chat for everyone, and spellings like "sh1t" and "fuuuck" are caught too.
   - **Log:** every staff action with its time, filterable by moderator.
   - **Staff** (owner only): appoint and remove moderators, permanently or for 1, 7 or 30 days.
+  - **Staff chat:** a private chat between the owner and moderators. Messages are signed and kept for 3 days, and
+    new ones pop up even when the panel is closed.
+  - **Kick from match:** on a player who's in a match, removes them from it even if you're not there.
+
+  **Bans enforced by hosts:** players with a gamertag prove it to the host when they join a match. The host's game then
+  removes banned players and mutes muted ones (even if their own game was modified to ignore it), and staff see each
+  player's real gamertag next to their name in the Moderation list.
+
+  **Gamertag filter:** gamertags containing filtered words can't be claimed, even hidden inside a name ("xX_Sh1t_Xx").
 
   Auto-flags: when you host, your game reports players with impossible-looking stats (80%+ headshot kills over 15+ gun
   kills, or 6+ kills a minute over 20+ kills). They show in Reports, marked as automatic.
@@ -298,7 +311,8 @@ becomes free again.
   them.
 - **In a match:** staff get a **Moderation** section in the pause menu to **warn**, **rename**, **freeze** (they can't
   move or shoot), **mute** or **kick** anyone in that match, even players without a gamertag. Staff can also **end**,
-  **restart** or **change the map** of the match, even when someone else is hosting.
+  **restart** or **change the map** of the match, even when someone else is hosting, and **lock chat** or turn on
+  **slow mode** (one message per 5 seconds) for everyone except staff.
   - Moderators can act on regular players.
   - The owner can also act on moderators.
   - Nobody can kick the host, whose browser runs the match.

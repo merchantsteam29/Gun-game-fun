@@ -467,7 +467,7 @@ export class Game {
         this.loadMap(m.settings.map);
         this.players.clear();
         for (const p of m.players) {
-          this.players.set(p.id, { id: p.id, name: p.name, color: p.color, k: p.k, d: p.d, team: p.team, sc: p.sc, bot: p.bot, role: p.role || null });
+          this.players.set(p.id, { id: p.id, name: p.name, color: p.color, k: p.k, d: p.d, team: p.team, sc: p.sc, bot: p.bot, role: p.role || null, gt: p.gt || null });
           this.addRemote(p);
         }
         this.refreshColors();
@@ -476,7 +476,7 @@ export class Game {
         if (this.onWelcome) this.onWelcome(); // staff send their proof (main.js)
         break;
       case 'pjoin':
-        this.players.set(m.id, { id: m.id, name: m.name, color: m.color, k: 0, d: 0, team: m.team, sc: 0, bot: m.bot, role: m.role || null });
+        this.players.set(m.id, { id: m.id, name: m.name, color: m.color, k: 0, d: 0, team: m.team, sc: 0, bot: m.bot, role: m.role || null, gt: m.gt || null });
         this.addRemote(m);
         this.refreshColors();
         this.hud.say(`${m.name} joined`);
@@ -530,6 +530,14 @@ export class Game {
       }
       case 'warned': // a moderator warned you in this match
         if (this.onWarned) this.onWarned(m);
+        break;
+      case 'pident': { // a player proved their gamertag to the host
+        const p = this.players.get(m.id);
+        if (p) p.gt = m.gt;
+        break;
+      }
+      case 'chatmode':
+        this.chatMode = { lock: !!m.lock, slow: !!m.slow };
         break;
       case 'pmute': {
         const p = this.players.get(m.id);

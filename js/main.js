@@ -272,6 +272,7 @@ function checkTag() {
   msg.className = 'tag-msg';
   if (!tag) { msg.textContent = TAG_RULES; return; }
   if (!validTag(tag)) { msg.textContent = `Use ${TAG_RULES}.`; msg.classList.add('bad'); return; }
+  if (moderation.badName(tag)) { msg.textContent = 'That gamertag isn\'t allowed.'; msg.classList.add('bad'); return; }
   msg.textContent = 'Checking…';
   tagCheckT = setTimeout(async () => {
     const r = await social.available(tag);
@@ -288,7 +289,9 @@ $('tag-form').onsubmit = async (e) => {
   msg.className = 'tag-msg';
   msg.textContent = 'Claiming…';
   try {
-    await social.claim($('tag-input').value.trim());
+    const want = $('tag-input').value.trim();
+    if (moderation.badName(want)) throw new Error('That gamertag isn\'t allowed.');
+    await social.claim(want);
     $('tag-pop').classList.add('hidden');
     applyGamertag();
     toast(`Welcome, ${social.tag}!`);
@@ -599,7 +602,7 @@ function chatOnNet(m) {
   const colorOf = (id, fallback) => { const p = game.players.get(id); return p ? game.colorFor(p) : fallback; };
   if (m.t === 'welcome') { chat.setLobby(true); chat.system(net && net.practice ? 'Practice Range: pick any weapon from the pause menu (Esc).' : `Joined lobby ${net ? net.code : ''}. Say hi!`); }
   else if (m.t === 'chat') chat.add((ROLE_INFO[m.role] ? ROLE_INFO[m.role].icon + ' ' : '') + m.name, colorOf(m.id, m.color), moderation.clean(m.text), m.id === game.myId);
-  else if (m.t === 'prole' || m.t === 'pmute' || m.t === 'pfrozen' || m.t === 'pname' || m.t === 'pjoin' || m.t === 'pleave') { renderModList(); renderReportList(); }
+  else if (m.t === 'chatmode' || m.t === 'pident' || m.t === 'prole' || m.t === 'pmute' || m.t === 'pfrozen' || m.t === 'pname' || m.t === 'pjoin' || m.t === 'pleave') { renderModList(); renderReportList(); }
   else if (m.t === 'pjoin' && !m.bot) chat.system(`${m.name} joined`);
   else if (m.t === 'pleave' && !String(m.name).startsWith('[BOT]')) chat.system(`${m.name} left`);
   // Keep a public listing's player count / mode / map current.
@@ -642,7 +645,8 @@ function showPause() {
 // Staff prove who they are to the host when they join (it checks the signature, then everyone
 // sees the badge).
 game.onWelcome = async () => {
-  if (game.spectating) return;
+  if (game.spectating || !net || net.practice) return;
+  if (social.tag) net.send({ t: 'ident', proof: await social.sign({ ident: 1, lobby: net.code, id: game.myId }) });
   const proof = await roles.proof(net && net.code, game.myId);
   if (proof && net) net.send({ t: 'staff', proof });
 };
@@ -658,7 +662,7 @@ function renderModList() {
   const rows = [...game.players.values()].filter((p) => p.id !== game.myId && !p.bot);
   $('mod-list').innerHTML = rows.length ? rows.map((p) => {
     const can = rank(mine) > rank(p.role);
-    return `<div class="mod-row"><span class="mod-name">${esc(p.name)}${badge(p.role, true)}${p.muted ? ' <em>muted</em>' : ''}</span>
+    return `<div class="mod-row"><span class="mod-name">${esc(p.name)}${badge(p.role, true)}${p.gt && p.gt !== p.name ? ` <small class="gt">@${esc(p.gt)}</small>` : p.gt ? ' <small class="gt">✓</small>' : ''}${p.muted ? ' <em>muted</em>' : ''}</span>
       ${can ? `<button data-mwarn="${p.id}" title="Pop up a warning on their screen">⚠ Warn</button><button data-mren="${p.id}" title="Change their name in this match">✎ Rename</button><button data-mfreeze="${p.id}">${p.frozen ? '🔥 Unfreeze' : '🧊 Freeze'}</button><button data-mute="${p.id}">${p.muted ? 'Unmute' : 'Mute'}</button>${p.id !== 'host' ? `<button class="danger" data-mkick="${p.id}">Kick</button>` : '<small>host</small>'}` : '<small>staff</small>'}</div>`;
   }).join('') : '<div class="note">No other players here yet.</div>';
   $('mod-list').querySelectorAll('[data-mute]').forEach((b) => { b.onclick = () => net.send({ t: 'modmute', id: b.dataset.mute }); });
@@ -666,6 +670,11 @@ function renderModList() {
   // Match tools work for any staff member, even when someone else is hosting.
   const sel = $('mm-map');
   if (!sel.options.length) sel.innerHTML = MAP_ORDER.map((id) => `<option value="${id}">${esc(MAPS[id].name)}</option>`).join('');
+  const cm = game.chatMode || {};
+  $('mm-lock').textContent = cm.lock ? '🔓 Unlock chat' : '🔒 Lock chat';
+  $('mm-slow').textContent = cm.slow ? '🐢 Slow mode: on' : '🐢 Slow mode';
+  $('mm-lock').onclick = () => net.send({ t: 'modchat', op: 'lock' });
+  $('mm-slow').onclick = () => net.send({ t: 'modchat', op: 'slow' });
   $('mod-match').querySelectorAll('[data-mm]').forEach((b) => {
     b.onclick = () => {
       const op = b.dataset.mm;
@@ -771,6 +780,17 @@ moderation.onAnnounce = (a) => {
     annShown.add(a.id);
     if (net) { chat.system(`📣 ${a.from}: ${a.text}`); game.hud.say(`📣 ${a.text}`.slice(0, 60)); }
   }
+};
+
+// Staff kicked you from your match from the Mod Panel.
+moderation.onKick = (k) => { if (net && !net.practice) leave(`You were removed from the match by ${k.by}: ${k.reason}`); };
+
+// Staff chat: a ping for new messages from other staff while you're not looking at it.
+moderation.onStaffChat = (m) => {
+  if (m.from.toLowerCase() === String(social.tag).toLowerCase()) return;
+  if (menuPane === 'mod' && !$('menu').classList.contains('hidden') && modPanel.tab === 'staffchat') return;
+  modPanel.unread = (modPanel.unread || 0) + 1;
+  toast(`🛡 ${m.from}: ${m.text}`.slice(0, 120));
 };
 
 // Chat mute: your lobby and party messages aren't sent until it ends.

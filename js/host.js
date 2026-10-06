@@ -7,6 +7,7 @@ import { COLORS } from './util.js';
 import { sanitizeCos, randomCos } from './missions.js';
 import { cleanModMap, randomMods } from './mods.js';
 import { roles } from './roles.js';
+import { moderation } from './moderation.js';
 
 // redBlue: two balanced teams. hill: uses the moving zone. loadout: forced for everyone.
 // preset: physics/rule overrides applied when the mode is picked.
@@ -246,7 +247,7 @@ export class HostLogic {
   }
 
   info(p) {
-    return { id: p.id, name: p.name, color: p.color, team: p.team, k: p.kills, d: p.deaths, sc: Math.floor(p.score), bot: !!p.bot || !!p.dummy, cos: p.cos, mods: p.mods || {}, role: p.role || null };
+    return { id: p.id, name: p.name, color: p.color, team: p.team, k: p.kills, d: p.deaths, sc: Math.floor(p.score), bot: !!p.bot || !!p.dummy, cos: p.cos, mods: p.mods || {}, role: p.role || null, gt: p.tag || null };
   }
 
   addPlayer(id, name, color, cos) {
@@ -443,10 +444,27 @@ export class HostLogic {
       case 'chat': { // party chat: plain text, max 100 chars, at most ~2 messages a second each
         const now = Date.now();
         if (p.muted || now - (p.lastChat || 0) < 450) break;
+        if (!p.role && (this.chatLock || (this.chatSlow && now - (p.lastChat || 0) < 5000))) {
+          this.sendTo(id, { t: 'notice', text: this.chatLock ? 'Chat is locked by staff' : 'Slow mode: wait a few seconds' });
+          break;
+        }
         const text = String(m.text || '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 100);
         if (!text) break;
         p.lastChat = now;
         this.broadcast({ t: 'chat', id, name: p.name, color: p.color, text, role: p.role || null });
+        break;
+      }
+      case 'ident': // signed proof of this player's gamertag: lets the host enforce bans and mutes
+        if (typeof m.proof !== 'string' || p.tag || p.bot) break;
+        this.checkIdent(p, m.proof);
+        break;
+      case 'modchat': { // staff: lock lobby chat, or slow mode (one message per 5 s)
+        if (!p.role) break;
+        if (m.op === 'lock') this.chatLock = !this.chatLock;
+        else if (m.op === 'slow') this.chatSlow = !this.chatSlow;
+        else break;
+        this.broadcast({ t: 'chatmode', lock: !!this.chatLock, slow: !!this.chatSlow });
+        this.broadcast({ t: 'notice', text: m.op === 'lock' ? (this.chatLock ? 'Chat locked by staff' : 'Chat unlocked') : (this.chatSlow ? 'Slow mode on: 1 message per 5 s' : 'Slow mode off') });
         break;
       }
       case 'staff': // signed proof that this player is the owner / a moderator (see roles.js)
@@ -544,6 +562,31 @@ export class HostLogic {
     this.sendTo(v.id, { t: 'dmg', hp: Math.max(0, Math.round(v.hp)), from: attacker.id, imp: m.imp || null });
     if (v !== attacker) this.sendTo(attacker.id, { t: 'hitc', kill: dead, head: !!m.head });
     if (dead) this.kill(attacker, v, m.w, !!m.head);
+  }
+
+  // ---------- Gamertag checks ----------
+
+  // A player proved their gamertag: remember it (shown to staff), then turn them away if they're
+  // banned and mute them if they're muted — even if their own game ignores it.
+  async checkIdent(p, proof) {
+    const s = roles.social;
+    if (!s) return;
+    const b = await s.verify(proof);
+    if (!b || !b.ident || b.lobby !== this.code || b.id !== p.id || Math.abs(Date.now() - Number(b.ts)) > 10 * 60000) return;
+    if (this.players.get(p.id) !== p) return;
+    p.tag = b.from;
+    this.broadcast({ t: 'pident', id: p.id, gt: p.tag });
+    const rec = await moderation.fetchRecord(p.tag);
+    if (!rec || this.players.get(p.id) !== p) return;
+    const ban = moderation.activeBan(rec), mute = moderation.activeMute(rec);
+    if (ban && !p.role) {
+      this.broadcast({ t: 'notice', text: `${p.name} is banned and was removed` });
+      if (p.id === 'host') return; // can't remove the host from their own match (their game shows the ban screen)
+      this.kick(p.id);
+    } else if (mute && !p.muted) {
+      p.muted = true;
+      this.broadcast({ t: 'pmute', id: p.id, muted: true });
+    }
   }
 
   // ---------- Practice range ----------

@@ -16,7 +16,8 @@ import { store } from './util.js';
 // game itself — clearing site data or a new gamertag gets around it.
 
 const V = 'whffa/v1/';
-const P = V + 'modrec/', ANN = V + 'announce', REP = V + 'report/', PRES = V + 'pres/', FILTER = V + 'chatfilter', APPEAL = V + 'appeal/';
+const P = V + 'modrec/', ANN = V + 'announce', REP = V + 'report/', PRES = V + 'pres/', FILTER = V + 'chatfilter', APPEAL = V + 'appeal/', STAFFCHAT = V + 'staffchat/';
+const STAFFCHAT_KEEP = 3 * 864e5; // staff chat history: 3 days
 const LOG_MAX = 30;
 const REPORT_MAX_AGE = 7 * 864e5;
 const ONLINE_MS = 75000;
@@ -49,6 +50,9 @@ class Moderation {
     this.onBan = null; // (ban | null) your ban started / ended
     this.onMute = null; // (mute | null) your chat mute started / ended
     this.onRename = null; // (rename) you must pick a new gamertag
+    this.onKick = null; // (kick) staff removed you from your match
+    this.onStaffChat = null; // (message) a new staff chat message
+    this.staffChat = new Map(); // id -> { id, from, text, ts }
     this.onAnnounce = null; // (announcement | null)
     this.lastBan = null;
     this.lastMute = null;
@@ -69,6 +73,7 @@ class Moderation {
     else if (t.startsWith(PRES) && roles.myRole()) this.receivePresence(t.slice(PRES.length), text, packet);
     else if (t === FILTER) this.receiveFilter(text);
     else if (t.startsWith(APPEAL)) this.receiveAppeal(t.slice(APPEAL.length), text);
+    else if (t.startsWith(STAFFCHAT) && roles.myRole()) this.receiveStaffChat(t.slice(STAFFCHAT.length), text);
   }
 
   // Everyone: your own record and announcements. Staff also: all records, reports and presence.
@@ -77,7 +82,7 @@ class Moderation {
     if (!s) return;
     const want = new Set([ANN, FILTER]);
     if (s.tag) { want.add(P + low(s.tag)); want.add(APPEAL + low(s.tag)); }
-    if (roles.myRole()) for (const t of [P + '+', REP + '+', PRES + '+', APPEAL + '+']) want.add(t);
+    if (roles.myRole()) for (const t of [P + '+', REP + '+', PRES + '+', APPEAL + '+', STAFFCHAT + '+']) want.add(t);
     for (const w of this.watching) if (!want.has(w)) s.relay.unsubscribe(w);
     for (const w of want) if (!this.watching.has(w)) s.relay.subscribe(w);
     this.watching = want;
@@ -151,6 +156,11 @@ class Moderation {
     const banKey = ban ? ban.ts + (ban.appealDenied ? 'd' : '') : null; // a denied appeal updates the ban screen
     if (banKey !== this.lastBan) { this.lastBan = banKey; if (this.onBan) this.onBan(ban); }
     if ((mute ? mute.ts : null) !== this.lastMute) { this.lastMute = mute ? mute.ts : null; if (this.onMute) this.onMute(mute); }
+    // Kicked from your match by staff (once per kick).
+    if (rec && rec.kick && rec.kick.ts > store.get('kickDone', 0) && Date.now() - rec.kick.ts < 10 * 60000 && this.onKick) {
+      store.set('kickDone', rec.kick.ts);
+      this.onKick(rec.kick);
+    }
     // Forced gamertag change.
     if (rec && rec.rename && rec.rename.ts > store.get('renameDone', 0) && this.onRename) {
       store.set('renameDone', rec.rename.ts);
@@ -205,6 +215,9 @@ class Moderation {
       note = rec.rename.reason;
     } else if (act === 'clearwarns') {
       rec.warns = [];
+    } else if (act === 'kick') {
+      rec.kick = { by: s.tag, reason: reason || 'Removed by staff', ts: now };
+      note = rec.kick.reason;
     } else if (act === 'denyappeal') {
       if (!rec.ban) throw new Error('They aren\'t banned.');
       rec.ban = { ...rec.ban, appealDenied: true };
@@ -326,6 +339,14 @@ class Moderation {
 
   defaultWords() { return DEFAULT_WORDS.slice(); }
 
+  // Gamertags run words together ("xXshitXx"), so names are checked inside the name too
+  // (with simple symbol swaps); very short words only count on their own.
+  badName(name) {
+    const n = String(name).toLowerCase().replace(/[4@]/g, 'a').replace(/3/g, 'e').replace(/[1!]/g, 'i').replace(/0/g, 'o').replace(/[5$]/g, 's').replace(/7/g, 't').replace(/_/g, '');
+    const words = [...(this.filter.defaults ? DEFAULT_WORDS : []), ...this.filter.words];
+    return words.some((w) => (w.length >= 4 ? n.includes(w) : n === w));
+  }
+
   // ---------- Ban appeals ----------
 
   // A banned player asks for the ban to be lifted (one message per ban).
@@ -369,6 +390,53 @@ class Moderation {
     if (!s.tag) return; // reports are signed with a gamertag
     const id = `${low(s.tag)}-${Date.now().toString(36)}`;
     s.relay.publish(REP + id, await s.sign({ id, target: clip(target, 16), lobby: clip(lobby, 8), reason: AUTO_FLAG, details: clip(details, 200) }), { retain: true });
+  }
+
+  // ---------- Staff chat ----------
+  // Retained, staff-signed messages (staffchat/<id>); only staff subscribe. Messages older than
+  // a few days are ignored and cleaned up by whichever staff member sees them.
+
+  async receiveStaffChat(id, text) {
+    if (!text) { if (this.staffChat.delete(id) && this.onChange) this.onChange(null); return; }
+    const b = await this.staffSigned(text);
+    if (!b || !b.text) return;
+    if (Date.now() - (Number(b.ts) || 0) > STAFFCHAT_KEEP) { this.social.relay.publish(STAFFCHAT + id, '', { retain: true }); return; }
+    if (this.staffChat.has(id)) return;
+    const m = { id, from: b.from, text: clip(b.text, 300), ts: Number(b.ts) };
+    this.staffChat.set(id, m);
+    if (this.onStaffChat && Date.now() - m.ts < 60000) this.onStaffChat(m);
+    if (this.onChange) this.onChange(null);
+  }
+
+  async sayStaff(text) {
+    if (!roles.myRole()) throw new Error('Only staff can use staff chat.');
+    text = clip(text, 300);
+    if (!text) return;
+    const id = `${low(this.social.tag)}-${Date.now().toString(36)}`;
+    const signed = await this.social.sign({ text });
+    this.social.relay.publish(STAFFCHAT + id, signed, { retain: true });
+    await this.receiveStaffChat(id, signed);
+  }
+
+  staffChatLog() { return [...this.staffChat.values()].sort((a, b) => a.ts - b.ts).slice(-100); }
+
+  // ---------- Host checks ----------
+
+  // Fetches someone's moderation record (verified) — used by hosts to turn away banned players.
+  fetchRecord(tag) {
+    const k = low(tag);
+    if (this.records.has(k)) return Promise.resolve(this.records.get(k));
+    return new Promise((resolve) => {
+      const topic = P + k;
+      let done = false;
+      const off = this.social.relay.onMessage(async (t, payload) => {
+        if (t !== topic || done) return;
+        const body = await this.verify(k, payload.toString());
+        if (body) { done = true; off(); this.social.relay.unsubscribe(topic); resolve(body); }
+      });
+      this.social.relay.subscribe(topic);
+      setTimeout(() => { if (!done) { done = true; off(); if (!this.watching.has(topic) && !this.watching.has(P + '+')) this.social.relay.unsubscribe(topic); resolve(null); } }, 2500);
+    });
   }
 
   // ---------- Online now (staff) ----------

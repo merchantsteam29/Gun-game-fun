@@ -16,7 +16,7 @@ import { validTag, TAG_RULES } from './social.js';
 const TIMES = [[1, '1 hour'], [24, '1 day'], [24 * 7, '7 days'], [24 * 30, '30 days'], [0, 'Permanent']];
 const ACT_LABEL = {
   warn: 'warned', ban: 'banned', unban: 'unbanned', mute: 'muted', unmute: 'unmuted',
-  rename: 'forced a new gamertag for', clearwarns: 'cleared warnings of', note: 'added a note on', denyappeal: 'denied the appeal of',
+  rename: 'forced a new gamertag for', clearwarns: 'cleared warnings of', note: 'added a note on', denyappeal: 'denied the appeal of', kick: 'kicked',
 };
 const MOD_TIMES = [[0, 'Permanent'], [24, '1 day'], [24 * 7, '7 days'], [24 * 30, '30 days']];
 const ANN_TIMES = [[1, '1 hour'], [6, '6 hours'], [24, '1 day'], [24 * 7, '7 days'], [0, 'Until cleared']];
@@ -48,7 +48,7 @@ export class ModPanel {
     const reports = [...moderation.reports.values()];
     const bans = [...moderation.records.values()].filter((r) => moderation.activeBan(r)).length;
     const appeals = moderation.openAppeals();
-    const tabs = [['players', '👤 Players'], ['online', `🟢 Online <b>${online.length}</b>`], ['reports', `🚩 Reports ${reports.length ? `<b class="alert">${reports.length}</b>` : ''}`], ['appeals', `⚖ Appeals ${appeals.length ? `<b class="alert">${appeals.length}</b>` : ''}`], ['announce', '📣 Announce'], ['filter', '🤐 Chat filter'], ['log', '📜 Log']];
+    const tabs = [['players', '👤 Players'], ['online', `🟢 Online <b>${online.length}</b>`], ['reports', `🚩 Reports ${reports.length ? `<b class="alert">${reports.length}</b>` : ''}`], ['appeals', `⚖ Appeals ${appeals.length ? `<b class="alert">${appeals.length}</b>` : ''}`], ['announce', '📣 Announce'], ['staffchat', `💬 Staff chat ${this.unread ? `<b class="alert">${this.unread}</b>` : ''}`], ['filter', '🤐 Chat filter'], ['log', '📜 Log']];
     if (owner) tabs.push(['staff', '🛡 Staff']);
     if (!tabs.some(([id]) => id === this.tab)) this.tab = 'players';
     this.el.innerHTML = `
@@ -71,6 +71,7 @@ export class ModPanel {
     else if (this.tab === 'appeals') this.renderAppeals(body, appeals);
     else if (this.tab === 'filter') this.renderFilter(body);
     else if (this.tab === 'log') this.renderLog(body);
+    else if (this.tab === 'staffchat') this.renderStaffChat(body);
     else this.renderStaff(body);
     this.el.querySelectorAll('input, textarea').forEach((i) => i.addEventListener('keydown', (e) => e.stopPropagation()));
   }
@@ -155,6 +156,7 @@ export class ModPanel {
           ${mute ? '<button data-act="unmute">Unmute</button>' : ''}
           ${warns.length ? '<button data-act="clearwarns" class="ghost">Clear warnings</button>' : ''}
           ${on && on.lobby && this.joinLobby ? `<button data-join="${esc(on.lobby)}">▶ Join their match</button><button data-spec="${esc(on.lobby)}">👁 Spectate</button>` : ''}
+          ${on && on.mode === 'lobby' ? '<button data-act="kick" class="danger">⏏ Kick from match</button>' : ''}
         </div>` : `<div class="note">${role ? 'Staff can only be moderated by someone ranked above them.' : 'You can\'t moderate yourself.'}</div>`}
         ${log.length ? `<div class="mp-sub">History</div><div class="mp-list mp-log">${log.slice().reverse().map((l) =>
           `<div><b>${esc(l.by)}</b> ${ACT_LABEL[l.act] || l.act} them${l.note ? ': ' + esc(l.note) : ''} <small>${ago(l.ts)}</small></div>`).join('')}</div>` : ''}
@@ -170,7 +172,7 @@ export class ModPanel {
         const hours = Number(box.querySelector('#mp-time').value), span = hours ? fmtHours(hours) : 'permanently';
         const what = {
           warn: 'warn', note: 'add this note to', rename: 'force a new gamertag for', ban: `ban (${span})`, mute: `mute the chat of (${span})`,
-          unban: 'unban', unmute: 'unmute', clearwarns: 'clear the warnings of',
+          unban: 'unban', unmute: 'unmute', clearwarns: 'clear the warnings of', kick: 'kick from their match',
         }[act];
         if ((act === 'warn' || act === 'note') && !reason) { this.say(act === 'warn' ? 'Type a reason for the warning first.' : 'Type the note first.'); return; }
         if (act !== 'note' && !confirm(`${what[0].toUpperCase() + what.slice(1)} ${t.tag}?`)) return;
@@ -179,7 +181,7 @@ export class ModPanel {
           await moderation.act(t.tag, act, { reason, hours });
           this.say({
             warn: `Warned ${t.tag}.`, note: 'Note added.', rename: `${t.tag} will have to pick a new gamertag.`, ban: `Banned ${t.tag}.`,
-            mute: `Muted ${t.tag}'s chat.`, unban: `Unbanned ${t.tag}.`, unmute: `Unmuted ${t.tag}.`, clearwarns: 'Warnings cleared.',
+            mute: `Muted ${t.tag}'s chat.`, unban: `Unbanned ${t.tag}.`, unmute: `Unmuted ${t.tag}.`, clearwarns: 'Warnings cleared.', kick: `${t.tag} will be removed from their match.`,
           }[act]);
           this.render();
         } catch (err) { this.say(err.message); b.disabled = false; }
@@ -313,6 +315,31 @@ export class ModPanel {
     body.querySelector('#mp-f-save').onclick = async () => {
       const words = body.querySelector('#mp-f-words').value.split(/[\s,]+/);
       try { const n = await moderation.saveFilter(words, body.querySelector('#mp-f-def').checked); this.say(`Chat filter saved (${n} extra word${n === 1 ? '' : 's'}).`); this.render(); } catch (err) { this.say(err.message); }
+    };
+  }
+
+  // ---------- Staff chat ----------
+
+  renderStaffChat(body) {
+    this.unread = 0;
+    const log = moderation.staffChatLog();
+    const me = String(this.social.tag).toLowerCase();
+    const when2 = (ts) => new Date(ts).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+    body.innerHTML = `<div class="card">
+      <h3>Staff chat</h3>
+      <div class="note">Only you and the moderators can read this. Messages are kept for 3 days.</div>
+      <div class="sc-log">${log.length ? log.map((m) => `<div class="sc-msg ${m.from.toLowerCase() === me ? 'mine' : ''}"><b>${esc(m.from)}</b>${badge(roles.roleOfTag(m.from), true)}<small>${when2(m.ts)}</small><p>${esc(m.text)}</p></div>`).join('') : '<div class="sv-empty">No messages yet.</div>'}</div>
+      <form class="fr-add sc-form" autocomplete="off"><input maxlength="300" placeholder="Message the staff…"><button class="primary" type="submit">Send</button></form>
+    </div>`;
+    const logEl = body.querySelector('.sc-log');
+    logEl.scrollTop = logEl.scrollHeight;
+    const input = body.querySelector('.sc-form input');
+    body.querySelector('.sc-form').onsubmit = async (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = '';
+      try { await moderation.sayStaff(text); this.render(); this.el.querySelector('.sc-form input').focus(); } catch (err) { this.say(err.message); }
     };
   }
 
