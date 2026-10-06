@@ -168,6 +168,12 @@ export class GamepadInput {
     g.showScores = this.scores;
 
     if (pressed(B.MENU)) { this.releaseGame(); this.hooks.pause(); return; }
+    // End-of-match map vote: X / Y / B pick the 1st / 2nd / 3rd map.
+    if (g.matchOver) {
+      if (pressed(B.X)) g.voteMap(0);
+      else if (pressed(B.Y)) g.voteMap(1);
+      else if (pressed(B.B)) g.voteMap(2);
+    }
     if (!alive) return;
     if (pressed(B.X)) g.startReload();
     if (pressed(B.Y)) g.swapLast();

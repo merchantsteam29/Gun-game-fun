@@ -4,6 +4,7 @@ import { Radar } from './radar.js';
 import { bannerHtml } from './banners.js';
 import { badge, ROLE_INFO } from './roles.js';
 import { MedalQueue } from './medals.js';
+import { MAPS, MAP_BLURB } from './maps.js';
 import { sfx } from './audio.js';
 
 const roleIcon = (r) => (ROLE_INFO[r] ? `<b class="role-ico ${r}" title="${ROLE_INFO[r].label}">${ROLE_INFO[r].icon}</b>` : '');
@@ -287,15 +288,28 @@ export class Hud {
     $('death-timer').textContent = status || (secs > 0 ? `Respawning in ${secs}` : 'Respawning…');
   }
 
-  end(show, scores, myId, secs, nextMap, title, mode) {
+  // End of match: the MVP card first, then (when maps rotate) a vote on the next map with live
+  // counts and the podium, otherwise the podium and full results.
+  // info: { scores, myId, mode, title, now, secs, nextMap, mvp, showMvp, vote, onVote }
+  end(show, info = {}) {
     $('endscreen').classList.toggle('hidden', !show);
-    if (!show) return;
+    if (!show) { this.lastEnd = this.lastVote = this.lastMvp = ''; return; }
+    const { scores = [], myId, mode, title, now, secs, nextMap, mvp, showMvp, vote } = info;
     $('end-title').textContent = title || 'MATCH OVER';
     const label = { gungame: 'LVL', koth: 'PTS', infection: 'INF', lms: 'LIVES' }[mode] || 'PTS';
+    const voting = !!vote && !showMvp;
+    $('endscreen').classList.toggle('mvp-phase', !!showMvp);
+    $('endscreen').classList.toggle('vote-phase', voting);
+    // MVP
+    const mkey = showMvp ? JSON.stringify(mvp) : '';
+    if (mkey !== this.lastMvp) {
+      this.lastMvp = mkey;
+      $('mvp-card').innerHTML = showMvp && mvp ? this.mvpHtml(mvp, label, mvp.id === myId) : '';
+    }
+    // Podium + table
     const key = JSON.stringify(scores) + myId + label;
     if (key !== this.lastEnd) {
       this.lastEnd = key;
-      // Podium for the top three (2nd, 1st, 3rd left to right), then the full table below.
       const top = [scores[1], scores[0], scores[2]];
       $('podium').innerHTML = top.map((p, i) => !p ? '<div class="pd empty"></div>' :
         `<div class="pd p${[2, 1, 3][i]} ${p.id === myId ? 'me' : ''}" style="--c:${esc(p.color)}"><div class="pd-name">${esc(p.name)}</div><div class="pd-sc">${p.sc} ${label}</div><div class="pd-step">${[2, 1, 3][i]}</div></div>`).join('');
@@ -303,6 +317,39 @@ export class Hud {
         `<tr class="${p.id === myId ? 'me' : ''}"><td class="rk">${i + 1}</td><td><span class="dot" style="background:${esc(p.color)}"></span>${esc(p.name)}${badge(p.role, true)}</td><td class="sc">${p.sc} ${label}</td><td>${p.k} K</td><td>${p.d} D</td></tr>`
       ).join('');
     }
-    $('end-timer').textContent = `Next match${nextMap ? ' on ' + nextMap : ''} in ${secs}s`;
+    // Map vote
+    if (voting) {
+      const open = now >= vote.opensAt && now < vote.endsAt && !vote.winner;
+      const vkey = JSON.stringify([vote.maps, vote.counts, vote.mine, vote.winner, open]);
+      if (vkey !== this.lastVote) {
+        this.lastVote = vkey;
+        const total = vote.counts.reduce((a, b) => a + b, 0);
+        $('vote-box').innerHTML = `<div class="vote-head">${vote.winner ? 'NEXT MAP' : 'VOTE FOR THE NEXT MAP'}</div><div class="vote-cards">${vote.maps.map((id, i) => {
+          const m = MAPS[id], n = vote.counts[i] || 0, pct = total ? (n / total) * 100 : 0;
+          const cls = [vote.mine === i ? 'mine' : '', vote.winner === id ? 'win' : vote.winner ? 'lose' : ''].join(' ');
+          return `<button class="vote-card ${cls}" data-vi="${i}" ${open && vote.mine === null ? '' : 'disabled'} style="--sky:${esc(m.theme ? m.theme.sky : '#456')}">
+            <span class="vc-key">${i + 1}</span><b>${esc(m.name)}</b><small>${esc(MAP_BLURB[id] || '')}</small>
+            <span class="vc-bar"><i style="width:${pct}%"></i></span><span class="vc-n">${n} vote${n === 1 ? '' : 's'}${vote.mine === i ? ' · yours' : ''}</span></button>`;
+        }).join('')}</div>`;
+        $('vote-box').querySelectorAll('[data-vi]').forEach((b) => { b.onclick = () => info.onVote && info.onVote(Number(b.dataset.vi)); });
+      }
+      const left = Math.max(0, Math.ceil((vote.endsAt - now) / 1000));
+      $('end-timer').textContent = vote.winner ? `Next match on ${MAPS[vote.winner].name} in ${secs}s`
+        : now < vote.opensAt ? '' : vote.mine === null ? `Pick a map: click, 1 / 2 / 3, or Ⓧ Ⓨ Ⓑ · ${left}s` : `Vote counted · results in ${left}s`;
+    } else {
+      $('vote-box').innerHTML = '';
+      this.lastVote = '';
+      $('end-timer').textContent = showMvp ? '' : `Next match${nextMap ? ' on ' + nextMap : ''} in ${secs}s`;
+    }
+  }
+
+  mvpHtml(p, label, mine) {
+    const kd = (p.k / Math.max(1, p.d)).toFixed(2);
+    const stats = [['KILLS', p.k], ['DEATHS', p.d], ['K/D', kd], [label === 'PTS' ? 'SCORE' : label, p.sc]];
+    if (p.hs) stats.push(['HEADSHOTS', p.hs]);
+    if (p.streak >= 3) stats.push(['BEST STREAK', p.streak]);
+    return `<div class="mvp-tag">★ MATCH MVP${mine ? ' · THAT\'S YOU!' : ''}</div>
+      ${bannerHtml(p.banner || 'standard', p.name, p.color, 'MOST VALUABLE PLAYER', badge(p.role))}
+      <div class="mvp-stats">${stats.map(([n, v]) => `<div><b>${v}</b><small>${n}</small></div>`).join('')}</div>`;
   }
 }

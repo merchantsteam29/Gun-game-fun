@@ -1183,3 +1183,36 @@ body.mobile #death .big { font-size: 20px; }
 body.mobile #medals { top: 22%; }
 body.mobile .medal-ico { width: 30px; height: 30px; font-size: 14px; }
 body.mobile .medal-txt b { font-size: 14px; }
+
+/* End of match: MVP card, map vote */
+#endscreen.mvp-phase #podium, #endscreen.mvp-phase table, #endscreen.vote-phase table { display: none; }
+#mvp-card:empty, #vote-box:empty { display: none; }
+#mvp-card { display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 4px 0 6px; animation: mvp-in 0.5s cubic-bezier(.2,1.2,.4,1); }
+@keyframes mvp-in { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: none; } }
+.mvp-tag { font-size: 13px; font-weight: 800; letter-spacing: 4px; color: #ffd23f; text-shadow: 0 0 14px rgba(255,200,60,0.6); }
+#mvp-card .bnr { width: min(420px, 100%); }
+.mvp-stats { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.mvp-stats div { min-width: 74px; padding: 6px 10px; text-align: center; background: rgba(255,255,255,0.05); border: 1px solid var(--line); border-radius: 6px; }
+.mvp-stats b { display: block; font-size: 20px; line-height: 1.1; }
+.mvp-stats small { font-size: 9px; letter-spacing: 1.5px; color: var(--muted); }
+#endscreen .vote-head { text-align: center; font-size: 12px; font-weight: 800; letter-spacing: 3px; color: var(--muted); margin-bottom: 8px; }
+.vote-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+.vote-card { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; padding: 10px 10px 8px; min-height: 104px; text-align: left;
+  pointer-events: auto; border: 2px solid var(--line); border-radius: 8px; color: var(--text); cursor: pointer;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--sky) 45%, transparent), rgba(8,10,14,0.9) 75%); }
+.vote-card:disabled { cursor: default; }
+.vote-card:not(:disabled):hover { border-color: var(--accent); transform: translateY(-2px); }
+.vote-card b { font-size: 15px; letter-spacing: 1px; }
+.vote-card small { font-size: 11px; color: var(--muted); }
+.vc-key { position: absolute; right: 8px; top: 6px; font-size: 11px; font-weight: 800; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; }
+.vc-bar { width: 100%; height: 5px; margin-top: auto; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; }
+.vc-bar i { display: block; height: 100%; background: var(--accent); transition: width 0.3s; }
+.vc-n { font-size: 11px; color: var(--muted); }
+.vote-card.mine { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(255,176,32,0.3); }
+.vote-card.win { border-color: var(--ok); box-shadow: 0 0 18px rgba(77,255,154,0.35); }
+.vote-card.win .vc-bar i { background: var(--ok); }
+.vote-card.lose { opacity: 0.45; }
+body.mobile .vote-card { min-height: 80px; padding: 8px; }
+body.mobile .vote-card small { display: none; }
+body.mobile .mvp-stats div { min-width: 58px; padding: 4px 6px; }
+body.mobile .mvp-stats b { font-size: 15px; }

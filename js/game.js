@@ -256,6 +256,8 @@ export class Game {
     document.addEventListener('keydown', (e) => {
       if (!this.active) return;
       if (e.code === 'Tab') { e.preventDefault(); this.showScores = true; }
+      const vk = { Digit1: 0, Digit2: 1, Digit3: 2 }[e.code];
+      if (this.matchOver && vk !== undefined && !(e.target && /INPUT|TEXTAREA/.test(e.target.tagName))) { this.voteMap(vk); return; }
       if (!this.locked) return;
       if (e.code === 'Space' || e.code.startsWith('Control')) e.preventDefault();
       this.keys.add(e.code);
@@ -299,7 +301,7 @@ export class Game {
       if (!this.locked) {
         this.keys.clear();
         this.mouse.left = this.mouse.right = false;
-        if (this.active && this.onUnlock) this.onUnlock();
+        if (this.active && this.onUnlock && !this.matchOver) this.onUnlock(); // match over: it was freed for the vote
       }
     });
     window.addEventListener('blur', () => this.keys.clear());
@@ -583,15 +585,31 @@ export class Game {
         if (!this.matchOver && this.playedThisMatch) this.trackMatchEnd(m);
         this.playedThisMatch = false;
         this.matchOver = true;
-        this.endInfo = { scores: m.scores, until: performance.now() + m.next * 1000, nextMap: m.nextMap, title: m.title };
+        {
+          const now = performance.now();
+          this.endInfo = {
+            scores: m.scores, until: now + m.next * 1000, nextMap: m.nextMap, title: m.title, at: now, mvp: m.mvp || null,
+            vote: m.vote ? { maps: m.vote.maps, counts: m.vote.counts, opensAt: now + m.vote.opens, endsAt: now + m.vote.ends, winner: m.vote.winner, mine: null } : null,
+          };
+          // Free the mouse so the vote can be clicked (without opening the pause menu).
+          if (this.endInfo.vote && document.pointerLockElement === this.canvas) document.exitPointerLock();
+        }
         this.me.alive = false;
         this.deathInfo = null;
         this.hud.death(false);
         this.hud.reloading(false);
         this.hud.scope(false);
         break;
+      case 'votes': // live vote counts
+        if (this.endInfo && this.endInfo.vote) this.endInfo.vote.counts = m.counts;
+        break;
+      case 'voted': // the vote closed: winning map
+        if (this.endInfo && this.endInfo.vote) { this.endInfo.vote.winner = m.map; this.endInfo.vote.counts = m.counts; this.endInfo.nextMap = m.map; }
+        break;
       case 'start':
         this.streaks.clear();
+        // The mouse was freed for the map vote: offer "Resume" to get back in.
+        if (!this.locked && !this.touch && !this.padMode && this.onUnlock && this.endInfo) setTimeout(() => this.onUnlock && !this.locked && this.onUnlock(), 0);
         this.loadMap(m.map);
         this.matchOver = false;
         this.endInfo = null;
@@ -762,6 +780,15 @@ export class Game {
   }
 
   // Mission progress from the end-of-match result.
+  // End-of-match map vote (one vote, final). i: 0..2
+  voteMap(i) {
+    const v = this.endInfo && this.endInfo.vote, now = performance.now();
+    if (!v || v.winner || v.mine !== null || now < v.opensAt || now >= v.endsAt || !v.maps[i]) return;
+    v.mine = i;
+    this.net.send({ t: 'vote', i });
+    sfx.beep(0.4);
+  }
+
   trackMatchEnd(m) {
     const mode = this.rules.mode, me = this.players.get(this.myId), team = me ? me.team : 0;
     let won;
@@ -1891,7 +1918,16 @@ export class Game {
     }
     if (this.matchOver && this.endInfo) {
       const next = MAPS[this.endInfo.nextMap];
-      hud.end(true, this.endInfo.scores, this.myId, Math.max(0, Math.ceil((this.endInfo.until - now) / 1000)), next ? next.name : '', this.endInfo.title, this.rules.mode);
+      const e = this.endInfo, mvp = e.mvp;
+      const r = mvp && this.remotes.get(mvp.id);
+      hud.end(true, {
+        scores: e.scores, myId: this.myId, mode: this.rules.mode, title: e.title, now,
+        secs: Math.max(0, Math.ceil((e.until - now) / 1000)), nextMap: next ? next.name : '',
+        mvp: mvp && { ...mvp, color: this.players.get(mvp.id) ? this.colorFor(this.players.get(mvp.id)) : mvp.color,
+          banner: mvp.id === this.myId ? this.myBanner : r && r.cos && r.cos.banner },
+        showMvp: !!mvp && now - e.at < 4500,
+        vote: e.vote, onVote: (i) => this.voteMap(i),
+      });
     }
   }
 }

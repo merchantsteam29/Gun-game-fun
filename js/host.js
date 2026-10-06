@@ -73,6 +73,8 @@ const PHYS_DEFAULTS = { gameSpeed: 1, moveSpeed: 1, jump: 1, gravity: 1 };
 
 const PROTECT_MS = 1500;
 const END_SCREEN_MS = 10000;
+// End of match: MVP card first, then a vote on the next map (3 random maps), then the winner.
+const MVP_MS = 4500, VOTE_MS = 12000, RESULT_MS = 2500;
 const TICK_MS = 50;
 const HILL_SECONDS = 60;
 const INFECT_DELAY_MS = 10000;
@@ -128,6 +130,8 @@ export class HostLogic {
   beginMatchState() {
     this.phase = 'playing';
     this.firstBlood = false;
+    this.vote = null; // end-of-match map vote (see endMatch)
+    this.mvp = null;
     this.endsAt = Date.now() + this.s.timeLimit * 60000;
     this.restartAt = 0;
     this.endTitle = '';
@@ -425,6 +429,9 @@ export class HostLogic {
       case 'hit':
         this.hit(p, m);
         break;
+      case 'vote': // next-map vote at the end of a match
+        this.castVote(id, Number(m.i));
+        break;
       case 'chat': { // party chat: plain text, max 100 chars, at most ~2 messages a second each
         const now = Date.now();
         if (p.muted || now - (p.lastChat || 0) < 450) break;
@@ -553,7 +560,13 @@ export class HostLogic {
     v.hp = 0;
     v.deaths++;
     const enemyKill = v !== attacker && this.hostile(attacker, v);
-    if (enemyKill) attacker.kills++;
+    if (enemyKill) {
+      attacker.kills++;
+      attacker.streak = (attacker.streak || 0) + 1; // for the MVP card
+      attacker.bestStreak = Math.max(attacker.bestStreak || 0, attacker.streak);
+      if (head) attacker.heads = (attacker.heads || 0) + 1;
+    }
+    v.streak = 0;
     if (enemyKill && !attacker.bot) this.checkFlags(attacker, w, head);
     v.respawnAt = Date.now() + this.s.respawn * 1000;
     const fb = enemyKill && !this.firstBlood; // first kill of the match (medal)
@@ -786,7 +799,9 @@ export class HostLogic {
     return {
       t: 'end', scores, title: this.endTitle, mode: this.s.mode,
       next: Math.max(0, Math.ceil((this.restartAt - Date.now()) / 1000)),
-      nextMap: this.nextMap(),
+      nextMap: this.vote ? this.vote.winner : this.nextMap(),
+      mvp: this.mvp || null,
+      vote: this.vote ? { maps: this.vote.maps, counts: this.vote.counts, opens: Math.max(0, this.vote.opensAt - Date.now()), ends: Math.max(0, this.vote.endsAt - Date.now()), winner: this.vote.winner } : null,
     };
   }
 
@@ -804,7 +819,42 @@ export class HostLogic {
       this.endTitle = sorted[0] ? `${sorted[0].name} WINS` : 'MATCH OVER';
     }
     for (const p of this.players.values()) p.alive = false;
+    this.mvp = this.pickMvp();
+    // Map vote when maps rotate; otherwise the same map comes back.
+    const now = Date.now();
+    this.vote = this.s.rotate ? { maps: this.voteChoices(), counts: [0, 0, 0], ballots: new Map(), opensAt: now + MVP_MS, endsAt: now + MVP_MS + VOTE_MS, winner: null } : null;
+    this.restartAt = this.vote ? this.vote.endsAt + RESULT_MS : now + END_SCREEN_MS;
     this.broadcast(this.endMsg());
+  }
+
+  // Best player of the match: highest score, then kills, then fewest deaths.
+  pickMvp() {
+    const p = [...this.players.values()].sort((a, b) => b.score - a.score || b.kills - a.kills || a.deaths - b.deaths)[0];
+    return p ? { id: p.id, name: p.name, color: p.color, team: p.team, k: p.kills, d: p.deaths, sc: Math.floor(p.score), hs: p.heads || 0, streak: p.bestStreak || 0, role: p.role || null } : null;
+  }
+
+  // Three different maps, never the one just played.
+  voteChoices() {
+    const pool = MAP_ORDER.filter((m) => m !== this.s.map).sort(() => Math.random() - 0.5);
+    return pool.slice(0, 3);
+  }
+
+  castVote(id, i) {
+    const v = this.vote;
+    const now = Date.now();
+    if (!v || v.winner || now < v.opensAt || now >= v.endsAt || !(i >= 0 && i < v.maps.length) || v.ballots.has(id)) return;
+    v.ballots.set(id, i); // one vote per player, final
+    v.counts[i]++;
+    this.broadcast({ t: 'votes', counts: v.counts });
+  }
+
+  // Most votes wins; ties (or no votes at all) are settled at random among the leaders.
+  closeVote() {
+    const v = this.vote;
+    const top = Math.max(...v.counts);
+    const leaders = v.maps.filter((m, i) => v.counts[i] === top);
+    v.winner = leaders[(Math.random() * leaders.length) | 0];
+    this.broadcast({ t: 'voted', map: v.winner, counts: v.counts });
   }
 
   nextMap() {
@@ -829,6 +879,7 @@ export class HostLogic {
     const list = [...this.players.values()].sort(() => Math.random() - 0.5);
     list.forEach((p, i) => {
       p.kills = 0; p.deaths = 0; p.level = 0;
+      p.heads = 0; p.streak = 0; p.bestStreak = 0;
       p.score = this.s.mode === 'lms' ? Math.max(1, this.s.scoreLimit) : 0;
       p.team = this.mode.redBlue ? (i % 2) + 1 : this.s.mode === 'infection' ? 1 : 0;
       p.alive = false;
@@ -868,8 +919,9 @@ export class HostLogic {
       if (this.flags) this.tickFlags(now);
       if (this.dom && this.phase === 'playing') this.tickDom(rdt);
       for (const p of this.players.values()) if (p.bot && !p.frozen) p.bot.update(dt);
-    } else if (now >= this.restartAt) {
-      this.startMatch();
+    } else {
+      if (this.vote && !this.vote.winner && now >= this.vote.endsAt) this.closeVote();
+      if (now >= this.restartAt) this.startMatch(undefined, this.vote && this.vote.winner ? this.vote.winner : undefined);
     }
 
     const s = {};

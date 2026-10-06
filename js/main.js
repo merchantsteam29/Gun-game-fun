@@ -2,7 +2,7 @@ import { Game } from './game.js';
 import { Net } from './net.js';
 import { initAudio } from './audio.js';
 import { WEAPONS, SLOTS, SLOT_NAMES, SHORT, CLASSES, validLoadout, weaponInfo, killStats } from './weapons.js';
-import { MAPS, MAP_ORDER, quality } from './maps.js';
+import { MAPS, MAP_ORDER, MAP_BLURB, quality } from './maps.js';
 import { TouchControls } from './touch.js';
 import { COLORS, randCode, store } from './util.js';
 import { MODES, MODE_ORDER } from './host.js';
@@ -425,14 +425,6 @@ window.social = social; // debugging
 social.ready.then(() => { if (!social.tag && !sessionStorage.getItem('tagLater') && !net) openTagPop(); });
 
 // Mode and map pickers are tap targets rather than dropdowns (much easier on touch screens).
-const MAP_BLURB = {
-  warehouse: 'Indoor · mezzanines', yard: 'Outdoor · containers', town: 'Rooftops · houses', pit: 'Small · jump pads',
-  outpost: 'Snow · towers', docks: 'Water · cranes',
-  arena: 'Arena · stands', compound: 'Rooms · yard', rooftops: 'Night · bridges',
-  station: 'Sci-fi · reactor', canyon: 'Mesas · bridge', construction: 'Floors · crane',
-  castle: 'Keep · ramparts', hangar: 'Plane · catwalks', mall: 'Shops · 2 floors',
-  temple: 'Pyramid · jungle', oilrig: 'Decks · derrick', subway: 'Tracks · platforms',
-};
 function renderModes() {
   $('mode-tiles').innerHTML = MODE_ORDER.map((id) =>
     `<button class="tile ${id === settings.mode ? 'sel' : ''}" data-mode="${id}">${MODES[id].name}${MODES[id].teams ? '<small>teams</small>' : ''}</button>`).join('');
@@ -601,6 +593,7 @@ function newNet() {
   n.onMessage = (m) => { game.onNet(m); chatOnNet(m); };
   n.onClose = (reason) => leave(reason);
   game.attach(n, { loadout: settings.loadout, color: settings.color });
+  game.myBanner = getCos().banner; // for the MVP card
   return n;
 }
 
@@ -896,7 +889,8 @@ async function hostLobby() {
 }
 
 // spectate: staff only; joins invisibly with a signed proof instead of a player.
-async function joinLobby(spectate = false) {
+async function joinLobby(spectateArg = false) {
+  const spectate = spectateArg === true; // only an explicit true (never a click event)
   if (busy) return;
   if (moderation.myBan()) { moderation.lastBan = null; moderation.applyMine(); return; }
   const code = $('join-code').value.trim().toUpperCase();
@@ -942,7 +936,7 @@ function leave(reason) {
 }
 
 $('btn-host').onclick = hostLobby;
-$('btn-join').onclick = joinLobby;
+$('btn-join').onclick = () => joinLobby();
 const touch = new TouchControls(game, () => {
   game.setLocked(false);
   touch.show(false);
@@ -978,7 +972,7 @@ settingsUI = new SettingsUI({
   editLayout: (done) => touch.edit(done),
   getColor: () => settings.color,
   getName: () => settings.name || 'Player',
-  onCos: (c) => { if (net) net.send({ t: 'cos', c }); },
+  onCos: (c) => { game.myBanner = c.banner; if (net) net.send({ t: 'cos', c }); },
 });
 $('btn-settings-menu').onclick = () => {
   $('menu').classList.add('hidden');

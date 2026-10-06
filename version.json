@@ -1,7 +1,10 @@
 {
-  "version": "2026.10.07.2",
+  "version": "2026.10.07.3",
   "notes": [
-    "Medals: First Blood, Double / Triple / Multi Kill, killing streaks, Headshot, Revenge, Longshot, Melee, Shutdown and more"
+    "Match MVP card at the end of every match",
+    "Vote for the next map: 3 choices, live vote counts",
+    "Medals: First Blood, multi-kills, streaks, Headshot, Revenge, Longshot and more",
+    "Banned players can appeal; chat filter; new staff tools"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json",

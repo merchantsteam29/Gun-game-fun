@@ -6,6 +6,15 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 export const boxes = [];
 export const spawns = [];
 export const MAP_ORDER = ['warehouse', 'yard', 'town', 'pit', 'outpost', 'docks', 'arena', 'compound', 'rooftops', 'station', 'canyon', 'construction', 'castle', 'hangar', 'mall', 'temple', 'oilrig', 'subway'];
+// Short descriptions for the map pickers and the end-of-match vote.
+export const MAP_BLURB = {
+  warehouse: 'Indoor · mezzanines', yard: 'Outdoor · containers', town: 'Rooftops · houses', pit: 'Small · jump pads',
+  outpost: 'Snow · towers', docks: 'Water · cranes',
+  arena: 'Arena · stands', compound: 'Rooms · yard', rooftops: 'Night · bridges',
+  station: 'Sci-fi · reactor', canyon: 'Mesas · bridge', construction: 'Floors · crane',
+  castle: 'Keep · ramparts', hangar: 'Plane · catwalks', mall: 'Shops · 2 floors',
+  temple: 'Pyramid · jungle', oilrig: 'Decks · derrick', subway: 'Tracks · platforms',
+};
 // Render quality (lowered on mobile before any map is built).
 export const quality = { shadowSize: 2048, pointLights: true };
 
