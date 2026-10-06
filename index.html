@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>Warehouse FFA</title>
+<title>Gun Game 3D</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
@@ -44,15 +44,25 @@
   <div id="flash"></div>
   <div id="dmg-dir"></div>
 
+  <div id="minimap"><canvas id="radar"></canvas></div>
   <div id="lobby-tag"></div>
   <div id="voice-hud" class="hidden"></div>
   <div id="fps" class="hidden"></div>
   <div id="mission-toast"></div>
-  <div id="match-info"><div id="timer">10:00</div><div id="mode-bar"></div><div id="leader"></div></div>
+  <div id="match-info">
+    <div id="score-strip">
+      <div class="ss l hidden"><div class="ss-top"><span class="ss-name"></span><b class="ss-num"></b></div><div class="ss-bar"><i></i></div></div>
+      <div id="timer">10:00</div>
+      <div class="ss r hidden"><div class="ss-top"><b class="ss-num"></b><span class="ss-name"></span></div><div class="ss-bar"><i></i></div></div>
+    </div>
+    <div id="mode-bar"></div><div id="leader"></div>
+  </div>
+  <div id="kill-banner"></div>
   <div id="killfeed"></div>
   <div id="notice"></div>
 
   <div id="health">
+    <div class="hp-icon">✚</div>
     <div id="hp-num">100</div>
     <div class="hp-side">
       <div class="label">HEALTH</div>
@@ -68,10 +78,10 @@
     </div>
     <div id="ammo-bar"><div id="ammo-fill"></div></div>
   </div>
-  <div id="reload-hint">RELOADING</div>
+  <div id="reload-hint"><svg viewBox="0 0 40 40"><circle class="bg" cx="20" cy="20" r="17"/><circle class="fg" cx="20" cy="20" r="17"/></svg><span>RELOADING</span></div>
 
   <div id="scoreboard" class="hidden">
-    <h2 id="sb-title">SCOREBOARD</h2>
+    <div class="sb-top"><h2 id="sb-title">SCOREBOARD</h2><span id="sb-sub"></span></div>
     <table><thead><tr id="sb-head"></tr></thead><tbody id="sb-body"></tbody></table>
   </div>
 
@@ -84,6 +94,7 @@
 
   <div id="endscreen" class="hidden">
     <div class="big" id="end-title">MATCH OVER</div>
+    <div id="podium"></div>
     <table><tbody id="end-body"></tbody></table>
     <div id="end-timer"></div>
   </div>
@@ -121,7 +132,7 @@
   <div class="panel menu-panel">
     <aside class="menu-rail">
       <header class="brand">
-        <h1>WAREHOUSE <span>FFA</span></h1>
+        <h1>GUN GAME <span>3D</span></h1>
         <button id="player-chip" class="player-chip" title="Edit your character"><i id="chip-dot"></i><span id="chip-name"></span><em id="chip-tokens"></em></button>
       </header>
       <nav class="menu-nav" id="menu-nav">

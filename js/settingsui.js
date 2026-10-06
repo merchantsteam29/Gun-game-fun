@@ -45,6 +45,8 @@ const TABS = [
     { key: 'showChat', label: 'Show party chat', hint: 'Turn off to hide all chat messages', type: 'check' },
     { key: 'voiceVolume', label: 'Voice chat volume', type: 'range', min: 0, max: 1, step: 0.05, fmt: pct },
     { key: 'voicePtt', label: 'Push to talk', hint: 'Only send your voice while holding V (otherwise your mic is open while you\'re in voice)', type: 'check' },
+    { key: 'minimap', label: 'Minimap', hint: 'Shows the map, teammates, objectives and enemies who fire unsuppressed', type: 'check' },
+    { key: 'hudScale', label: 'HUD size', type: 'range', min: 0.75, max: 1.3, step: 0.05, fmt: mul },
     { key: 'crossColor', label: 'Crosshair color', type: 'swatch', options: CROSS_COLORS },
     { key: 'crossSize', label: 'Crosshair size', type: 'range', min: 0.6, max: 2, step: 0.05, fmt: mul },
     { key: 'crossDot', label: 'Crosshair center dot', type: 'check' },

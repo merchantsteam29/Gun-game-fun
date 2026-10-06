@@ -625,7 +625,11 @@ export class Game {
     const k = pk && { ...pk, color: this.colorFor(pk) }, v = pv && { ...pv, color: this.colorFor(pv) };
     if (v) this.hud.feed(k, v, m.w, m.head, m.k === this.myId || m.v === this.myId);
     if (m.k === this.myId && m.v !== this.myId && v) {
-      this.hud.say(`ELIMINATED ${v.name}`);
+      const t = performance.now();
+      this.lifeKills = (this.lifeKills || 0) + 1;
+      this.multi = t - (this.lastKillAt || 0) < 4000 ? (this.multi || 1) + 1 : 1;
+      this.lastKillAt = t;
+      this.hud.killBanner(v.name, v.color, !!m.head, this.multi, this.lifeKills);
       this.hud.hit('kill', !!m.head);
       if (m.head) {
         this.headStreak = (this.headStreak || 0) + 1;
@@ -650,6 +654,7 @@ export class Game {
     if (m.v === this.myId) {
       this.me.alive = false;
       this.headStreak = 0;
+      this.lifeKills = 0;
       this.deathInfo = {
         killer: m.k !== this.myId ? m.k : null, w: m.w, at: performance.now(), head: !!m.head && m.k !== this.myId,
         pos: this.me.pos.clone(), eye: this.me.eye, roll: Math.random() > 0.5 ? 1 : -1,
@@ -1480,7 +1485,7 @@ export class Game {
     }
     if (!m.q) this.fx.muzzleFlash(o); // suppressed guns: no flash, much quieter
     const r = this.remotes.get(m.id);
-    if (r) r.fire();
+    if (r) { r.fire(); if (!m.q) r.pingAt = performance.now(); } // loud shots show on the minimap
     if (sfx[m.w]) this.posSound(sfx[m.w], o, m.q ? 0.3 : 0.9);
   }
 
@@ -1655,21 +1660,20 @@ export class Game {
   modeBar() {
     const mode = this.rules.mode, me = this.players.get(this.myId);
     if (MODES[mode].redBlue && this.teamScore) {
-      const [r, b] = this.teamScore;
-      const mine = me && me.team === 1 ? 'red' : 'blue';
-      let bar = `<span class="team red ${mine === 'red' ? 'mine' : ''}">RED ${r}</span><span class="lim">/ ${this.rules.scoreLimit}</span><span class="team blue ${mine === 'blue' ? 'mine' : ''}">BLUE ${b}</span>`;
+      // The team scores themselves are in the score strip above; this line only adds objective info.
+      let bar = `<span class="lim">${MODES[mode].short} · FIRST TO ${this.rules.scoreLimit}</span>`;
       if (mode === 'ctf' && this.flagData) {
         const st = (t) => { const f = this.flagData.find((d) => d[0] === t); return !f ? '' : f[5] === 1 ? (f[4] === this.myId ? 'YOU HAVE IT' : 'TAKEN') : f[5] === 2 ? 'DROPPED' : 'HOME'; };
-        bar += `<span class="lim"> · <span class="red">RED FLAG ${st(1)}</span> · <span class="blue">BLUE FLAG ${st(2)}</span></span>`;
+        bar = `<span class="red">RED FLAG ${st(1)}</span><span class="lim"> · </span><span class="blue">BLUE FLAG ${st(2)}</span>`;
       }
       if (mode === 'dom' && this.domData) {
-        bar += '<span class="lim"> · ' + this.domData.map(([n, , , , , owner, , contested]) =>
-          `<span class="${owner === 1 ? 'red' : owner === 2 ? 'blue' : ''}">${n}${contested ? '!' : ''}</span>`).join(' ') + '</span>';
+        bar = this.domData.map(([n, , , , , owner, , contested]) =>
+          `<span class="dom-pip ${owner === 1 ? 'red' : owner === 2 ? 'blue' : ''} ${contested ? 'contested' : ''}">${n}</span>`).join('');
       }
       if (mode === 'hardpoint' && this.zone) {
         const [, , , , state, holder, secs] = this.zone;
         const st = state === 2 ? 'CONTESTED' : state === 1 ? `<span class="${holder === 1 ? 'red' : 'blue'}">${holder === 1 ? 'RED' : 'BLUE'} HOLDS</span>` : 'NEUTRAL';
-        bar += `<span class="lim"> · ZONE ${st} · MOVES IN ${secs}s</span>`;
+        bar = `ZONE ${st}<span class="lim"> · MOVES IN ${secs}s</span>`;
       }
       return bar;
     }
@@ -1719,22 +1723,72 @@ export class Game {
 
   // ---------- HUD ----------
 
+  // Two-sided score strip around the timer: your team vs theirs, or you vs the best other player.
+  scoreStrip() {
+    const mode = this.rules.mode, me = this.players.get(this.myId), lim = this.rules.scoreLimit;
+    if (!me) return null;
+    if (MODES[mode].redBlue && this.teamScore) {
+      const mineT = me.team === 2 ? 2 : 1, other = 3 - mineT;
+      const side = (t, label) => ({ label, score: this.teamScore[t - 1], pct: this.teamScore[t - 1] / lim, color: TEAM_COLORS[t] });
+      return { l: side(mineT, mineT === 1 ? 'RED · YOU' : 'BLUE · YOU'), r: side(other, other === 1 ? 'RED' : 'BLUE') };
+    }
+    if (this.teams || mode === 'infection' || mode === 'lms') return null;
+    const total = mode === 'gungame' ? GUNGAME_LADDER.length : lim;
+    const val = (p) => (mode === 'gungame' ? Math.min(p.sc + 1, total) : p.sc);
+    let best = null;
+    for (const p of this.players.values()) if (p.id !== this.myId && (!best || p.sc > best.sc)) best = p;
+    const r = best
+      ? { label: (best.sc > me.sc ? '1ST · ' : '') + best.name, score: val(best), pct: val(best) / total, color: this.colorFor(best) }
+      : { label: '—', score: 0, pct: 0, color: '#8a94a3' };
+    return { l: { label: (me.sc >= (best ? best.sc : 0) ? '1ST · ' : '') + 'YOU', score: val(me), pct: val(me) / total, color: '#ffb020' }, r };
+  }
+
+  drawRadar() {
+    const me = this.me, now = performance.now();
+    const blips = [], objs = [];
+    for (const r of this.remotes.values()) {
+      if (!r.alive) continue;
+      const p = this.players.get(r.id);
+      if (!p) continue;
+      const ally = !!p.team && p.team === this.myTeam && (this.teams || this.rules.mode === 'infection');
+      if (ally) { blips.push({ x: r.pos.x, z: r.pos.z, color: '#4fc3ff', kind: 'ally' }); continue; }
+      const age = now - (r.pingAt || -1e9);
+      if (age < 2500) blips.push({ x: r.pos.x, z: r.pos.z, color: '#ff4a3a', kind: 'enemy', a: age < 1500 ? 1 : 1 - (age - 1500) / 1000 });
+    }
+    if (this.zone) {
+      const [x, , z, r, state, holder] = this.zone;
+      const hp = this.rules.mode === 'hardpoint';
+      const color = state === 2 ? '#ffb020' : state === 1 ? (hp ? TEAM_COLORS[holder] || '#ffffff' : holder === this.myId ? '#4dff9a' : '#ffb020') : '#ffffff';
+      objs.push({ x, z, r, color });
+    }
+    for (const [n, x, , z, r, owner] of this.domData || []) objs.push({ x, z, r, color: owner ? TEAM_COLORS[owner] : '#d8dde2', label: n });
+    for (const [t, x, , z, carrier, state, hx, , hz] of this.flagData || []) {
+      objs.push({ x: hx, z: hz, r: 2.3, color: TEAM_COLORS[t] });
+      if (state !== 0) {
+        const h = state === 1 ? (carrier === this.myId ? me.pos : this.remotes.get(carrier)?.pos) : null;
+        objs.push({ x: h ? h.x : x, z: h ? h.z : z, r: 0.9, color: TEAM_COLORS[t], label: '⚑' });
+      }
+    }
+    this.hud.radar(this.mapId, MAPS[this.mapId].bounds, { x: me.pos.x, z: me.pos.z, yaw: me.yaw }, blips, objs);
+  }
+
   updateHud(dt, now) {
     const me = this.me, hud = this.hud;
     const id = this.curW, w = this.W(id);
     hud.health(me.alive ? me.hp : 0, this.maxHp);
     hud.ammo(id, this.ammo[id] ?? 0, w.mag || 0, this.util);
     hud.slots(this.loadout, this.slot, this.util, this.ammo);
-    hud.reloading(this.reloadT > 0 && me.alive);
+    hud.reloading(this.reloadT > 0 && me.alive, w.reload ? 1 - this.reloadT / w.reload : 0);
     const px = (this.spread / Math.tan((this.camera.fov * Math.PI) / 360)) * (innerHeight / 2);
     hud.spread(Math.min(80, px), this.ads && w.type === 'gun');
+    if (opts.minimap && !this.matchOver) this.drawRadar();
 
     this.hudAcc -= dt;
     if (this.hudAcc > 0) return;
     this.hudAcc = 0.1;
-    let leader = null;
-    for (const p of this.players.values()) if (!leader || p.sc > leader.sc) leader = p;
-    hud.timer(this.timeLeft, !this.teams && leader && leader.sc > 0 ? leader : null);
+    hud.minimap(opts.minimap);
+    hud.timer(this.timeLeft, null);
+    hud.strip(this.scoreStrip());
     hud.modeBar(this.modeBar());
     hud.lobby(this.net.code, this.players.size, `${MODES[this.rules.mode].short} · ${MAPS[this.mapId].name}`);
     hud.scoreboard(this.showScores && !this.matchOver, this.players, this.myId, this.rules.mode, (p) => this.colorFor(p));

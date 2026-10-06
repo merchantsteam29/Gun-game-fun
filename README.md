@@ -1,4 +1,4 @@
-# Warehouse FFA
+# Gun Game 3D
 
 A browser-based 3D multiplayer shooter (Three.js + WebRTC) to play with friends, with bots.
 
@@ -173,6 +173,17 @@ Switching holsters your current weapon before drawing the next (heavier weapons 
 immediately and then puts your previous weapon back in your hands. When you throw your last grenade you go back to
 the weapon you had out before.
 
+## HUD
+
+- **Minimap** (top-left; top-right on phones and tablets): rotates with you and shows the map layout, teammates (blue
+  dots), objectives (hills, Domination zones, flags) and enemies for a couple of seconds after they fire an
+  unsuppressed gun. Suppressors keep you off it.
+- **Score strip** around the timer: your team vs. the enemy team, or you vs. the best other player in free-for-all
+  modes, with progress bars toward the score limit.
+- **Kill banner** for every kill, with multi-kill (double, triple, quad, mega) and streak (killing spree, rampage,
+  unstoppable, legendary, godlike) call-outs.
+- **Reload ring** around the crosshair that fills as you reload.
+- Scoreboard (Tab) with rank and K/D; the end screen shows a podium for the top three.
 ## Settings
 
 Open **Settings** from the main menu or the pause menu. Everything is saved in your browser.
@@ -182,7 +193,7 @@ Open **Settings** from the main menu or the pause menu. Everything is saved in y
 | Controls | Mouse sensitivity (desktop) / look sensitivity (touch), aiming sensitivity, invert look, toggle aim with right mouse |
 | Controller | Look sensitivity, aiming sensitivity, invert, stick dead zone, aim assist + strength, crouch toggle, auto-sprint, vibration, button layout |
 | Video | Field of view, weapon field of view, view bobbing, graphics High/Low, FPS counter |
-| HUD & Audio | Volume, crosshair color, size and center dot |
+| HUD & Audio | Volume, party chat, voice chat, minimap on/off, HUD size, crosshair color, size and center dot |
 | Mobile | Edit button layout (drag any touch button anywhere, resize each one), button size, button opacity |
 | Missions | 37 missions (kills, headshots, sniper / shotgun / melee / secondary / explosive kills, streaks, matches, wins, maps and modes played, mode-specific goals). Each one pays tokens 🪙 |
 | Customize | 17 hats, 7 hair styles (+ colors), 8 face items and 8 back items. Tap anything to preview it on your character, then spend tokens on whatever you want. Other players see what you wear |

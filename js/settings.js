@@ -17,6 +17,8 @@ const DEFAULTS = {
   crossSize: 1,
   crossDot: true,
   showFps: false,
+  minimap: true,
+  hudScale: 1,
   bobbing: 1,         // head and weapon bob amount
   btnScale: 1,        // touch button size
   btnOpacity: 1,      // touch button opacity

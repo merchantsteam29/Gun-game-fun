@@ -1,5 +1,6 @@
 import { WEAPONS, SLOT_NAMES, SHORT } from './weapons.js';
 import { esc } from './util.js';
+import { Radar } from './radar.js';
 
 const $ = (id) => document.getElementById(id);
 const W_LABEL = SHORT;
@@ -15,6 +16,7 @@ export class Hud {
     this.killfeed = $('killfeed');
     this.timers = {};
     this.lastSlots = '';
+    this.radarView = new Radar($('radar'));
   }
 
   show(v) { this.el.classList.toggle('hidden', !v); }
@@ -24,6 +26,18 @@ export class Hud {
     this.crosshair.style.setProperty('--cross-scale', o.crossSize);
     this.crosshair.classList.toggle('nodot', !o.crossDot);
     $('fps').classList.toggle('hidden', !o.showFps);
+    this.el.style.setProperty('--hs', o.hudScale || 1);
+    this.minimap(o.minimap);
+  }
+
+  minimap(on) {
+    on = on !== false;
+    if (on !== this.mapOn) { this.mapOn = on; this.el.classList.toggle('nomap', !on); }
+  }
+
+  radar(mapId, bounds, me, blips, objs) {
+    this.radarView.layout(mapId, bounds);
+    this.radarView.draw(me, blips, objs);
   }
 
   fps(n) { $('fps').textContent = n + ' FPS'; }
@@ -106,7 +120,43 @@ export class Hud {
     el.style.opacity = 0;
   }
 
-  reloading(v) { $('reload-hint').classList.toggle('show', v); }
+  // Ring around the crosshair that fills as the reload completes.
+  reloading(v, frac = 0) {
+    const el = $('reload-hint');
+    if (v !== this.reloadOn) { this.reloadOn = v; el.classList.toggle('show', v); }
+    if (v) el.style.setProperty('--p', Math.max(0, Math.min(1, frac)).toFixed(3));
+  }
+
+  // s: { l: {label, score, pct, color}, r: {...} } or null (just the timer).
+  strip(s) {
+    const key = JSON.stringify(s);
+    if (key === this.lastStrip) return;
+    this.lastStrip = key;
+    for (const side of ['l', 'r']) {
+      const el = this.el.querySelector('#score-strip .ss.' + side), d = s && s[side];
+      el.classList.toggle('hidden', !d);
+      if (!d) continue;
+      el.style.setProperty('--c', d.color);
+      el.querySelector('.ss-name').textContent = d.label;
+      el.querySelector('.ss-num').textContent = d.score;
+      el.querySelector('.ss-bar i').style.width = Math.min(100, d.pct * 100) + '%';
+    }
+    $('match-info').classList.toggle('has-strip', !!s);
+  }
+
+  // Center-screen banner for each of your kills, with multi-kill and streak call-outs.
+  killBanner(name, color, head, multi, streak) {
+    const MULTI = { 2: 'DOUBLE KILL', 3: 'TRIPLE KILL', 4: 'QUAD KILL' };
+    const STREAK = { 3: 'KILLING SPREE', 5: 'RAMPAGE', 7: 'UNSTOPPABLE', 10: 'LEGENDARY', 15: 'GODLIKE' };
+    const call = multi >= 5 ? 'MEGA KILL' : MULTI[multi] || STREAK[streak] || '';
+    const el = $('kill-banner');
+    el.innerHTML = `${call ? `<div class="kb-call">${call}</div>` : ''}<div class="kb-main"><span class="kb-x">${head ? '⌖' : '✕'}</span>ELIMINATED <b style="color:${esc(color)}">${esc(name)}</b></div>${streak > 1 ? `<div class="kb-streak">${streak} KILL STREAK</div>` : ''}`;
+    el.classList.remove('show');
+    void el.offsetWidth;
+    el.classList.add('show');
+    clearTimeout(this.timers.kb);
+    this.timers.kb = setTimeout(() => el.classList.remove('show'), 1800);
+  }
 
   scope(v) {
     if (v === this.scoped) return;
@@ -169,7 +219,7 @@ export class Hud {
     if (mine) d.className = 'me';
     const kname = killer && killer !== victim
       ? `<span style="color:${esc(killer.color)}">${esc(killer.name)}</span><span class="w">${W_LABEL[weapon] || esc(weapon)}${head ? '<i class="hs" title="Headshot">⌖</i>' : ''}</span>`
-      : `<span class="w">${W_LABEL[weapon] || weapon} (self)</span>`;
+      : `<span class="w">${W_LABEL[weapon] || esc(weapon)} · self</span>`;
     d.innerHTML = `${kname}<span style="color:${esc(victim.color)}">${esc(victim.name)}</span>`;
     this.killfeed.prepend(d);
     while (this.killfeed.children.length > 6) this.killfeed.lastChild.remove();
@@ -186,12 +236,17 @@ export class Hud {
     $('scoreboard').classList.toggle('hidden', !show);
     if (!show) return;
     const scoreLabel = { gungame: 'Lvl', koth: 'Pts', infection: 'Inf', lms: 'Lives', juggernaut: 'Pts' }[mode] || 'Score';
-    $('sb-head').innerHTML = `<th></th><th>Player</th><th>${scoreLabel}</th><th>K</th><th>D</th>`;
+    $('sb-head').innerHTML = `<th>#</th><th>Player</th><th>${scoreLabel}</th><th>K</th><th>D</th><th>K/D</th>`;
     const rows = [...players.values()].sort((a, b) => (a.team || 0) - (b.team || 0) || b.sc - a.sc || b.k - a.k || a.d - b.d);
+    $('sb-sub').textContent = `${rows.length} player${rows.length === 1 ? '' : 's'}`;
+    let rank = 0, team = null;
     $('sb-body').innerHTML = rows.map((p) => {
+      if (p.team !== team) { team = p.team; rank = 0; }
+      rank++;
       const c = colorFor ? colorFor(p) : p.color;
       const sc = mode === 'gungame' ? p.sc + 1 : p.sc;
-      return `<tr class="${p.id === myId ? 'me' : ''}"><td><span class="dot" style="background:${esc(c)}"></span></td><td>${esc(p.name)}</td><td>${sc}</td><td>${p.k}</td><td>${p.d}</td></tr>`;
+      const kd = (p.k / Math.max(1, p.d)).toFixed(2);
+      return `<tr class="${p.id === myId ? 'me' : ''}" style="--c:${esc(c)}"><td class="rk">${rank}</td><td><span class="dot" style="background:${esc(c)}"></span>${esc(p.name)}</td><td class="sc">${sc}</td><td>${p.k}</td><td>${p.d}</td><td class="kd">${kd}</td></tr>`;
     }).join('');
   }
 
@@ -207,9 +262,17 @@ export class Hud {
     if (!show) return;
     $('end-title').textContent = title || 'MATCH OVER';
     const label = { gungame: 'LVL', koth: 'PTS', infection: 'INF', lms: 'LIVES' }[mode] || 'PTS';
-    $('end-body').innerHTML = scores.map((p, i) =>
-      `<tr class="${p.id === myId ? 'me' : ''}"><td>#${i + 1}</td><td><span class="dot" style="background:${esc(p.color)}"></span> ${esc(p.name)}</td><td>${p.sc} ${label}</td><td>${p.k} K</td><td>${p.d} D</td></tr>`
-    ).join('');
+    const key = JSON.stringify(scores) + myId + label;
+    if (key !== this.lastEnd) {
+      this.lastEnd = key;
+      // Podium for the top three (2nd, 1st, 3rd left to right), then the full table below.
+      const top = [scores[1], scores[0], scores[2]];
+      $('podium').innerHTML = top.map((p, i) => !p ? '<div class="pd empty"></div>' :
+        `<div class="pd p${[2, 1, 3][i]} ${p.id === myId ? 'me' : ''}" style="--c:${esc(p.color)}"><div class="pd-name">${esc(p.name)}</div><div class="pd-sc">${p.sc} ${label}</div><div class="pd-step">${[2, 1, 3][i]}</div></div>`).join('');
+      $('end-body').innerHTML = scores.map((p, i) =>
+        `<tr class="${p.id === myId ? 'me' : ''}"><td class="rk">${i + 1}</td><td><span class="dot" style="background:${esc(p.color)}"></span>${esc(p.name)}</td><td class="sc">${p.sc} ${label}</td><td>${p.k} K</td><td>${p.d} D</td></tr>`
+      ).join('');
+    }
     $('end-timer').textContent = `Next match${nextMap ? ' on ' + nextMap : ''} in ${secs}s`;
   }
 }
