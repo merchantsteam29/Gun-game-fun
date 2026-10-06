@@ -8,12 +8,14 @@ import { esc } from './util.js';
 
 // Secret PC-only Showroom: a full-screen 3D viewer of your character, cosmetics and guns with
 // mouse orbit / pan / zoom, poses, backdrops and photo export, plus a few PC-only video settings.
-// Opened from the menus (not in a text box) with any of the secret codes below. Phones and tablets
-// never see it. Arrows are written as arrow characters, everything else as the letter typed.
+// Opened from the menus with any of the secret codes below. Phones and tablets never see it.
+// Arrows are written as arrow characters, everything else as the letter typed. The Konami code
+// also works while a text box has focus (only the word codes are ignored there).
 
+const KONAMI = '↑↑↓↓←→←→ba';
 const CODES = [
   '↑↓←→chad', // arrows + codeword
-  '↑↑↓↓←→←→ba', // Konami
+  KONAMI,
   'drip',
 ];
 const ARROWS = { ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→' };
@@ -67,12 +69,16 @@ export class Showroom {
         if (!typing || e.key === 'Escape') e.stopPropagation(); // nothing leaks into the game underneath
         return;
       }
-      if (typing) return;
-      if (game.locked) { typed = ''; return; }
+      if (game.locked || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT' || e.target.id === 'chat-input') { typed = ''; return; }
       const ch = ARROWS[e.code] || (e.key.length === 1 ? e.key.toLowerCase() : '');
       if (!ch) return;
       typed = (typed + ch).slice(-20);
-      if (CODES.some((c) => typed.endsWith(c))) { typed = ''; e.preventDefault(); this.show(); }
+      const hit = typing ? (typed.endsWith(KONAMI) ? KONAMI : null) : CODES.find((c) => typed.endsWith(c));
+      if (!hit) return;
+      typed = '';
+      e.preventDefault(); // the final "a" never reaches the box
+      if (typing && e.target.value && e.target.value.toLowerCase().endsWith('b')) e.target.value = e.target.value.slice(0, -1); // nor the "b"
+      this.show();
     }, true);
   }
 
