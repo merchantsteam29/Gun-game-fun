@@ -181,6 +181,22 @@ export class Social {
     this.changed();
   }
 
+  // Gives up your gamertag (a moderator made you change it): the claim is cleared so it's free
+  // again, and you pick a new one. Friends stay saved on this device.
+  releaseTag() {
+    if (!this.tag) return;
+    const me = this.me;
+    this.publishPresence(false);
+    clearInterval(this.presT);
+    this.clear(P + 'tag/' + me);
+    for (const t of [`req/${me}/+`, `acc/${me}/+`, `rm/${me}/+`, `inbox/${me}`]) this.relay.unsubscribe(P + t);
+    this.keys.delete(me);
+    this.tag = null;
+    this.since = 0;
+    store.set('gamertag', null);
+    this.changed();
+  }
+
   goOnline() {
     const me = this.me;
     for (const t of [`req/${me}/+`, `acc/${me}/+`, `rm/${me}/+`, `inbox/${me}`]) this.relay.subscribe(P + t);

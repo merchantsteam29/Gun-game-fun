@@ -425,6 +425,23 @@ export class HostLogic {
           this.broadcast({ t: 'prole', id, role: p.role, name: p.name });
         });
         break;
+      case 'modwarn': case 'modrename': { // pop-up warning / rename in this match
+        const v = this.players.get(m.id);
+        const rank = (q) => (q.role === 'owner' ? 2 : q.role === 'mod' ? 1 : 0);
+        if (!v || v === p || !p.role || rank(p) <= rank(v) || v.bot) break;
+        if (m.t === 'modwarn') {
+          const reason = String(m.reason || '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 140);
+          if (reason) this.sendTo(v.id, { t: 'warned', by: p.name, role: p.role, reason });
+        } else {
+          const name = String(m.name || '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 16);
+          if (!name || roles.reserved(name)) break;
+          const old = v.name;
+          v.name = name;
+          this.broadcast({ t: 'pname', id: v.id, name });
+          this.broadcast({ t: 'notice', text: `${old} was renamed to ${name}` });
+        }
+        break;
+      }
       case 'modkick': case 'modmute': { // moderator tools: staff only, and only on lower ranks
         const v = this.players.get(m.id);
         const rank = (q) => (q.role === 'owner' ? 2 : q.role === 'mod' ? 1 : 0);

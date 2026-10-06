@@ -141,6 +141,7 @@
         <button data-pane="character"><span class="ic">☺</span><span class="lbl">Character<small>Name, color, cosmetics</small></span></button>
         <button data-pane="missions"><span class="ic">★</span><span class="lbl">Missions<small>Earn tokens</small></span><b id="nav-missions-count"></b></button>
         <button data-pane="friends"><span class="ic">☻</span><span class="lbl">Friends<small>Gamertags &amp; party chat</small></span><b id="nav-friends-count" class="alert"></b></button>
+        <button data-pane="mod" id="nav-mod" class="hidden"><span class="ic">🛡</span><span class="lbl">Mod Panel<small>Warn, ban, rename players</small></span></button>
         <button id="btn-settings-menu"><span class="ic">⚙</span><span class="lbl">Settings<small>Controls, video, audio</small></span></button>
       </nav>
       <div class="rail-foot">
@@ -254,6 +255,8 @@
       <section class="menu-pane hidden" data-pane="missions">
         <div id="menu-missions"></div>
       </section>
+      <!-- Mod panel (staff only) -->
+      <section class="menu-pane hidden" data-pane="mod"><div id="mod-pane"></div></section>
       <!-- Friends & party -->
       <section class="menu-pane hidden" data-pane="friends">
         <div id="menu-friends" class="friends">
@@ -314,7 +317,26 @@
     </form>
   </div>
 </div>
-<div id="toast" class="hidden"></div>
+<!-- Moderation: warning (dismissable) and ban (not) -->
+<div id="warn-pop" class="overlay hidden">
+  <div class="panel mod-pop warn">
+    <div class="mod-pop-icon">⚠</div>
+    <h2>WARNING</h2>
+    <p id="warn-by" class="note"></p>
+    <p id="warn-reason" class="mod-pop-reason"></p>
+    <p class="note">Keep it fair and friendly. Repeated warnings can lead to a ban.</p>
+    <button id="warn-ok" class="primary big">I understand</button>
+  </div>
+</div>
+<div id="ban-pop" class="overlay hidden">
+  <div class="panel mod-pop ban">
+    <div class="mod-pop-icon">🚫</div>
+    <h2>YOU'RE BANNED</h2>
+    <p id="ban-by" class="note"></p>
+    <p id="ban-reason" class="mod-pop-reason"></p>
+    <p id="ban-until" class="note"></p>
+  </div>
+</div><div id="toast" class="hidden"></div>
 
 <!-- Pause / click-to-play -->
 <div id="pause" class="overlay hidden">
@@ -334,7 +356,7 @@
       <button id="btn-leave" class="danger"><span class="ic">⎋</span>Leave</button>
     </div>
     <details id="pause-mod" class="pause-lo pause-mod hidden" open>
-      <summary><span>🛡 Moderation</span><small>kick or mute players in this match</small></summary>
+      <summary><span>🛡 Moderation</span><small>warn, rename, mute or kick players in this match</small></summary>
       <div id="mod-list"></div>
     </details>
     <details id="pause-lo" class="pause-lo">

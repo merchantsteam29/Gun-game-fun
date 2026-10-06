@@ -18,6 +18,8 @@ import { Chat } from './chat.js';
 import { GamepadInput } from './gamepad.js';
 import { Social, TAG_RULES, validTag } from './social.js';
 import { roles, OWNER, badge, ROLE_INFO } from './roles.js';
+import { moderation } from './moderation.js';
+import { ModPanel } from './modpanel.js';
 import { Voice } from './voice.js';
 import { Showroom } from './showroom.js';
 import { MODS, MOD_SLOTS, MOD_SLOT_NAMES, modOptions, hasMods, cleanMods, cleanModMap, statsFor } from './mods.js';
@@ -404,7 +406,8 @@ window.addEventListener('keyup', (e) => { if (e.code === 'KeyV') setTimeout(rend
 window.voice = voice; // debugging
 $('pt-follow').onclick = () => { if ($('pt-follow').dataset.code) { $('join-code').value = $('pt-follow').dataset.code; joinLobby(); } };
 
-social.onChange = () => { renderFriends(); applyGamertag(); };
+social.onChange = () => { renderFriends(); applyGamertag(); if (social.tag !== lastTag) { lastTag = social.tag; moderation.sync(); renderModNav(); } };
+let lastTag = social.tag;
 social.onNotice = (text) => toast(text);
 // Party chat also shows up in the match chat; "/p message" in match chat talks to your party.
 social.onPartyChat = ({ from, text, mine }) => { if (from && net && !mine) chat.add(`[Party] ${from}`, '#c9a2ff', text); };
@@ -537,10 +540,11 @@ const PANE_INFO = {
   character: ['Character', 'Your callsign, color and cosmetics. Earn tokens from missions to unlock more.'],
   missions: ['Missions', 'Complete missions in any match to earn tokens.'],
   friends: ['Friends', 'Add friends by gamertag, see who\'s online, party up and chat.'],
+  mod: ['Mod Panel', 'Staff only: warn, ban or force a new gamertag. Every action is signed with your key.'],
 };
 let menuPane = store.get('menuPane', 'play');
 function showPane(name) {
-  if (!PANE_INFO[name]) name = 'play';
+  if (!PANE_INFO[name] || (name === 'mod' && !roles.myRole())) name = 'play';
   menuPane = name;
   store.set('menuPane', name);
   $('pane-title').textContent = PANE_INFO[name][0];
@@ -552,6 +556,7 @@ function showPane(name) {
   if (name === 'missions') renderMissions();
   if (name === 'play') { browser.start(); renderServers(); }
   if (name === 'friends') renderFriends();
+  if (name === 'mod' && modPanel) modPanel.render();
   document.querySelector('.menu-body').scrollTop = 0;
 }
 document.querySelectorAll('#menu-nav [data-pane]').forEach((b) => { b.onclick = () => showPane(b.dataset.pane); });
@@ -631,9 +636,23 @@ function renderModList() {
   $('mod-list').innerHTML = rows.length ? rows.map((p) => {
     const can = rank(mine) > rank(p.role);
     return `<div class="mod-row"><span class="mod-name">${esc(p.name)}${badge(p.role, true)}${p.muted ? ' <em>muted</em>' : ''}</span>
-      ${can ? `<button data-mute="${p.id}">${p.muted ? 'Unmute' : 'Mute'}</button>${p.id !== 'host' ? `<button class="danger" data-mkick="${p.id}">Kick</button>` : '<small>host</small>'}` : '<small>staff</small>'}</div>`;
+      ${can ? `<button data-mwarn="${p.id}" title="Pop up a warning on their screen">⚠ Warn</button><button data-mren="${p.id}" title="Change their name in this match">✎ Rename</button><button data-mute="${p.id}">${p.muted ? 'Unmute' : 'Mute'}</button>${p.id !== 'host' ? `<button class="danger" data-mkick="${p.id}">Kick</button>` : '<small>host</small>'}` : '<small>staff</small>'}</div>`;
   }).join('') : '<div class="note">No other players here yet.</div>';
   $('mod-list').querySelectorAll('[data-mute]').forEach((b) => { b.onclick = () => net.send({ t: 'modmute', id: b.dataset.mute }); });
+  $('mod-list').querySelectorAll('[data-mwarn]').forEach((b) => {
+    b.onclick = () => {
+      const p = game.players.get(b.dataset.mwarn);
+      const reason = p && prompt(`Warning for ${p.name} (they'll see this):`, '');
+      if (reason && reason.trim()) net.send({ t: 'modwarn', id: p.id, reason: reason.trim().slice(0, 140) });
+    };
+  });
+  $('mod-list').querySelectorAll('[data-mren]').forEach((b) => {
+    b.onclick = () => {
+      const p = game.players.get(b.dataset.mren);
+      const name = p && prompt(`New name for ${p.name} in this match:`, 'Player' + ((Math.random() * 900 + 100) | 0));
+      if (name && name.trim()) net.send({ t: 'modrename', id: p.id, name: name.trim().slice(0, 16) });
+    };
+  });
   $('mod-list').querySelectorAll('[data-mkick]').forEach((b) => {
     b.onclick = () => {
       const p = game.players.get(b.dataset.mkick);
@@ -670,11 +689,75 @@ $('staff-add').addEventListener('submit', async (e) => {
 });
 $('staff-tag').addEventListener('keydown', (e) => e.stopPropagation());
 roles.init(social);
-roles.onChange = () => { renderStaff(); renderFriends(); renderChip(); };
+roles.onChange = () => { renderStaff(); renderFriends(); renderChip(); moderation.sync(); renderModNav(); };
 renderStaff();
+
+// ---------- Mod panel, warnings, bans, forced gamertag changes ----------
+
+var modPanel = new ModPanel($('mod-pane'), social); // var: showPane() may run before this line
+function renderModNav() {
+  const staff = !!roles.myRole();
+  $('nav-mod').classList.toggle('hidden', !staff);
+  if (!staff && menuPane === 'mod') showPane('play');
+}
+moderation.init(social);
+moderation.onChange = () => {
+  if (menuPane !== 'mod' || $('menu').classList.contains('hidden')) return;
+  // Don't wipe something being typed; just refresh the looked-up player.
+  if (document.activeElement && document.activeElement.closest && document.activeElement.closest('#mod-pane') && document.activeElement.tagName === 'INPUT') modPanel.renderPlayer();
+  else modPanel.render();
+};
+renderModNav();
+
+// A warning, from a match (instant) or from your record (persistent, until you acknowledge it).
+function showWarning(by, reason, persistent) {
+  $('warn-by').textContent = `From ${by}`;
+  $('warn-reason').textContent = reason;
+  $('warn-pop').classList.remove('hidden');
+  if (game.locked) game.setLocked(false);
+  $('warn-ok').onclick = () => {
+    $('warn-pop').classList.add('hidden');
+    if (persistent) moderation.ackWarnings();
+  };
+}
+moderation.onWarn = (w, count) => showWarning(`${w.by}${count > 1 ? ` · ${count} new warnings` : ''}`, w.reason, true);
+game.onWarned = (m) => showWarning(`${m.role === 'owner' ? 'the owner' : 'a moderator'} (${m.by})`, m.reason, false);
+
+// Banned: out of any match, and a screen that can't be closed until the ban ends.
+let banTimer = null;
+moderation.onBan = (ban) => {
+  clearInterval(banTimer);
+  $('ban-pop').classList.toggle('hidden', !ban);
+  if (!ban) return;
+  if (net) leave('You were banned.');
+  $('ban-by').textContent = `Banned by ${ban.by}`;
+  $('ban-reason').textContent = ban.reason;
+  const tick = () => {
+    if (ban.until && Date.now() >= ban.until) { clearInterval(banTimer); $('ban-pop').classList.add('hidden'); moderation.lastBan = null; return; }
+    if (!ban.until) { $('ban-until').textContent = 'This ban is permanent.'; return; }
+    const s = Math.ceil((ban.until - Date.now()) / 1000), d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), mnt = Math.floor((s % 3600) / 60);
+    $('ban-until').textContent = `Ends in ${d ? d + 'd ' : ''}${h ? h + 'h ' : ''}${mnt}m (${new Date(ban.until).toLocaleString()})`;
+  };
+  tick();
+  banTimer = setInterval(tick, 30000);
+};
+
+// A moderator made you change your gamertag: it's released and you must pick a new one.
+moderation.onRename = (r) => {
+  const old = social.tag;
+  social.releaseTag();
+  applyGamertag();
+  sessionStorage.removeItem('tagLater');
+  openTagPop();
+  $('tag-input').value = '';
+  const msg = $('tag-msg');
+  msg.className = 'tag-msg bad';
+  msg.textContent = `${r.by} asked you to change your gamertag "${old}": ${r.reason}`;
+};
 
 async function hostLobby() {
   if (busy) return;
+  if (moderation.myBan()) { moderation.lastBan = null; moderation.applyMine(); return; }
   initAudio();
   setBusy(true);
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -704,6 +787,7 @@ async function hostLobby() {
 
 async function joinLobby() {
   if (busy) return;
+  if (moderation.myBan()) { moderation.lastBan = null; moderation.applyMine(); return; }
   const code = $('join-code').value.trim().toUpperCase();
   if (code.length !== 5) { status('Enter the 5-character lobby code.', true); return; }
   initAudio();

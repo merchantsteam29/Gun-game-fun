@@ -1034,3 +1034,44 @@ body.mobile #death .big { font-size: 20px; }
 .mod-row small { color: var(--muted); font-size: 11px; }
 .staff-card .fr-row .role-badge { margin-left: 0; }
 .staff-card .fr-add { margin-top: 8px; }
+/* ---------- Mod panel ---------- */
+.mp-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.mp-grid > div { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.mp-grid h3 .role-badge { vertical-align: 2px; }
+.mp-player { margin-top: 10px; padding: 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--line); border-radius: var(--radius); }
+.mp-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 18px; }
+.mp-state { margin-left: auto; font-size: 11px; font-weight: 700; letter-spacing: 1px; padding: 2px 8px; border-radius: 999px; }
+.mp-state.ok { color: var(--ok); background: rgba(77,255,154,0.1); }
+.mp-state.bad { color: var(--danger); background: rgba(255,70,70,0.12); }
+.mp-ban { margin-top: 8px; padding: 6px 10px; border-left: 3px solid var(--danger); background: rgba(255,70,70,0.08); font-size: 13px; }
+.mp-sub { margin: 12px 0 5px; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
+.mp-list { display: flex; flex-direction: column; gap: 4px; font-size: 13px; max-height: 180px; overflow-y: auto; }
+.mp-list small { color: var(--muted); }
+.mp-log b { color: var(--accent); }
+#mp-reason { width: 100%; margin-bottom: 8px; }
+.mp-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.mp-actions button { padding: 7px 12px; font-size: 12px; white-space: nowrap; }
+.mp-actions .warn { border-color: #ffb020; color: #ffb020; }
+.mp-banrow { display: inline-flex; gap: 4px; }
+.mp-banrow select { padding: 6px 8px; font-size: 12px; }
+.mp-recent { display: flex; flex-direction: column; gap: 4px; max-height: 420px; overflow-y: auto; }
+.mp-rec { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; text-align: left; padding: 7px 10px; font-size: 13px; }
+.mp-rec em { font-style: normal; font-size: 10px; font-weight: 700; letter-spacing: 1px; padding: 1px 6px; border-radius: 3px; background: rgba(255,176,32,0.15); color: var(--accent); }
+.mp-rec em.bad { background: rgba(255,70,70,0.15); color: var(--danger); }
+.mp-rec small { flex-basis: 100%; color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mp-staff { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+#nav-mod .ic { color: #4fc3ff; }
+.mod-row button { padding: 4px 8px; }
+@media (max-width: 900px) { .mp-grid { grid-template-columns: 1fr; } }
+
+/* Warning / ban pop-ups */
+#warn-pop, #ban-pop { z-index: 80; }
+.mod-pop { width: min(440px, calc(100% - 32px)); text-align: center; padding: 24px 24px 20px; }
+.mod-pop.warn { border-top: 4px solid #ffb020; }
+.mod-pop.ban { border-top: 4px solid var(--danger); }
+.mod-pop-icon { font-size: 44px; line-height: 1; margin-bottom: 6px; }
+.mod-pop h2 { letter-spacing: 6px; margin-bottom: 6px; }
+.mod-pop.warn h2 { color: #ffb020; }
+.mod-pop.ban h2 { color: var(--danger); }
+.mod-pop-reason { font-size: 17px; font-weight: 600; margin: 12px 0; padding: 10px 14px; background: rgba(255,255,255,0.05); border-radius: 6px; }
+.mod-pop .big { width: 100%; margin-top: 8px; }

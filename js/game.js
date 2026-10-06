@@ -485,6 +485,9 @@ export class Game {
         if (m.t === 'prole' && m.id !== this.myId) this.hud.say(`${m.role === 'owner' ? '♛ THE OWNER' : '🛡 A MODERATOR'} IS HERE: ${m.name}`);
         break;
       }
+      case 'warned': // a moderator warned you in this match
+        if (this.onWarned) this.onWarned(m);
+        break;
       case 'pmute': {
         const p = this.players.get(m.id);
         if (p) p.muted = m.muted;

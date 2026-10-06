@@ -26,12 +26,15 @@ const low = (t) => String(t || '').toLowerCase();
 const unb64 = (s) => Uint8Array.from(atob(String(s).replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
 const sameKey = (a, b) => !!a && !!b && a.x === b.x && a.y === b.y;
 
-async function verifyWith(pub, env) {
+export async function verifyWith(pub, env) {
   try {
     const key = await crypto.subtle.importKey('jwk', { kty: 'EC', crv: 'P-256', x: pub.x, y: pub.y }, ALG, false, ['verify']);
     return await crypto.subtle.verify(SIG, key, unb64(env.s), new TextEncoder().encode(env.b));
   } catch { return false; }
 }
+
+// owner > mod > everyone else. Staff can only act on players ranked below them.
+export const rank = (role) => (role === 'owner' ? 2 : role === 'mod' ? 1 : 0);
 
 // Small HTML badge for a role ('' for none).
 export function badge(role, small = false) {

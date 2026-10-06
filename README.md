@@ -240,10 +240,23 @@ becomes free again.
   "Imposter###" after a few seconds.
 - **Moderators:** the owner appoints them in **Friends → Staff** by typing their gamertag. Appointments are signed with
   the owner's key, so nobody else can make moderators. Only the owner can remove them.
-- **In a match:** staff get a **Moderation** section in the pause menu to **mute** or **kick** players.
+- **Mod Panel:** a menu section only staff see. Look up any gamertag to see its warnings, ban status and history, then:
+  - **Warn:** a pop-up they must acknowledge, shown next time they play if they're offline.
+  - **Ban:** 1 hour, 1 day, 7 days, 30 days or permanent. It kicks them out of matches and blocks hosting and
+    joining until it ends.
+  - **Force a new gamertag:** their tag is released and they must pick another.
+  - **Unban** or **clear warnings**.
+
+  The panel also lists recent actions, and the owner can manage moderators there. Every action is signed by the staff
+  member who made it, and players only accept actions from staff ranked above them.
+- **In a match:** staff get a **Moderation** section in the pause menu to **warn**, **rename**, **mute** or **kick**
+  anyone in that match, even players without a gamertag.
   - Moderators can act on regular players.
   - The owner can also act on moderators.
   - Nobody can kick the host, whose browser runs the match.
+
+There's no server, so bans are enforced by the game itself. Someone determined can get around one by clearing their
+browser data or making a new gamertag.
 
 ## Run locally
 
