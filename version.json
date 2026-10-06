@@ -1,7 +1,7 @@
 {
-  "version": "2026.10.05.4",
+  "version": "2026.10.05.5",
   "notes": [
-    "PC players: there's a secret hidden in the menus now. Old-school gamers know the code"
+    "PC players: something secret is hidden in the menus"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json",
