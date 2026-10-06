@@ -1,7 +1,9 @@
 {
-  "version": "2026.10.06.4",
+  "version": "2026.10.06.5",
   "notes": [
-    "Fix: the Mod Panel and staff badge now show up for staff right after the game loads"
+    "Report players from the pause menu: staff will take a look",
+    "Announcements from the staff now show at the top of the menu",
+    "Mod Panel: online list, reports, announcements, chat mutes and staff notes"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json",

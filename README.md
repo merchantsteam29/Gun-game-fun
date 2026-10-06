@@ -240,15 +240,27 @@ becomes free again.
   "Imposter###" after a few seconds.
 - **Moderators:** the owner appoints them in **Friends → Staff** by typing their gamertag. Appointments are signed with
   the owner's key, so nobody else can make moderators. Only the owner can remove them.
-- **Mod Panel:** a menu section only staff see. Look up any gamertag to see its warnings, ban status and history, then:
-  - **Warn:** a pop-up they must acknowledge, shown next time they play if they're offline.
-  - **Ban:** 1 hour, 1 day, 7 days, 30 days or permanent. It kicks them out of matches and blocks hosting and
-    joining until it ends.
-  - **Force a new gamertag:** their tag is released and they must pick another.
-  - **Unban** or **clear warnings**.
+- **Mod Panel:** a menu section only staff see, with live stats (online now, open reports, active bans, moderators)
+  and these tabs:
+  - **Players:** look up any gamertag to see its warnings, staff notes, ban / mute status and full history, then:
+    - **Warn:** a pop-up they must acknowledge, shown next time they play if they're offline.
+    - **Add note:** staff-only, not shown to the player.
+    - **Mute chat** or **Ban:** 1 hour, 1 day, 7 days, 30 days or permanent. A ban kicks them out of matches and
+      blocks hosting and joining until it ends.
+    - **Force a new gamertag:** their tag is released and they must pick another.
+    - **Unban**, **Unmute**, **Clear warnings**, or **Join their match**.
 
-  The panel also lists recent actions, and the owner can manage moderators there. Every action is signed by the staff
-  member who made it, and players only accept actions from staff ranked above them.
+    It also lists recent actions.
+  - **Online:** everyone with a gamertag who has the game open and where they are, with **Join** and **Look up**.
+  - **Reports:** players report each other from the pause menu (**🚩 Report a player**), choosing a reason and adding
+    optional details. Staff see who reported whom, in which match, and can look either player up, join that match or
+    resolve the report.
+  - **Announce:** post a message, either Info or Important, for 1 hour up to "until cleared". Every player sees it at
+    the top of the menu, and players in a match get it in chat when it's posted.
+  - **Staff** (owner only): appoint and remove moderators.
+
+  Every action is signed by the staff member who made it, and players only accept actions from staff ranked above
+  them.
 - **In a match:** staff get a **Moderation** section in the pause menu to **warn**, **rename**, **mute** or **kick**
   anyone in that match, even players without a gamertag.
   - Moderators can act on regular players.

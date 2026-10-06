@@ -163,6 +163,7 @@
     </aside>
     <main class="menu-main">
       <div class="pane-head"><h2 id="pane-title">Servers</h2><p id="pane-sub"></p></div>
+      <div id="announce-bar" class="announce-bar hidden"><span class="ab-icon"></span><span class="ab-text"></span><small class="ab-by"></small><button class="ghost ab-x" title="Hide">✕</button></div>
       <div class="menu-body">
       <!-- Play -->
       <section class="menu-pane" data-pane="play">
@@ -336,6 +337,16 @@
     <p id="ban-reason" class="mod-pop-reason"></p>
     <p id="ban-until" class="note"></p>
   </div>
+</div>
+<div id="report-pop" class="overlay hidden">
+  <div class="panel mod-pop report">
+    <h2>REPORT <span id="rp-name"></span></h2>
+    <p class="note">Tell the staff what happened. False reports can get you warned.</p>
+    <div id="rp-reasons" class="rp-reasons"></div>
+    <textarea id="rp-details" maxlength="200" rows="3" placeholder="Details (optional)"></textarea>
+    <p id="rp-msg" class="note"></p>
+    <div class="rp-btns"><button id="rp-send" class="primary">Send report</button><button id="rp-cancel" class="ghost">Cancel</button></div>
+  </div>
 </div><div id="toast" class="hidden"></div>
 
 <!-- Pause / click-to-play -->
@@ -358,6 +369,10 @@
     <details id="pause-mod" class="pause-lo pause-mod hidden" open>
       <summary><span>🛡 Moderation</span><small>warn, rename, mute or kick players in this match</small></summary>
       <div id="mod-list"></div>
+    </details>
+    <details id="pause-report" class="pause-lo pause-report hidden">
+      <summary><span>🚩 Report a player</span><small>staff will take a look</small></summary>
+      <div id="report-list"></div>
     </details>
     <details id="pause-lo" class="pause-lo">
       <summary><span>Loadout</span> <em id="pause-lo-sum"></em><small>applies on next spawn</small></summary>

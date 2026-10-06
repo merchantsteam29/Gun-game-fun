@@ -18,7 +18,7 @@ import { Chat } from './chat.js';
 import { GamepadInput } from './gamepad.js';
 import { Social, TAG_RULES, validTag } from './social.js';
 import { roles, OWNER, badge, ROLE_INFO } from './roles.js';
-import { moderation } from './moderation.js';
+import { moderation, REPORT_REASONS } from './moderation.js';
 import { ModPanel } from './modpanel.js';
 import { Voice } from './voice.js';
 import { Showroom } from './showroom.js';
@@ -70,6 +70,7 @@ let busy = false;
 let settingsUI = null; // created further down; the Character / Missions sections reuse its views
 const chat = new Chat({
   send: (text) => {
+    if (chatBlocked()) return;
     // "/p hello" goes to your party instead of the lobby.
     const m = text.match(/^\/p\s+(.+)/i);
     if (m) {
@@ -374,7 +375,7 @@ $('menu-friends').addEventListener('click', async (e) => {
 $('pt-form').onsubmit = (e) => {
   e.preventDefault();
   const text = $('pt-input').value.trim();
-  if (text) social.sayParty(text);
+  if (text && !chatBlocked()) social.sayParty(text);
   $('pt-input').value = '';
 };
 $('pt-input').addEventListener('keydown', (e) => e.stopPropagation());
@@ -588,7 +589,7 @@ function chatOnNet(m) {
   const colorOf = (id, fallback) => { const p = game.players.get(id); return p ? game.colorFor(p) : fallback; };
   if (m.t === 'welcome') { chat.setLobby(true); chat.system(`Joined lobby ${net ? net.code : ''}. Say hi!`); }
   else if (m.t === 'chat') chat.add((ROLE_INFO[m.role] ? ROLE_INFO[m.role].icon + ' ' : '') + m.name, colorOf(m.id, m.color), m.text, m.id === game.myId);
-  else if (m.t === 'prole' || m.t === 'pmute' || m.t === 'pname' || m.t === 'pjoin' || m.t === 'pleave') renderModList();
+  else if (m.t === 'prole' || m.t === 'pmute' || m.t === 'pname' || m.t === 'pjoin' || m.t === 'pleave') { renderModList(); renderReportList(); }
   else if (m.t === 'pjoin' && !m.bot) chat.system(`${m.name} joined`);
   else if (m.t === 'pleave' && !String(m.name).startsWith('[BOT]')) chat.system(`${m.name} left`);
   // Keep a public listing's player count / mode / map current.
@@ -619,6 +620,7 @@ function showPause() {
   renderLoadout($('pause-loadout'));
   $('btn-hostpanel').classList.toggle('hidden', !(net && net.isHost));
   renderModList();
+  renderReportList();
   $('pause').classList.remove('hidden');
 }
 
@@ -703,20 +705,93 @@ renderStaff();
 
 // ---------- Mod panel, warnings, bans, forced gamertag changes ----------
 
-var modPanel = new ModPanel($('mod-pane'), social); // var: showPane() may run before this line
+// var: showPane() may run before this line
+var modPanel = new ModPanel($('mod-pane'), social, {
+  joinLobby: (code) => { $('join-code').value = code; showPane('play'); joinLobby(); },
+});
 function renderModNav() {
   const staff = !!roles.myRole();
   $('nav-mod').classList.toggle('hidden', !staff);
   if (!staff && menuPane === 'mod') showPane('play');
 }
 moderation.init(social);
+// Presence and reports can arrive in bursts: redraw at most a few times a second, and never
+// while something in the panel is being typed or picked (just the looked-up player then).
+let modRenderT = null;
 moderation.onChange = () => {
-  if (menuPane !== 'mod' || $('menu').classList.contains('hidden')) return;
-  // Don't wipe something being typed; just refresh the looked-up player.
-  if (document.activeElement && document.activeElement.closest && document.activeElement.closest('#mod-pane') && document.activeElement.tagName === 'INPUT') modPanel.renderPlayer();
-  else modPanel.render();
+  if (menuPane !== 'mod' || $('menu').classList.contains('hidden') || modRenderT) return;
+  modRenderT = setTimeout(() => {
+    modRenderT = null;
+    const a = document.activeElement;
+    if (a && a.closest && a.closest('#mod-pane') && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) modPanel.renderPlayer();
+    else modPanel.render();
+  }, 300);
 };
 renderModNav();
+
+// Announcements from staff: a bar at the top of the menu, plus a chat line / pop-up in a match.
+const annShown = new Set();
+moderation.onAnnounce = (a) => {
+  const bar = $('announce-bar');
+  const hidden = !a || store.get('annHidden', '') === a.id;
+  bar.classList.toggle('hidden', hidden);
+  if (!a) return;
+  bar.className = `announce-bar ${a.level}${hidden ? ' hidden' : ''}`;
+  bar.querySelector('.ab-icon').textContent = a.level === 'warn' ? '⚠' : '📣';
+  bar.querySelector('.ab-text').textContent = a.text;
+  bar.querySelector('.ab-by').textContent = `— ${a.from}`;
+  bar.querySelector('.ab-x').onclick = () => { store.set('annHidden', a.id); bar.classList.add('hidden'); };
+  if (!annShown.has(a.id)) {
+    annShown.add(a.id);
+    if (net) { chat.system(`📣 ${a.from}: ${a.text}`); game.hud.say(`📣 ${a.text}`.slice(0, 60)); }
+  }
+};
+
+// Chat mute: your lobby and party messages aren't sent until it ends.
+moderation.onMute = (m) => {
+  if (m) toast(`You've been muted from chat${m.until ? ' until ' + new Date(m.until).toLocaleString() : ''}: ${m.reason}`);
+  else toast('Your chat mute has ended.');
+};
+function chatBlocked() {
+  const m = moderation.myMute();
+  if (!m) return false;
+  const msg = `You're muted${m.until ? ' until ' + new Date(m.until).toLocaleString() : ''} (${m.reason}).`;
+  if (net) chat.system(msg); else toast(msg);
+  return true;
+}
+
+// Reporting: any player can report someone they're in a match with (needs a gamertag).
+function renderReportList() {
+  const rows = net ? [...game.players.values()].filter((p) => p.id !== game.myId && !p.bot) : [];
+  $('pause-report').classList.toggle('hidden', !rows.length);
+  $('report-list').innerHTML = rows.map((p) => `<div class="mod-row"><span class="mod-name">${esc(p.name)}${badge(p.role, true)}</span>
+    ${p.role ? '<small>staff</small>' : `<button data-report="${p.id}">🚩 Report</button>`}</div>`).join('');
+  $('report-list').querySelectorAll('[data-report]').forEach((b) => { b.onclick = () => openReport(game.players.get(b.dataset.report)); });
+}
+let reportReason = null;
+function openReport(p) {
+  if (!p) return;
+  if (!social.tag) { toast('Pick a gamertag (Friends tab) to send reports.'); return; }
+  reportReason = null;
+  $('rp-name').textContent = p.name;
+  $('rp-details').value = '';
+  $('rp-msg').textContent = '';
+  $('rp-reasons').innerHTML = REPORT_REASONS.map((r) => `<button data-r="${esc(r)}">${esc(r)}</button>`).join('');
+  $('rp-reasons').querySelectorAll('[data-r]').forEach((b) => {
+    b.onclick = () => { reportReason = b.dataset.r; $('rp-reasons').querySelectorAll('[data-r]').forEach((x) => x.classList.toggle('sel', x === b)); };
+  });
+  $('rp-send').onclick = async () => {
+    if (!reportReason) { $('rp-msg').textContent = 'Pick a reason.'; return; }
+    try {
+      await moderation.report({ target: p.name, lobby: net ? net.code : '', reason: reportReason, details: $('rp-details').value });
+      $('report-pop').classList.add('hidden');
+      toast(`Report sent. Thanks, the staff will look into ${p.name}.`);
+    } catch (err) { $('rp-msg').textContent = err.message; }
+  };
+  $('rp-cancel').onclick = () => $('report-pop').classList.add('hidden');
+  $('report-pop').classList.remove('hidden');
+}
+$('rp-details').addEventListener('keydown', (e) => e.stopPropagation());
 
 // A warning, from a match (instant) or from your record (persistent, until you acknowledge it).
 function showWarning(by, reason, persistent) {
