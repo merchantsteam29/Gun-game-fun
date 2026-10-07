@@ -18,6 +18,8 @@ const ACT_LABEL = {
   warn: 'warned', ban: 'banned', unban: 'unbanned', mute: 'muted', unmute: 'unmuted',
   rename: 'forced a new gamertag for', clearwarns: 'cleared warnings of', note: 'added a note on', denyappeal: 'denied the appeal of', kick: 'kicked',
 };
+// Quick reasons for actions (fill the reason box; it can still be edited).
+const QUICK_REASONS = ['Cheating / hacking', 'Toxic chat', 'Harassment', 'Offensive name', 'Spamming', 'Team killing / griefing', 'Exploiting bugs', 'Ban evasion'];
 const MOD_TIMES = [[0, 'Permanent'], [24, '1 day'], [24 * 7, '7 days'], [24 * 30, '30 days']];
 const ANN_TIMES = [[1, '1 hour'], [6, '6 hours'], [24, '1 day'], [24 * 7, '7 days'], [0, 'Until cleared']];
 
@@ -50,7 +52,7 @@ export class ModPanel {
     const reports = [...moderation.reports.values()];
     const bans = [...moderation.records.values()].filter((r) => moderation.activeBan(r)).length;
     const appeals = moderation.openAppeals();
-    const tabs = [['players', '👤 Players'], ['online', `🟢 Online <b>${online.length}</b>`], ['reports', `🚩 Reports ${reports.length ? `<b class="alert">${reports.length}</b>` : ''}`], ['appeals', `⚖ Appeals ${appeals.length ? `<b class="alert">${appeals.length}</b>` : ''}`], ['announce', '📣 Announce'], ['staffchat', `💬 Staff chat ${this.unread ? `<b class="alert">${this.unread}</b>` : ''}`], ['filter', '🤐 Chat filter'], ['log', '📜 Log']];
+    const tabs = [['players', '👤 Players'], ['online', `🟢 Online <b>${online.length}</b>`], ['reports', `🚩 Reports ${reports.length ? `<b class="alert">${reports.length}</b>` : ''}`], ['appeals', `⚖ Appeals ${appeals.length ? `<b class="alert">${appeals.length}</b>` : ''}`], ['announce', '📣 Announce'], ['recent', '🕘 Recent'], ['staffchat', `💬 Staff chat ${this.unread ? `<b class="alert">${this.unread}</b>` : ''}`], ['filter', '🤐 Chat filter'], ['log', '📜 Log']];
     if (owner) tabs.push(['staff', '🛡 Staff']);
     if (!tabs.some(([id]) => id === this.tab)) this.tab = 'players';
     this.el.innerHTML = `
@@ -74,6 +76,7 @@ export class ModPanel {
     else if (this.tab === 'filter') this.renderFilter(body);
     else if (this.tab === 'log') this.renderLog(body);
     else if (this.tab === 'staffchat') this.renderStaffChat(body);
+    else if (this.tab === 'recent') this.renderRecent(body);
     else this.renderStaff(body);
     this.el.querySelectorAll('input, textarea').forEach((i) => i.addEventListener('keydown', (e) => e.stopPropagation()));
   }
@@ -174,7 +177,7 @@ export class ModPanel {
         <div class="mp-list">${notes.length ? notes.slice().reverse().map((n) => `<div>📝 ${esc(n.text)} <small>— ${esc(n.by)}, ${ago(n.ts)}</small></div>`).join('') : '<small class="muted">None</small>'}</div>
         ${can ? `
         <div class="mp-sub">Action</div>
-        <input id="mp-reason" maxlength="140" placeholder="Reason / note text">
+        <div class="mp-reason-row"><select id="mp-quick"><option value="">Quick reason…</option>${QUICK_REASONS.map((q) => `<option>${q}</option>`).join('')}</select><input id="mp-reason" maxlength="140" placeholder="Reason / note text"></div>
         <div class="mp-actions">
           <button data-act="warn" class="warn">⚠ Warn</button>
           <button data-act="note">📝 Add note</button>
@@ -191,6 +194,8 @@ export class ModPanel {
           `<div><b>${esc(l.by)}</b> ${ACT_LABEL[l.act] || l.act} them${l.note ? ': ' + esc(l.note) : ''} <small>${ago(l.ts)}</small></div>`).join('')}</div>` : ''}
       </div>`;
     box.querySelectorAll('input').forEach((i) => i.addEventListener('keydown', (e) => e.stopPropagation()));
+    const quick = box.querySelector('#mp-quick');
+    if (quick) quick.onchange = () => { if (quick.value) box.querySelector('#mp-reason').value = quick.value; };
     const join = box.querySelector('[data-join]');
     if (join) join.onclick = () => this.joinLobby(join.dataset.join);
     const watchBtn = box.querySelector('[data-watch]');
@@ -260,6 +265,7 @@ export class ModPanel {
         <div class="mp-report ${r.reason === AUTO_FLAG ? 'auto' : ''}">
           <div class="mp-report-head"><b>${esc(r.target)}</b><em>${esc(r.reason)}</em><small>${ago(r.ts)}</small></div>
           ${r.details ? `<div class="mp-report-text">“${esc(r.details)}”</div>` : ''}
+          ${r.img ? `<a href="#" class="mp-shot" data-shot="${esc(r.id)}" title="Their screen when they reported (click to enlarge)"><img src="${r.img}" alt="Screenshot"></a>` : ''}
           <small class="muted">${r.reason === AUTO_FLAG ? `Flagged automatically by ${esc(r.from)}'s game (the host)` : `Reported by ${esc(r.from)}`}${r.lobby ? ` in match ${esc(r.lobby)}` : ''}</small>
           <div class="mp-actions">
             ${validTag(r.target) ? `<button class="primary" data-look="${esc(r.target)}">Look up ${esc(r.target)}</button>` : ''}
@@ -272,6 +278,7 @@ export class ModPanel {
     body.querySelectorAll('[data-look]').forEach((b) => { b.onclick = () => this.look(b.dataset.look); });
     body.querySelectorAll('[data-join]').forEach((b) => { b.onclick = () => this.joinLobby(b.dataset.join); });
     body.querySelectorAll('[data-spec]').forEach((b) => { b.onclick = () => this.joinLobby(b.dataset.spec, true); });
+    body.querySelectorAll('[data-shot]').forEach((a) => { a.onclick = (e) => { e.preventDefault(); a.classList.toggle('big'); }; });
     body.querySelectorAll('[data-dismiss]').forEach((b) => { b.onclick = () => { moderation.dismissReport(b.dataset.dismiss); this.say('Report resolved.'); this.render(); }; });
   }
 
@@ -355,6 +362,25 @@ export class ModPanel {
       const words = body.querySelector('#mp-f-words').value.split(/[\s,]+/);
       try { const n = await moderation.saveFilter(words, body.querySelector('#mp-f-def').checked); this.say(`Chat filter saved (${n} extra word${n === 1 ? '' : 's'}).`); this.render(); } catch (err) { this.say(err.message); }
     };
+  }
+
+  // ---------- Recent players ----------
+  // Everyone you've played with lately (from this device), with their gamertag when the host
+  // verified it — handy for finding someone after the match.
+  renderRecent(body) {
+    const list = moderation.recentPlayers();
+    body.innerHTML = `<div class="card">
+      <h3>Recent players <span class="muted">(${list.length})</span></h3>
+      <div class="note">People you've been in a match with on this device. Names in grey had no gamertag (guests), so they can only be moderated in a match.</div>
+      <div class="mp-online">${list.length ? list.map((p) => {
+        const rec = p.gt && moderation.records.get(p.gt.toLowerCase());
+        const flags = [moderation.activeBan(rec) ? '<em class="bad">BANNED</em>' : '', moderation.activeMute(rec) ? '<em class="mute">MUTED</em>' : ''].join('');
+        return `<div class="fr-row ${p.gt ? '' : 'guest'}"><span class="fr-name">${esc(p.name)}${p.gt && p.gt !== p.name ? ` <small class="gt">@${esc(p.gt)}</small>` : ''}${flags}</span>
+          <small>match ${esc(p.lobby)} · ${ago(p.ts)}</small>
+          ${p.gt ? `<button class="primary" data-look="${esc(p.gt)}">Look up</button>` : '<small class="muted">guest</small>'}</div>`;
+      }).join('') : '<div class="sv-empty">Play a match and the people in it show up here.</div>'}</div>
+    </div>`;
+    body.querySelectorAll('[data-look]').forEach((b) => { b.onclick = () => this.look(b.dataset.look); });
   }
 
   // ---------- Staff chat ----------

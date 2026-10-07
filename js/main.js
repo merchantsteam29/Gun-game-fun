@@ -669,9 +669,15 @@ function chatOnNet(m) {
   const colorOf = (id, fallback) => { const p = game.players.get(id); return p ? game.colorFor(p) : fallback; };
   if (m.t === 'welcome') { chat.setLobby(true); chat.system(net && net.practice ? 'Practice Range: pick any weapon from the pause menu (Esc).' : `Joined lobby ${net ? net.code : ''}. Say hi!`); }
   else if (m.t === 'chat') chat.add((ROLE_INFO[m.role] ? ROLE_INFO[m.role].icon + ' ' : '') + m.name, colorOf(m.id, m.color), moderation.clean(m.text), m.id === game.myId);
-  else if (m.t === 'chatmode' || m.t === 'pident' || m.t === 'prole' || m.t === 'pmute' || m.t === 'pfrozen' || m.t === 'pname' || m.t === 'pjoin' || m.t === 'pleave') { renderModList(); renderReportList(); }
-  else if (m.t === 'pjoin' && !m.bot) chat.system(`${m.name} joined`);
+  if (net && !net.practice && (m.t === 'pjoin' || m.t === 'pident') && !m.bot) {
+    const p = game.players.get(m.id);
+    if (p && m.id !== game.myId) moderation.notePlayer(p.name, p.gt, net.code);
+  }
+  if (net && !net.practice && m.t === 'welcome') for (const p of m.players) if (!p.bot && p.id !== m.id) moderation.notePlayer(p.name, p.gt, net.code);
+  if (m.t === 'pjoin' && !m.bot) chat.system(`${m.name} joined`);
   else if (m.t === 'pleave' && !String(m.name).startsWith('[BOT]')) chat.system(`${m.name} left`);
+  // Pause-menu player lists follow joins, leaves and staff actions.
+  if (['chatmode', 'pident', 'prole', 'pmute', 'pfrozen', 'pname', 'pjoin', 'pleave'].includes(m.t)) { renderModList(); renderReportList(); }
   // Keep a public listing's player count / mode / map current.
   if (hosting && hosting.public && ['pjoin', 'pleave', 'start'].includes(m.t)) announcer.publish();
 }
@@ -886,8 +892,21 @@ function renderReportList() {
   $('report-list').querySelectorAll('[data-report]').forEach((b) => { b.onclick = () => openReport(game.players.get(b.dataset.report)); });
 }
 let reportReason = null;
+// A small JPEG of the current view, attached to reports as evidence.
+let reportShot = null;
+function grabShot() {
+  try {
+    game.renderer.render(game.scene, game.camera);
+    const src = game.renderer.domElement, w = 400, h = Math.round((400 * src.height) / Math.max(1, src.width));
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    c.getContext('2d').drawImage(src, 0, 0, w, h);
+    return c.toDataURL('image/jpeg', 0.55);
+  } catch { return null; }
+}
 function openReport(p) {
   if (!p) return;
+  reportShot = grabShot();
   if (!social.tag) { toast('Pick a gamertag (Friends tab) to send reports.'); return; }
   reportReason = null;
   $('rp-name').textContent = p.name;
@@ -900,7 +919,7 @@ function openReport(p) {
   $('rp-send').onclick = async () => {
     if (!reportReason) { $('rp-msg').textContent = 'Pick a reason.'; return; }
     try {
-      await moderation.report({ target: p.name, lobby: net ? net.code : '', reason: reportReason, details: $('rp-details').value });
+      await moderation.report({ target: p.gt || p.name, lobby: net ? net.code : '', reason: reportReason, details: $('rp-details').value, img: reportShot });
       $('report-pop').classList.add('hidden');
       toast(`Report sent. Thanks, the staff will look into ${p.name}.`);
     } catch (err) { $('rp-msg').textContent = err.message; }

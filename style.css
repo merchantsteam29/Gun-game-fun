@@ -1361,3 +1361,12 @@ body.mobile:not(.tablet) .wr-body { grid-template-columns: 200px 1fr; }
 .lo-custom .ghost { padding: 5px 6px; }
 .lo-custom-empty { border-style: dashed !important; color: var(--muted); }
 body.mobile:not(.tablet) .lo-presets button { padding: 4px 7px; font-size: 11px; }
+
+/* Report screenshots, quick reasons, recent players */
+.mp-shot { display: inline-block; margin: 6px 0; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; line-height: 0; }
+.mp-shot img { width: 160px; height: auto; display: block; transition: width 0.2s; }
+.mp-shot.big img { width: min(640px, 100%); }
+.mp-reason-row { display: flex; gap: 6px; margin-bottom: 8px; }
+.mp-reason-row select { flex: none; max-width: 42%; padding: 6px 8px; font-size: 12px; }
+.mp-reason-row #mp-reason { flex: 1; margin-bottom: 0; }
+.mp-online .fr-row.guest .fr-name { color: var(--muted); }

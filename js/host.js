@@ -451,6 +451,19 @@ export class HostLogic {
         const text = String(m.text || '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 100);
         if (!text) break;
         p.lastChat = now;
+        // Spam: 6 messages in 8 seconds, or the same message 3 times in a row → muted for the match.
+        if (!p.role) {
+          p.chatTimes = (p.chatTimes || []).filter((x) => now - x < 8000).concat(now);
+          p.repeat = text === p.lastText ? (p.repeat || 1) + 1 : 1;
+          p.lastText = text;
+          if (p.chatTimes.length >= 6 || p.repeat >= 3) {
+            p.muted = true;
+            this.broadcast({ t: 'pmute', id, muted: true });
+            this.broadcast({ t: 'notice', text: `${p.name} was auto-muted for spam` });
+            if (this.onFlag) this.onFlag(p, `Chat spam: ${p.repeat >= 3 ? 'same message 3 times' : '6 messages in 8 s'} · "${text.slice(0, 60)}"`);
+            break;
+          }
+        }
         this.broadcast({ t: 'chat', id, name: p.name, color: p.color, text, role: p.role || null });
         break;
       }

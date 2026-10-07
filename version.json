@@ -1,8 +1,10 @@
 {
-  "version": "2026.10.08.5",
+  "version": "2026.10.08.6",
   "notes": [
     "Preset loadouts: 6 ready-made ones plus 3 slots to save your own (with attachments and wraps)",
-    "Balance: pistols and revolvers no longer kill as fast as rifles; Sawed-Off, PDW, LMG, Burst Rifle and Grenade Launcher toned down"
+    "Balance: pistols and revolvers no longer kill as fast as rifles; Sawed-Off, PDW, LMG, Burst Rifle and Grenade Launcher toned down",
+    "Reports now include a screenshot; chat spammers get auto-muted",
+    "Fix: \"X joined\" / \"X left\" show in chat again"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json",

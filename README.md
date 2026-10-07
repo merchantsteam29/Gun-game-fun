@@ -93,6 +93,10 @@ The lobby creator gets a **Host panel** button in the pause menu (Esc):
 
 ## Loadout
 
+**Presets** (top of Loadout and the pause menu's loadout): 6 ready-made ones (Rifleman, Rusher, Sniper, Heavy,
+Shotgunner, Fun) plus 3 custom slots. **💾** saves your current weapons with each gun's attachments and wrap, **✎**
+renames it, and one click switches back.
+
 Pick one per slot in the menu or pause menu (applies on next spawn). Weapons are grouped by class and each shows how
 many shots it takes to kill and how fast; hover (or focus with a controller) to see exact damage, headshot damage,
 fire rate, reload and damage drop-off.
@@ -283,8 +287,8 @@ becomes free again.
   - **Online:** every public server (spectate or join), and everyone with a gamertag who has the game open and where
     they are, with **Join** and **Look up**.
   - **Reports:** players report each other from the pause menu (**🚩 Report a player**), choosing a reason and adding
-    optional details. Staff see who reported whom, in which match, and can look either player up, join that match or
-    resolve the report.
+    optional details. A small **screenshot** of the reporter's screen goes with it as evidence (click it to enlarge).
+    Staff see who reported whom, in which match, and can look either player up, join that match or resolve the report.
   - **Announce:** post a message, either Info or Important, for 1 hour up to "until cleared". Every player sees it at
     the top of the menu, and players in a match get it in chat when it's posted.
   - **Appeals:** banned players can send one appeal per ban from their ban screen. Staff can **Unban** or **Deny**,
@@ -294,6 +298,9 @@ becomes free again.
   - **Log:** moderator activity (actions, warns, bans, mutes and kicks per staff member), then every staff action with
     its time, filterable by moderator.
   - **Staff** (owner only): appoint and remove moderators, permanently or for 1, 7 or 30 days.
+  - **Recent:** everyone you've played with lately (on this device), with their verified gamertag when known, so you
+    can find people after a match.
+  - **Quick reasons:** a dropdown of common reasons (Cheating, Toxic chat, Harassment…) fills the reason box.
   - **Staff chat:** a private chat between the owner and moderators. Messages are signed and kept for 3 days, and
     new ones pop up even when the panel is closed.
   - **Kick from match:** on a player who's in a match, removes them from it even if you're not there.
@@ -301,6 +308,9 @@ becomes free again.
   **Bans enforced by hosts:** players with a gamertag prove it to the host when they join a match. The host's game then
   removes banned players and mutes muted ones (even if their own game was modified to ignore it), and staff see each
   player's real gamertag next to their name in the Moderation list.
+
+  **Anti-spam:** the host's game auto-mutes anyone who sends 6 messages in 8 seconds or the same message 3 times in a
+  row (for that match), and files an auto-report when it can.
 
   **Gamertag filter:** gamertags containing filtered words can't be claimed, even hidden inside a name ("xX_Sh1t_Xx").
 

@@ -271,13 +271,15 @@ class Moderation {
   // ---------- Reports ----------
 
   // Anyone with a gamertag can report a player (once a minute).
-  async report({ target, lobby, reason, details }) {
+  // img: optional small JPEG data URL of the reporter's screen (evidence for staff).
+  async report({ target, lobby, reason, details, img }) {
     const s = this.social;
     if (!s.tag) throw new Error('Pick a gamertag first so staff know who sent the report.');
     if (Date.now() - (this.lastReport || 0) < 60000) throw new Error('You just sent a report. Wait a minute before sending another.');
     if (!REPORT_REASONS.includes(reason)) throw new Error('Pick a reason.');
     const id = `${low(s.tag)}-${Date.now().toString(36)}`;
-    s.relay.publish(REP + id, await s.sign({ id, target: clip(target, 16), lobby: clip(lobby, 8), reason, details: clip(details, 200) }), { retain: true });
+    const shot = typeof img === 'string' && img.startsWith('data:image/jpeg;base64,') && img.length < 60000 ? img : undefined;
+    s.relay.publish(REP + id, await s.sign({ id, target: clip(target, 16), lobby: clip(lobby, 8), reason, details: clip(details, 200), img: shot }), { retain: true });
     this.lastReport = Date.now();
   }
 
@@ -285,7 +287,8 @@ class Moderation {
     if (!text) { if (this.reports.delete(id) && this.onChange) this.onChange(null); return; }
     const b = await this.social.verify(text); // signed by the reporter's own gamertag
     if (!b || b.id !== id || Date.now() - (Number(b.ts) || 0) > REPORT_MAX_AGE) return;
-    this.reports.set(id, { id, from: b.from, target: clip(b.target, 16), lobby: clip(b.lobby, 8), reason: clip(b.reason, 40), details: clip(b.details, 200), ts: Number(b.ts) });
+    const img = typeof b.img === 'string' && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(b.img) ? b.img : null;
+    this.reports.set(id, { id, from: b.from, target: clip(b.target, 16), lobby: clip(b.lobby, 8), reason: clip(b.reason, 40), details: clip(b.details, 200), ts: Number(b.ts), img });
     if (this.onChange) this.onChange(null);
   }
 
@@ -445,6 +448,16 @@ class Moderation {
       .filter((p) => !q || low(p.tag).includes(q))
       .sort((a, b) => (low(a.tag) === q ? -1 : low(b.tag) === q ? 1 : 0) || b.seen - a.seen);
   }
+
+  // ---------- Recent players (this device) ----------
+  // Everyone you've been in a match with lately (name, verified gamertag if known, lobby, when).
+  notePlayer(name, gt, lobby) {
+    if (!name || /^\[BOT\]/.test(name)) return;
+    const list = store.get('recentPlayers', []).filter((p) => !(p.name === name && p.lobby === lobby));
+    list.unshift({ name: clip(name, 16), gt: gt ? clip(gt, 16) : null, lobby: clip(lobby, 8), ts: Date.now() });
+    store.set('recentPlayers', list.slice(0, 60));
+  }
+  recentPlayers() { return store.get('recentPlayers', []); }
 
   // ---------- Watchlist (staff, saved on this device) ----------
   isWatched(tag) { return this.watch.has(low(tag)); }
