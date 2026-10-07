@@ -1,9 +1,8 @@
 {
-  "version": "2026.10.08.3",
+  "version": "2026.10.08.4",
   "notes": [
-    "Mod Panel: search every gamertag by any part of the name, watchlist, public servers list, moderator activity",
-    "Weapon wraps in Character > Customize, key bindings in Settings > Controls",
-    "Banned players are kept out of matches by the host; offensive gamertags are blocked"
+    "Balance: pistols and revolvers no longer kill as fast as rifles; Sawed-Off, PDW, LMG, Burst Rifle and Grenade Launcher toned down",
+    "Mod Panel: search every gamertag, watchlist, public servers list, moderator activity"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json",

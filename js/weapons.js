@@ -16,13 +16,13 @@ export const WEAPONS = {
   },
   burst: {
     id: 'burst', name: 'Burst Rifle', type: 'gun', auto: false, burst: 3, burstGap: 0.07,
-    rate: 0.42, dmg: 27, head: 1.8, pellets: 1, mag: 24, reload: 2.1,
+    rate: 0.42, dmg: 25, head: 1.6, pellets: 1, mag: 24, reload: 2.1,
     spread: 0.008, moveSpread: 0.03, adsMul: 0.25, range: 250, falloff: [40, 90, 0.75],
     recoil: 0.016, speedMul: 1.0, switch: 0.35, reloadStyle: 'mag',
   },
   lmg: {
     id: 'lmg', name: 'LMG', type: 'gun', auto: true,
-    rate: 0.1, dmg: 20, head: 1.5, pellets: 1, mag: 100, reload: 4.2,
+    rate: 0.105, dmg: 20, head: 1.5, pellets: 1, mag: 100, reload: 4.2,
     spread: 0.022, moveSpread: 0.05, adsMul: 0.35, range: 250, falloff: [40, 90, 0.75],
     recoil: 0.012, speedMul: 0.82, switch: 0.6, reloadStyle: 'box',
   },
@@ -42,10 +42,10 @@ export const WEAPONS = {
   },
   gl: {
     id: 'gl', name: 'Grenade Launcher', type: 'proj', auto: false,
-    rate: 1.0, mag: 4, reload: 3.0,
+    rate: 1.0, mag: 3, reload: 3.0,
     projSpeed: 30, projGravity: 9,
     directDmg: 130, // a direct hit kills
-    splash: 70, radius: 4.5,
+    splash: 60, radius: 4,
     spread: 0, moveSpread: 0, adsMul: 1,
     recoil: 0.06, speedMul: 0.68, // heavy: slows you down while equipped
     switch: 0.6, reloadStyle: 'drum',
@@ -77,13 +77,13 @@ export const WEAPONS = {
   // ---------- Secondaries ----------
   pistol: {
     id: 'pistol', name: 'Pistol', type: 'gun', auto: false,
-    rate: 0.15, dmg: 27, head: 2.0, pellets: 1, mag: 12, reload: 1.4,
+    rate: 0.15, dmg: 22, head: 2.0, pellets: 1, mag: 12, reload: 1.4,
     spread: 0.012, moveSpread: 0.025, adsMul: 0.35, range: 150, falloff: [20, 50, 0.7],
     recoil: 0.025, speedMul: 1.05, switch: 0.25, reloadStyle: 'mag',
   },
   revolver: {
     id: 'revolver', name: 'Revolver', type: 'gun', auto: false,
-    rate: 0.45, dmg: 55, head: 2.0, pellets: 1, mag: 6, reload: 2.0,
+    rate: 0.55, dmg: 55, head: 2.0, pellets: 1, mag: 6, reload: 2.0,
     spread: 0.01, moveSpread: 0.03, adsMul: 0.3, range: 180, falloff: [25, 60, 0.75],
     recoil: 0.06, speedMul: 1.05, switch: 0.3, reloadStyle: 'revolver',
   },
@@ -96,13 +96,13 @@ export const WEAPONS = {
 
   handcannon: {
     id: 'handcannon', name: 'Hand Cannon', type: 'gun', auto: false,
-    rate: 0.48, dmg: 54, head: 2.0, pellets: 1, mag: 7, reload: 2.1,
+    rate: 0.6, dmg: 54, head: 2.0, pellets: 1, mag: 7, reload: 2.1,
     spread: 0.012, moveSpread: 0.04, adsMul: 0.3, range: 160, falloff: [25, 60, 0.75],
     recoil: 0.07, speedMul: 1.0, switch: 0.35, reloadStyle: 'mag',
   },
   sawedoff: {
     id: 'sawedoff', name: 'Sawed-Off', type: 'gun', auto: false,
-    rate: 0.25, dmg: 12, head: 1.2, pellets: 9, mag: 2, reload: 1.8,
+    rate: 0.25, dmg: 10, head: 1.2, pellets: 9, mag: 2, reload: 1.8,
     spread: 0.11, moveSpread: 0.02, adsMul: 0.85, range: 30, falloff: [4, 15, 0.2],
     recoil: 0.06, speedMul: 1.05, switch: 0.25, reloadStyle: 'shells',
   },
@@ -172,7 +172,7 @@ export const WEAPONS = {
   },
   pdw: {
     id: 'pdw', name: 'PDW', type: 'gun', auto: true,
-    rate: 0.055, dmg: 15, head: 1.5, pellets: 1, mag: 50, reload: 2.0,
+    rate: 0.055, dmg: 15, head: 1.5, pellets: 1, mag: 40, reload: 2.0,
     spread: 0.022, moveSpread: 0.015, adsMul: 0.5, range: 100, falloff: [12, 35, 0.55],
     recoil: 0.007, speedMul: 1.12, switch: 0.26, reloadStyle: 'mag',
   },
@@ -217,13 +217,13 @@ export const WEAPONS = {
   },
   bpistol: {
     id: 'bpistol', name: 'Burst Pistol', type: 'gun', auto: false, burst: 3, burstGap: 0.06,
-    rate: 0.38, dmg: 19, head: 1.8, pellets: 1, mag: 18, reload: 1.5,
+    rate: 0.38, dmg: 16, head: 1.8, pellets: 1, mag: 18, reload: 1.5,
     spread: 0.012, moveSpread: 0.025, adsMul: 0.4, range: 140, falloff: [20, 50, 0.7],
     recoil: 0.02, speedMul: 1.05, switch: 0.25, reloadStyle: 'mag',
   },
   autorev: {
     id: 'autorev', name: 'Auto Revolver', type: 'gun', auto: false,
-    rate: 0.24, dmg: 37, head: 1.9, pellets: 1, mag: 6, reload: 2.0,
+    rate: 0.27, dmg: 34, head: 1.9, pellets: 1, mag: 6, reload: 2.0,
     spread: 0.012, moveSpread: 0.03, adsMul: 0.3, range: 160, falloff: [20, 50, 0.7],
     recoil: 0.04, speedMul: 1.05, switch: 0.3, reloadStyle: 'revolver',
   },
