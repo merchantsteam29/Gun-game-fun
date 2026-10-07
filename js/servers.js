@@ -44,6 +44,7 @@ function clean(code, raw) {
     bots: int(raw.bots, 0, 12),
     max,
     region: REGIONS.includes(raw.region) ? raw.region : '',
+    gn: raw.gn === 1, // a Game Night server (gamenight.js)
     ts: Number(raw.ts) || 0,
   };
 }

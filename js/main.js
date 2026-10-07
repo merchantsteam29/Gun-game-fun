@@ -24,7 +24,9 @@ import { Voice } from './voice.js';
 import { Showroom } from './showroom.js';
 import { isBound, keysLabel } from './binds.js';
 import { CAMOS, camoSwatch, camoOf } from './camos.js';
-import { myLevel, levelBadge, RANKS, loginState, claimLogin, LOGIN_REWARDS, STREAK_WRAP, dailyChallenges, ALL_DAILY_BONUS, fmtDuration, onProgress } from './progress.js';
+import { myLevel, levelBadge, RANKS, loginState, claimLogin, LOGIN_REWARDS, STREAK_WRAP, dailyChallenges, ALL_DAILY_BONUS, fmtDuration, onProgress, setXpBoost } from './progress.js';
+import { gameNight, GN_NAME, GN_XP, describe as describeGn } from './gamenight.js';
+import { grantWrap } from './missions.js';
 import { MODS, MOD_SLOTS, MOD_SLOT_NAMES, modOptions, hasMods, cleanMods, cleanModMap, statsFor } from './mods.js';
 
 const $ = (id) => document.getElementById(id);
@@ -70,6 +72,7 @@ game.setMods(settings.mods);
 window.game = game; // handy for debugging from the console
 let net = null;
 let busy = false;
+const browser = new ServerBrowser(); // public server list (Servers, Quick Play, Game Night)
 let settingsUI = null; // created further down; the Character / Missions sections reuse its views
 const chat = new Chat({
   send: (text) => {
@@ -120,7 +123,19 @@ function renderHome() {
   if (!el) return;
   const lv = myLevel(), login = loginState(), daily = dailyChallenges();
   const doneN = daily.list.filter((c) => c.done).length;
+  const gn = gameNight.window(), gnLive = !!(gn && gn.live);
+  const gnServers = browser.list().filter((s) => s.gn), gnPlayers = gnServers.reduce((n, s) => n + s.players, 0);
   el.innerHTML = `
+    <button class="hs-tile hs-quick" data-quick title="Joins the busiest public server, or starts one with bots if there are none">
+      <span class="hs-ic">▶</span><span class="hs-txt"><b>Quick Play</b><small>${quickLabel()}</small></span>
+    </button>
+    <div class="hs-tile hs-gn ${gnLive ? 'live' : ''}">
+      <span class="hs-ic">🌙</span>
+      <span class="hs-txt"><b>${gnLive ? `Game Night is LIVE · ${GN_XP}x XP` : 'Game Night'}</b><small>${!gn ? 'Off for now' : gnLive
+        ? `${gnPlayers ? `${gnPlayers} playing · ` : ''}ends in ${fmtDuration(gn.end - Date.now())}`
+        : `Starts in ${fmtDuration(gn.start - Date.now())} · ${new Date(gn.start).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })}`}</small></span>
+      ${gnLive ? '<button class="primary" data-gn>Join game night</button>' : gn ? `<button class="ghost hs-remind" data-remind title="${esc(describeGn(gameNight.schedule))}">${gameNight.remind ? '🔔 On' : '🔕 Remind me'}</button>` : ''}
+    </div>
     <button class="hs-tile hs-level" data-go="missions" title="Earn XP from kills, headshots, matches, wins and daily challenges">
       ${levelBadge(lv.level, false).replace('lvl-badge', 'lvl-badge big')}
       <span class="hs-txt"><b>${esc(lv.rank.name)} · Level ${lv.level}</b><span class="hs-bar"><i style="width:${lv.pct * 100}%"></i></span><small>${lv.need ? `${lv.into.toLocaleString()} / ${lv.need.toLocaleString()} XP` : 'Max level'}</small></span>
@@ -137,6 +152,48 @@ function renderHome() {
   el.querySelectorAll('[data-go]').forEach((b) => { b.onclick = () => showPane(b.dataset.go); });
   const c = el.querySelector('[data-claim]');
   if (c) c.onclick = doClaim;
+  el.querySelector('[data-quick]').onclick = quickPlay;
+  const g = el.querySelector('[data-gn]');
+  if (g) g.onclick = joinGameNight;
+  const r = el.querySelector('[data-remind]');
+  if (r) r.onclick = async () => {
+    const on = await gameNight.setRemind(!gameNight.remind);
+    toast(on ? 'We\'ll ping you when Game Night starts (while the game is open in a tab).' : 'Game Night reminder off');
+    renderHome();
+  };
+}
+function quickLabel() {
+  const best = browser.list().filter((s) => s.players < s.max)[0];
+  return best && best.players ? `${best.players} playing in ${best.name}` : 'Jump into a match now';
+}
+
+// ---------- Quick Play & Game Night ----------
+// Waits a moment for the public server list (it fills in within a couple of seconds).
+async function freshServers() {
+  browser.start();
+  const t0 = Date.now();
+  while (Date.now() - t0 < 3500 && (browser.status !== 'online' || Date.now() - t0 < 1500) && browser.status !== 'offline') await new Promise((r) => setTimeout(r, 250));
+  return browser.list().filter((s) => s.players < s.max);
+}
+const randomMap = () => { const maps = MAP_ORDER.filter((m) => m !== 'range'); return maps[Math.floor(Math.random() * maps.length)]; };
+async function joinCode(code) { $('join-code').value = code; await joinLobby(); }
+async function quickPlay() {
+  if (busy) return;
+  status('Finding a match…');
+  const open = await freshServers();
+  const best = open.filter((s) => s.players > 0)[0] || open[0];
+  if (best) return joinCode(best.code);
+  status('');
+  hostLobby({ name: `${settings.name || 'Player'}'s Quick Play`, mode: 'ffa', map: randomMap(), max: 12, bots: 6, rotate: true, vis: 'public' });
+}
+// Everyone in one server: join the busiest Game Night server with room, or start it.
+async function joinGameNight() {
+  if (busy) return;
+  status('Finding the Game Night server…');
+  const gns = (await freshServers()).filter((s) => s.gn).sort((a, b) => b.players - a.players);
+  if (gns[0]) return joinCode(gns[0].code);
+  status('');
+  hostLobby({ name: GN_NAME, mode: 'ffa', map: randomMap(), max: 12, bots: 6, rotate: true, vis: 'public', gn: true });
 }
 function doClaim() {
   const r = claimLogin();
@@ -612,7 +669,6 @@ const serverCfg = {
   ...store.get('serverCfg', {}),
 };
 const saveCfg = () => store.set('serverCfg', serverCfg);
-const browser = new ServerBrowser();
 const announcer = new ServerAnnouncer();
 let hosting = null; // { public, name, max, region } while hosting
 
@@ -672,14 +728,14 @@ function renderServers() {
   }).join('');
   el.querySelectorAll('[data-join]').forEach((b) => { b.onclick = () => { $('join-code').value = b.dataset.join; joinLobby(); }; });
 }
-browser.onChange = renderServers;
+browser.onChange = () => { renderServers(); if (!game.active && menuPane === 'play') renderHome(); };
 
 // What a public server tells the list.
 function listingInfo() {
   const L = net && net.logic;
   const all = L ? [...L.players.values()] : [];
   return {
-    name: hosting.name, max: hosting.max, region: hosting.region,
+    name: hosting.name, max: hosting.max, region: hosting.region, gn: hosting.gn ? 1 : 0,
     mode: L ? L.s.mode : settings.mode, map: L ? L.s.map : settings.map,
     players: all.filter((p) => !p.bot).length, bots: all.filter((p) => p.bot).length,
   };
@@ -900,6 +956,28 @@ function renderModNav() {
   if (!staff && menuPane === 'mod') showPane('play');
 }
 moderation.init(social);
+gameNight.init(social);
+// Double XP in Game Night servers while it's live.
+setXpBoost(() => (game.active && game.rules.gn && gameNight.isLive() ? GN_XP : 1));
+// Finishing a match in a Game Night server earns the Midnight wrap (once).
+game.onMatchTracked = () => {
+  if (game.rules.gn && gameNight.isLive() && grantWrap('midnight')) game.hud.mission('Midnight wrap unlocked', 'Played Game Night', 'GAME NIGHT');
+};
+gameNight.on((e) => {
+  if (e.type === 'start') {
+    const msg = `🌙 Game Night is live! ${GN_XP}x XP in the Game Night server.`;
+    if (net && !net.practice) {
+      chat.system(game.rules.gn ? `🌙 Game Night is live: ${GN_XP}x XP in this server!` : `${msg} Join it from the menu (Servers → Join game night).`);
+      game.hud.say('🌙 GAME NIGHT IS LIVE');
+    } else toast(msg);
+    gameNight.notify('Game Night is live! Hop on: everyone plays in one server, double XP.');
+  } else if (e.type === 'soon') {
+    const mins = Math.max(1, Math.round((e.w.start - Date.now()) / 60000));
+    if (!net) toast(`🌙 Game Night starts in ${mins} min`);
+    gameNight.notify(`Game Night starts in ${mins} minutes.`);
+  } else if (e.type === 'end' && net && game.rules.gn) chat.system('🌙 Game Night is over. Thanks for playing! Same time next time.');
+  if (!game.active && menuPane === 'play') renderHome();
+});
 // Presence and reports can arrive in bursts: redraw at most a few times a second, and never
 // while something in the panel is being typed or picked (just the looked-up player then).
 let modRenderT = null;
@@ -1106,7 +1184,9 @@ function renderPractice() {
   });
 }
 
-async function hostLobby() {
+// preset: { name, mode, map, max, bots, rotate, vis, gn } instead of the Create form.
+async function hostLobby(preset = null) {
+  if (!preset || preset instanceof Event) preset = null;
   if (busy) return;
   if (moderation.myBan()) { moderation.lastBan = null; moderation.applyMine(); return; }
   initAudio();
@@ -1117,14 +1197,17 @@ async function hostLobby() {
     net = newNet();
     try {
       await net.host(code, settings.name || 'Player', settings.color,
-        { map: settings.map, mode: settings.mode, maxPlayers: serverCfg.max, botFill: Math.min(serverCfg.bots, serverCfg.max) }, myCos());
-      net.logic.s.rotate = serverCfg.rotate;
+        preset ? { map: preset.map, mode: preset.mode, maxPlayers: preset.max, botFill: Math.min(preset.bots, preset.max), gn: !!preset.gn }
+          : { map: settings.map, mode: settings.mode, maxPlayers: serverCfg.max, botFill: Math.min(serverCfg.bots, serverCfg.max) }, myCos());
+      net.logic.s.rotate = preset ? preset.rotate : serverCfg.rotate;
       net.logic.onFlag = (p, details) => moderation.autoFlag({ target: p.name, lobby: net.code, details });
-      hosting = { public: false, name: $('sv-name').value.trim() || `${settings.name || 'Player'}'s server`, max: serverCfg.max, region: serverCfg.region };
+      hosting = preset
+        ? { public: false, name: preset.name, max: preset.max, region: serverCfg.region, gn: !!preset.gn }
+        : { public: false, name: $('sv-name').value.trim() || `${settings.name || 'Player'}'s server`, max: serverCfg.max, region: serverCfg.region };
       setBusy(false);
       status('');
       enterGame();
-      setPublic(serverCfg.vis === 'public');
+      setPublic((preset ? preset.vis : serverCfg.vis) === 'public');
       showCreate(false);
       return;
     } catch (e) {
@@ -1184,7 +1267,7 @@ function leave(reason) {
   updater.leftLobby(); // an update postponed until "after this server"
 }
 
-$('btn-host').onclick = hostLobby;
+$('btn-host').onclick = () => hostLobby();
 $('btn-join').onclick = () => joinLobby();
 const touch = new TouchControls(game, () => {
   game.setLocked(false);

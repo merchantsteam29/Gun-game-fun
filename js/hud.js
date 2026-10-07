@@ -69,7 +69,7 @@ export class Hud {
     this.missionBusy = true;
     const [name, reward, title] = next;
     const el = $('mission-toast');
-    el.innerHTML = `<small>${esc(title)}</small><b>${esc(name)}</b>${reward ? `<span class="tok">🪙 ${esc(reward)}</span>` : ''}`;
+    el.innerHTML = `<small>${esc(title)}</small><b>${esc(name)}</b>${reward ? `<span class="tok">${/^\+\d+ (bonus )?tokens/.test(reward) ? '🪙 ' : ''}${esc(reward)}</span>` : ''}`;
     el.classList.remove('show');
     void el.offsetWidth;
     el.classList.add('show');

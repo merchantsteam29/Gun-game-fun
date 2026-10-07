@@ -851,6 +851,7 @@ export class Game {
     else if (mode === 'infection') won = (team === 2 && m.title === 'ZOMBIES WIN') || (team === 1 && m.title === 'SURVIVORS WIN');
     else won = !!m.scores && m.scores[0] && m.scores[0].id === this.myId;
     const mine = (m.scores || []).find((s) => s.id === this.myId);
+    if (this.onMatchTracked) this.onMatchTracked();
     track.matchEnd({
       mode, won, map: this.mapId, teams: !!MODES[mode].redBlue,
       survived: mode === 'infection' && team === 1 && m.title === 'SURVIVORS WIN',

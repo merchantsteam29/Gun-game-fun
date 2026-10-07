@@ -197,6 +197,17 @@ Inferno, Galaxy, Dragon Scale, Rainbow, Solid Gold and Diamond cost tokens (seve
 - **Daily challenges:** 3 a day (easy, medium, hard), the same for everyone on the same date, worth tokens and XP,
   plus a bonus for finishing all 3. They reset at midnight.
 
+## Quick Play & Game Night
+
+- **Quick Play** (top of the Servers screen) drops you into the busiest public server with room, or starts a public
+  FFA server with bots if there are none.
+- **Game Night** is a set time when everyone plays together. The Servers screen counts down to it (in your own time
+  zone); while it's live, **Join game night** puts everyone in the same 🌙 Game Night server (a second one opens if
+  it's full). Matches there give **double XP**, and finishing one earns the **Midnight** wrap. Tap **Remind me** to get
+  a browser notification when it starts (while the game is open in a tab).
+- The owner sets the schedule (days, start time, length, time zone) in **Mod Panel → Announce**. Until then it's every
+  day at 7 PM New York time for 2 hours.
+
 ## HUD
 
 - **Minimap** (top-left; top-right on phones and tablets): rotates with you and shows the map layout, teammates (blue

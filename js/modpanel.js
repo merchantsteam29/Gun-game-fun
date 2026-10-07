@@ -2,6 +2,7 @@ import { roles, badge, rank } from './roles.js';
 import { moderation, fmtHours, AUTO_FLAG } from './moderation.js';
 import { esc } from './util.js';
 import { validTag, TAG_RULES } from './social.js';
+import { gameNight, describe as describeGn, nextWindow, DAY_NAMES } from './gamenight.js';
 
 // The Mod Panel menu section (staff only), in tabs:
 //  Players   look up a gamertag: warnings, ban, chat mute, forced gamertag change, staff notes, history
@@ -312,6 +313,39 @@ export class ModPanel {
     };
     const clear = body.querySelector('#mp-ann-clear');
     if (clear) clear.onclick = async () => { try { await moderation.clearAnnouncement(); this.say('Announcement cleared.'); this.render(); } catch (err) { this.say(err.message); } };
+    if (roles.myRole() === 'owner') this.renderGameNight(body);
+  }
+
+  // Owner: when Game Night happens (everyone sees it in their own time zone).
+  renderGameNight(body) {
+    const s = gameNight.schedule, w = nextWindow(s);
+    const myTz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    const card = document.createElement('div');
+    card.className = 'card mp-gn';
+    card.innerHTML = `<h3>🌙 Game Night schedule</h3>
+      <div class="note">Everyone sees a countdown on the Servers screen and a "Join game night" button while it's live, which puts them all in one server with double XP. Now: <b>${esc(describeGn(s))}</b>${w ? ` · next ${w.live ? 'is live now' : when(w.start)}` : ''}.</div>
+      <div class="mp-gn-grid">
+        <label class="check"><input type="checkbox" id="gn-on" ${s.on ? 'checked' : ''}> Game Night is on</label>
+        <div class="mp-gn-days">${DAY_NAMES.map((d, i) => `<label><input type="checkbox" data-day="${i}" ${s.days.includes(i) ? 'checked' : ''}>${d}</label>`).join('')}</div>
+        <label>Start <input type="time" id="gn-time" value="${String(s.h).padStart(2, '0')}:${String(s.m).padStart(2, '0')}"></label>
+        <label>Length <select id="gn-dur">${[[60, '1 hour'], [90, '1.5 hours'], [120, '2 hours'], [180, '3 hours'], [240, '4 hours']].map(([v, l]) => `<option value="${v}" ${v === s.dur ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+        <label>Time zone <input id="gn-tz" value="${esc(s.tz)}" spellcheck="false"><small class="muted">yours: ${esc(myTz)}</small></label>
+      </div>
+      <div class="mp-actions"><button class="ghost" id="gn-mytz">Use my time zone</button><button class="primary" id="gn-save">Save for everyone</button></div>`;
+    body.appendChild(card);
+    card.querySelector('#gn-mytz').onclick = () => { card.querySelector('#gn-tz').value = myTz; };
+    card.querySelector('#gn-save').onclick = async () => {
+      const [h, m] = (card.querySelector('#gn-time').value || '19:00').split(':').map(Number);
+      const next = {
+        on: card.querySelector('#gn-on').checked, h, m, dur: Number(card.querySelector('#gn-dur').value),
+        days: [...card.querySelectorAll('[data-day]:checked')].map((x) => Number(x.dataset.day)), tz: card.querySelector('#gn-tz').value.trim(),
+      };
+      try {
+        new Intl.DateTimeFormat('en-US', { timeZone: next.tz });
+      } catch { this.say('Unknown time zone. Use one like America/New_York, or press "Use my time zone".'); return; }
+      if (!confirm('Set this Game Night schedule for everyone?')) return;
+      try { await gameNight.publish(next); this.say('Game Night schedule saved: ' + describeGn(gameNight.schedule)); this.render(); } catch (err) { this.say(err.message); }
+    };
   }
 
   // ---------- Appeals ----------

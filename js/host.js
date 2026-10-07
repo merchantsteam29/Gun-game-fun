@@ -102,6 +102,7 @@ export class HostLogic {
     this.players = new Map();
     this.specs = new Map(); // staff spectating: get every update but aren't players
     this.s = defaultSettings(MODES[opts.mode] ? opts.mode : 'ffa', MAPS[opts.map] ? opts.map : MAP_ORDER[0]);
+    if (opts.gn) this.s.gn = true; // Game Night server (double XP for players while it's live)
     this.botCount = 0;
     this.botFill = Math.max(0, Math.min(12, opts.botFill || 0)); // keep humans + bots at this many
     this.loadMap(this.s.map);
