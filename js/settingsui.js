@@ -153,10 +153,11 @@ export class SettingsUI {
     }).join('');
     const grid = CAMOS.map((c) => {
       const own = ownsWrap(c.id);
-      return `<button class="${c.id === this.wrapTry ? 'trying' : ''} ${c.id === cur ? 'sel' : ''} ${own ? '' : 'locked'}" data-wrap="${c.id}" title="${esc(c.name)}"><i style="background:${camoSwatch(c)}"></i><span>${esc(c.name)}</span>${own ? '' : `<small>🪙 ${c.price}</small>`}</button>`;
+      return `<button class="${c.id === this.wrapTry ? 'trying' : ''} ${c.id === cur ? 'sel' : ''} ${own ? '' : 'locked'}" data-wrap="${c.id}" title="${esc(c.name)}"><i style="background:${camoSwatch(c)}"></i><span>${esc(c.name)}</span>${own ? '' : c.reward ? '<small>🔒 Earn</small>' : `<small>🪙 ${c.price}</small>`}</button>`;
     }).join('');
     let actions;
     if (have) actions = `<button class="primary" data-act="one" ${pick.id === cur ? 'disabled' : ''}>Apply to ${esc(WEAPONS[this.wrapGun].name)}</button><button data-act="all">Apply to all guns</button>`;
+    else if (pick.reward) actions = `<span class="wr-need">🔒 ${esc(pick.name)} can't be bought. Earn it: ${esc(pick.how)}.</span>`;
     else if (tokens >= pick.price) actions = `<button class="primary" data-act="buy">Buy ${esc(pick.name)} · 🪙 ${pick.price}</button>`;
     else actions = `<span class="wr-need">${esc(pick.name)} costs 🪙 ${pick.price}. You need ${pick.price - tokens} more: complete Missions to earn tokens.</span>`;
     box.innerHTML = `<div class="set-label">Weapon wraps<small>Looks only: wraps never change stats. Other players see them.</small></div>

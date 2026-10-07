@@ -23,7 +23,8 @@ import { ModPanel } from './modpanel.js';
 import { Voice } from './voice.js';
 import { Showroom } from './showroom.js';
 import { isBound, keysLabel } from './binds.js';
-import { CAMOS, camoSwatch } from './camos.js';
+import { CAMOS, camoSwatch, camoOf } from './camos.js';
+import { myLevel, levelBadge, RANKS, loginState, claimLogin, LOGIN_REWARDS, STREAK_WRAP, dailyChallenges, ALL_DAILY_BONUS, fmtDuration, onProgress } from './progress.js';
 import { MODS, MOD_SLOTS, MOD_SLOT_NAMES, modOptions, hasMods, cleanMods, cleanModMap, statsFor } from './mods.js';
 
 const $ = (id) => document.getElementById(id);
@@ -93,11 +94,79 @@ function renderCharacter() {
 }
 function renderMissions() {
   if (!settingsUI) return;
-  $('menu-missions').replaceChildren(settingsUI.special('missions', { goCustomize: () => showPane('character') }));
+  const daily = document.createElement('div');
+  daily.innerHTML = dailyHtml();
+  const c = daily.querySelector('[data-claim]');
+  if (c) c.onclick = doClaim;
+  const head = document.createElement('h3');
+  head.className = 'ms-title';
+  head.textContent = 'Missions';
+  $('menu-missions').replaceChildren(daily, head, settingsUI.special('missions', { goCustomize: () => showPane('character') }));
   updateMissionCount();
 }
 function updateMissionCount() {
   $('nav-missions-count').textContent = `${MISSIONS.filter(missionDone).length}/${MISSIONS.length}`;
+  $('nav-missions-count').classList.toggle('alert', !loginState().claimed);
+  if (!loginState().claimed) $('nav-missions-count').textContent = '🎁';
+}
+
+// Your cosmetics plus the level shown next to your name (sent to the host).
+const myCos = () => ({ ...getCos(), lvl: myLevel().level });
+
+// ---------- Home strip (top of Servers) and Daily (Missions) ----------
+// Level, the daily login reward and today's challenges at a glance.
+function renderHome() {
+  const el = $('home-strip');
+  if (!el) return;
+  const lv = myLevel(), login = loginState(), daily = dailyChallenges();
+  const doneN = daily.list.filter((c) => c.done).length;
+  el.innerHTML = `
+    <button class="hs-tile hs-level" data-go="missions" title="Earn XP from kills, headshots, matches, wins and daily challenges">
+      ${levelBadge(lv.level, false).replace('lvl-badge', 'lvl-badge big')}
+      <span class="hs-txt"><b>${esc(lv.rank.name)} · Level ${lv.level}</b><span class="hs-bar"><i style="width:${lv.pct * 100}%"></i></span><small>${lv.need ? `${lv.into.toLocaleString()} / ${lv.need.toLocaleString()} XP` : 'Max level'}</small></span>
+    </button>
+    <div class="hs-tile hs-daily ${login.claimed ? '' : 'ready'}">
+      <span class="hs-ic">🎁</span>
+      <span class="hs-txt"><b>${login.claimed ? `Day ${login.day} claimed` : `Day ${login.day} reward`}</b><small>${login.claimed ? `Come back tomorrow · 🔥 ${login.streak}-day streak` : `🪙 ${login.reward}${login.wrap ? ' + Ember wrap' : ''}${login.streak > 1 ? ` · 🔥 ${login.streak} days` : ''}`}</small></span>
+      ${login.claimed ? '' : '<button class="primary" data-claim>Claim</button>'}
+    </div>
+    <button class="hs-tile hs-chal" data-go="missions">
+      <span class="hs-ic">🎯</span>
+      <span class="hs-txt"><b>Daily challenges ${doneN}/3</b><span class="hs-minis">${daily.list.map((c) => `<i class="${c.done ? 'done' : ''}"><u style="width:${(c.have / c.goal) * 100}%"></u></i>`).join('')}</span><small>New ones in ${fmtDuration(daily.resetsIn)}</small></span>
+    </button>`;
+  el.querySelectorAll('[data-go]').forEach((b) => { b.onclick = () => showPane(b.dataset.go); });
+  const c = el.querySelector('[data-claim]');
+  if (c) c.onclick = doClaim;
+}
+function doClaim() {
+  const r = claimLogin();
+  if (!r) return;
+  toast(`Day ${r.day} reward: 🪙 ${r.reward} + 100 XP${r.wrap ? ' and the Ember wrap!' : ''}`);
+  renderChip();
+  if (menuPane === 'missions') renderMissions();
+}
+function dailyHtml() {
+  const lv = myLevel(), login = loginState(), daily = dailyChallenges();
+  const days = LOGIN_REWARDS.map((r, i) => {
+    const d = i + 1, got = login.claimed ? d <= login.day : d < login.day, now = !login.claimed && d === login.day;
+    return `<div class="dl-day ${got ? 'got' : ''} ${now ? 'now' : ''}"><small>Day ${d}</small><b>🪙 ${r}</b>${d === 7 ? `<em title="First time only">${ownsWrap(STREAK_WRAP) ? '★' : '+ Ember wrap'}</em>` : ''}</div>`;
+  }).join('');
+  const chal = daily.list.map((c) => `<div class="ms ${c.done ? 'done' : ''}">
+      <div class="ms-info"><b>${c.done ? '✓ ' : ''}${esc(c.text)}</b><small>${['Easy', 'Medium', 'Hard'][c.tier]} · +${c.xp} XP</small></div>
+      <div class="ms-bar"><i style="width:${(c.have / c.goal) * 100}%"></i></div>
+      <div class="ms-prog">${c.have}/${c.goal}</div>
+      <div class="ms-reward">🪙 ${c.tokens}</div></div>`).join('');
+  const ladder = RANKS.map((r) => `<div class="dl-rank ${lv.rank.id === r.id ? 'cur' : lv.level >= r.min ? 'got' : ''}" style="--rk:${r.color}"><b>${esc(r.name)}</b><small>Level ${r.min}+</small>${r.wrap ? `<em>${esc(camoOf(r.wrap).name)} wrap</em>` : '<em>Start</em>'}</div>`).join('');
+  return `<div class="daily">
+    <div class="card dl-login"><div class="dl-head"><h3>Daily login</h3><span>🔥 ${login.claimed || login.streak > 1 ? login.streak : 0}-day streak</span>${login.claimed ? '<small>Claimed today · come back tomorrow</small>' : '<button class="primary" data-claim>Claim today\'s reward</button>'}</div>
+      <div class="dl-days">${days}</div><p class="note">Log in every day to grow your streak. Miss a day and it starts over at day 1.</p></div>
+    <div class="card dl-chal"><div class="dl-head"><h3>Daily challenges</h3><small>New ones in ${fmtDuration(daily.resetsIn)} · same for everyone today</small></div>
+      <div class="missions">${chal}</div><p class="note">${daily.bonus ? `✓ All done: +${ALL_DAILY_BONUS} bonus tokens earned.` : `Finish all 3 for +${ALL_DAILY_BONUS} bonus tokens.`}</p></div>
+    <div class="card dl-level"><div class="dl-head"><h3>${levelBadge(lv.level)} ${esc(lv.rank.name)} · Level ${lv.level}</h3><small>${lv.need ? `${(lv.need - lv.into).toLocaleString()} XP to level ${lv.level + 1}` : 'Max level'}</small></div>
+      <span class="hs-bar big"><i style="width:${lv.pct * 100}%"></i></span>
+      <div class="dl-ranks">${ladder}</div>
+      <p class="note">XP: kill 100 · headshot +25 · multi-kill +50 · finish a match 250 · win +250 · daily login 100. Every level pays tokens; each new rank unlocks a wrap.</p></div>
+  </div>`;
 }
 
 // ---------- Menu widgets ----------
@@ -121,6 +190,9 @@ function renderChip() {
   $('chip-name').innerHTML += badge(roles.myRole(), true);
   $('chip-dot').style.background = settings.color;
   $('chip-tokens').textContent = '🪙 ' + getTokens();
+  $('chip-name').insertAdjacentHTML('afterbegin', levelBadge(myLevel().level));
+  renderHome();
+  updateMissionCount();
 }
 
 // Loadout picker: one tab per slot, a grid of weapons for the open slot, and a stat card
@@ -625,7 +697,7 @@ const PANE_INFO = {
   play: ['Servers', 'Join friends with a code, browse public servers, or start your own.'],
   loadout: ['Loadout', 'One weapon per slot. Changes apply the next time you spawn.'],
   character: ['Character', 'Your callsign, color and cosmetics. Earn tokens from missions to unlock more.'],
-  missions: ['Missions', 'Complete missions in any match to earn tokens.'],
+  missions: ['Missions', 'Daily rewards, daily challenges, your level and missions. All of them pay tokens.'],
   friends: ['Friends', 'Add friends by gamertag, see who\'s online, party up and chat.'],
   mod: ['Mod Panel', 'Staff only: warn, ban or force a new gamertag. Every action is signed with your key.'],
 };
@@ -648,6 +720,10 @@ function showPane(name) {
 }
 document.querySelectorAll('#menu-nav [data-pane]').forEach((b) => { b.onclick = () => showPane(b.dataset.pane); });
 $('player-chip').onclick = () => showPane('character');
+
+game.onLevel = () => { if (net) net.send({ t: 'cos', c: myCos() }); };
+onProgress((e) => { if (e.type !== 'xp' && !game.active) renderChip(); });
+setInterval(() => { if (!game.active && menuPane === 'play') renderHome(); }, 60000);
 
 game.loadMap(settings.map);
 renderModes();
@@ -1001,7 +1077,7 @@ async function startPractice() {
   if (moderation.myBan()) { moderation.lastBan = null; moderation.applyMine(); return; }
   initAudio();
   net = newNet();
-  await net.offline(settings.name || 'Player', settings.color, { mode: 'practice', map: 'range' }, getCos());
+  await net.offline(settings.name || 'Player', settings.color, { mode: 'practice', map: 'range' }, myCos());
   net.logic.applySettings({ infiniteAmmo: store.get('practiceInf', true), respawn: 1 });
   net.logic.addDummies(PRACTICE_TARGETS);
   enterGame();
@@ -1041,7 +1117,7 @@ async function hostLobby() {
     net = newNet();
     try {
       await net.host(code, settings.name || 'Player', settings.color,
-        { map: settings.map, mode: settings.mode, maxPlayers: serverCfg.max, botFill: Math.min(serverCfg.bots, serverCfg.max) }, getCos());
+        { map: settings.map, mode: settings.mode, maxPlayers: serverCfg.max, botFill: Math.min(serverCfg.bots, serverCfg.max) }, myCos());
       net.logic.s.rotate = serverCfg.rotate;
       net.logic.onFlag = (p, details) => moderation.autoFlag({ target: p.name, lobby: net.code, details });
       hosting = { public: false, name: $('sv-name').value.trim() || `${settings.name || 'Player'}'s server`, max: serverCfg.max, region: serverCfg.region };
@@ -1075,7 +1151,7 @@ async function joinLobby(spectateArg = false) {
   try {
     const spec = spectate ? await roles.proof(code, 'spec') : null;
     if (spectate && !spec) throw new Error('Only staff can spectate.');
-    await net.join(code, settings.name || 'Player', settings.color, getCos(), spec);
+    await net.join(code, settings.name || 'Player', settings.color, myCos(), spec);
     game.spectating = spectate; // set before the welcome arrives so enterGame() knows
     status('');
     enterGame();
@@ -1165,7 +1241,7 @@ settingsUI = new SettingsUI({
   editLayout: (done) => touch.edit(done),
   getColor: () => settings.color,
   getName: () => settings.name || 'Player',
-  onCos: (c) => { game.myBanner = c.banner; if (net) net.send({ t: 'cos', c }); },
+  onCos: (c) => { game.myBanner = c.banner; if (net) net.send({ t: 'cos', c: { ...c, lvl: myLevel().level } }); },
   // Weapon wraps from Customize: saved with the attachments (looks only).
   getMods: () => settings.mods,
   onMods: (m) => {

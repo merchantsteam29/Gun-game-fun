@@ -4,6 +4,7 @@
 //   color            solid paint for the gun's body parts
 //   pattern          'digital' | 'stripes' | 'splotch' | 'carbon' | 'stars' | 'cracks' drawn from `colors` (first = base)
 //   price            tokens to unlock (Character → Customize → Weapon wraps); no price = free
+//   reward           can't be bought: earned (see `how`), e.g. by a login streak or a rank
 //   metal / rough    material finish (optional)
 //   glow             emissive color (optional)
 // The black accents, steel, brass, lenses and sights always keep their own materials.
@@ -29,6 +30,14 @@ export const CAMOS = [
   { id: 'galaxy', name: 'Galaxy', pattern: 'stars', colors: ['#0a0618', '#7a3aff', '#ff3aa8', '#ffffff'], glow: '#14062e', price: 350 },
   { id: 'chrome', name: 'Chrome', color: '#e8edf3', metal: 1, rough: 0.08, price: 400 },
   { id: 'diamond', name: 'Diamond', pattern: 'stars', colors: ['#d8f4ff', '#9fd8ff', '#ffffff', '#c9a8ff'], metal: 0.7, rough: 0.1, glow: '#20384a', price: 600 },
+  // Earned wraps (can't be bought)
+  { id: 'ember', name: 'Ember', pattern: 'cracks', colors: ['#2a0a12', '#ff3a6a', '#ffd23a'], glow: '#4a0a1a', reward: true, how: '7-day login streak' },
+  { id: 'rk_silver', name: 'Silver Ace', pattern: 'carbon', colors: ['#b8c0c8', '#8a939c'], metal: 0.85, rough: 0.2, reward: true, how: 'Reach Silver rank (level 10)' },
+  { id: 'rk_gold', name: 'Gold Ace', pattern: 'carbon', colors: ['#f2c24a', '#b8862a'], metal: 0.9, rough: 0.18, glow: '#2a1a00', reward: true, how: 'Reach Gold rank (level 20)' },
+  { id: 'rk_plat', name: 'Platinum Ace', pattern: 'stripes', colors: ['#bff4ee', '#4fc8c0'], metal: 0.8, rough: 0.15, glow: '#0a2a28', reward: true, how: 'Reach Platinum rank (level 35)' },
+  { id: 'rk_diamond', name: 'Diamond Ace', pattern: 'stars', colors: ['#0a1a3a', '#4aa8ff', '#b8e8ff', '#ffffff'], metal: 0.7, rough: 0.1, glow: '#103060', reward: true, how: 'Reach Diamond rank (level 50)' },
+  { id: 'midnight', name: 'Midnight', pattern: 'stars', colors: ['#06081a', '#2a2a7a', '#8a6aff', '#ffe8a8'], glow: '#0a0a2a', reward: true, how: 'Play a match during Game Night' },
+  { id: 'champion', name: 'Weekly Champion', pattern: 'cracks', colors: ['#1a1206', '#ffd23a', '#fff2b0'], metal: 0.8, rough: 0.2, glow: '#3a2600', reward: true, how: 'Finish #1 on a weekly leaderboard' },
 ];
 
 export const CAMO_IDS = CAMOS.map((c) => c.id);

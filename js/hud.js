@@ -6,11 +6,15 @@ import { badge, ROLE_INFO } from './roles.js';
 import { MedalQueue } from './medals.js';
 import { MAPS, MAP_BLURB } from './maps.js';
 import { sfx } from './audio.js';
+import { levelBadge } from './progress.js';
 
 const roleIcon = (r) => (ROLE_INFO[r] ? `<b class="role-ico ${r}" title="${ROLE_INFO[r].label}">${ROLE_INFO[r].icon}</b>` : '');
 
 const $ = (id) => document.getElementById(id);
 const W_LABEL = SHORT;
+
+// Last week's #1 on the leaderboard
+const TROPHY = '<span class="trophy" title="Weekly champion">🏆</span>';
 
 export class Hud {
   constructor() {
@@ -52,14 +56,29 @@ export class Hud {
   fps(n) { $('fps').textContent = n + ' FPS'; }
 
   // Banner when a mission completes and unlocks a cosmetic.
-  mission(name, reward) {
+  // Toasts for missions, level-ups and daily challenges; several at once play one after another.
+  mission(name, reward, title = 'MISSION COMPLETE') {
+    this.missionQ = this.missionQ || [];
+    this.missionQ.push([name, reward, title]);
+    if (!this.missionBusy) this.nextMission();
+  }
+
+  nextMission() {
+    const next = this.missionQ.shift();
+    if (!next) { this.missionBusy = false; return; }
+    this.missionBusy = true;
+    const [name, reward, title] = next;
     const el = $('mission-toast');
-    el.innerHTML = `<small>MISSION COMPLETE</small><b>${esc(name)}</b>${reward ? `<span class="tok">🪙 ${esc(reward)}</span>` : ''}`;
+    el.innerHTML = `<small>${esc(title)}</small><b>${esc(name)}</b>${reward ? `<span class="tok">🪙 ${esc(reward)}</span>` : ''}`;
     el.classList.remove('show');
     void el.offsetWidth;
     el.classList.add('show');
     clearTimeout(this.timers.mission);
-    this.timers.mission = setTimeout(() => el.classList.remove('show'), 4000);
+    this.timers.mission = setTimeout(() => {
+      if (this.missionQ.length) { this.nextMission(); return; }
+      el.classList.remove('show');
+      this.missionBusy = false;
+    }, this.missionQ.length ? 2400 : 4000);
   }
 
   lobby(code, count, mapName) {
@@ -293,7 +312,7 @@ export class Hud {
       const c = colorFor ? colorFor(p) : p.color;
       const sc = mode === 'gungame' ? p.sc + 1 : p.sc;
       const kd = (p.k / Math.max(1, p.d)).toFixed(2);
-      return `<tr class="${p.id === myId ? 'me' : ''}" style="--c:${esc(c)}"><td class="rk">${rank}</td><td><span class="dot" style="background:${esc(c)}"></span>${esc(p.name)}${badge(p.role, true)}</td><td class="sc">${sc}</td><td>${p.k}</td><td>${p.d}</td><td class="kd">${kd}</td></tr>`;
+      return `<tr class="${p.id === myId ? 'me' : ''}" style="--c:${esc(c)}"><td class="rk">${rank}</td><td><span class="dot" style="background:${esc(c)}"></span>${levelBadge(p.lvl)}${esc(p.name)}${p.tro ? TROPHY : ''}${badge(p.role, true)}</td><td class="sc">${sc}</td><td>${p.k}</td><td>${p.d}</td><td class="kd">${kd}</td></tr>`;
     }).join('');
   }
 
@@ -320,9 +339,16 @@ export class Hud {
   // info: { scores, myId, mode, title, now, secs, nextMap, mvp, showMvp, vote, onVote }
   end(show, info = {}) {
     $('endscreen').classList.toggle('hidden', !show);
-    if (!show) { this.lastEnd = this.lastVote = this.lastMvp = ''; return; }
+    if (!show) { this.lastEnd = this.lastVote = this.lastMvp = this.lastXp = ''; return; }
     const { scores = [], myId, mode, title, now, secs, nextMap, mvp, showMvp, vote } = info;
     $('end-title').textContent = title || 'MATCH OVER';
+    // XP earned this match and your level bar
+    const xk = info.xp ? JSON.stringify([info.xp.gained, info.xp.lv.level, Math.round(info.xp.lv.pct * 100)]) : '';
+    if (xk !== this.lastXp) {
+      this.lastXp = xk;
+      const x = info.xp;
+      $('end-xp').innerHTML = x ? `${levelBadge(x.lv.level)}<span class="ex-txt"><b>+${x.gained.toLocaleString()} XP</b> · ${esc(x.lv.rank.name)} · level ${x.lv.level}</span><span class="ex-bar"><i style="width:${x.lv.pct * 100}%"></i></span><small>${x.lv.need ? `${x.lv.into.toLocaleString()} / ${x.lv.need.toLocaleString()}` : 'MAX'}</small>` : '';
+    }
     const label = { gungame: 'LVL', koth: 'PTS', infection: 'INF', lms: 'LIVES' }[mode] || 'PTS';
     const voting = !!vote && !showMvp;
     $('endscreen').classList.toggle('mvp-phase', !!showMvp);
@@ -341,7 +367,7 @@ export class Hud {
       $('podium').innerHTML = top.map((p, i) => !p ? '<div class="pd empty"></div>' :
         `<div class="pd p${[2, 1, 3][i]} ${p.id === myId ? 'me' : ''}" style="--c:${esc(p.color)}"><div class="pd-name">${esc(p.name)}</div><div class="pd-sc">${p.sc} ${label}</div><div class="pd-step">${[2, 1, 3][i]}</div></div>`).join('');
       $('end-body').innerHTML = scores.map((p, i) =>
-        `<tr class="${p.id === myId ? 'me' : ''}"><td class="rk">${i + 1}</td><td><span class="dot" style="background:${esc(p.color)}"></span>${esc(p.name)}${badge(p.role, true)}</td><td class="sc">${p.sc} ${label}</td><td>${p.k} K</td><td>${p.d} D</td></tr>`
+        `<tr class="${p.id === myId ? 'me' : ''}"><td class="rk">${i + 1}</td><td><span class="dot" style="background:${esc(p.color)}"></span>${levelBadge(p.cos && p.cos.lvl)}${esc(p.name)}${p.cos && p.cos.tro ? TROPHY : ''}${badge(p.role, true)}</td><td class="sc">${p.sc} ${label}</td><td>${p.k} K</td><td>${p.d} D</td></tr>`
       ).join('');
     }
     // Map vote

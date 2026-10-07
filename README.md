@@ -184,6 +184,19 @@ Your **banner** is the card shown behind your name on the death screen of everyo
 ("**[BOT] Razor** — KILLED YOU", with the weapon and a headshot tag). Pick one in **Character → Banner**:
 Standard and Carbon are free; Tiger, Woodland / Arctic Camo, Ocean, Sunset, Hazard, Bloodbath, Neon Grid, Code Rain,
 Inferno, Galaxy, Dragon Scale, Rainbow, Solid Gold and Diamond cost tokens (several are animated). Bots wear random ones.
+
+## Levels, daily rewards & challenges
+
+- **XP and levels:** kills (100), headshots (+25), multi-kills (+50), finishing a match (250), winning (+250), the daily
+  login (100) and daily challenges all give XP. Your level shows next to your name on the scoreboard and results for
+  everyone. Every level pays tokens.
+- **Ranks:** Bronze (level 1), Silver (10), Gold (20), Platinum (35), Diamond (50). Each new rank unlocks an earned
+  wrap (Silver / Gold / Platinum / Diamond Ace) that can't be bought.
+- **Daily login:** claim a reward once a day from the Servers screen or **Missions**. It grows for 7 days in a row
+  (🪙 25 → 150); day 7 the first time also gives the **Ember** wrap. Miss a day and the streak starts over.
+- **Daily challenges:** 3 a day (easy, medium, hard), the same for everyone on the same date, worth tokens and XP,
+  plus a bonus for finishing all 3. They reset at midnight.
+
 ## HUD
 
 - **Minimap** (top-left; top-right on phones and tablets): rotates with you and shows the map layout, teammates (blue

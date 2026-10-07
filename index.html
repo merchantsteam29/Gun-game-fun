@@ -98,6 +98,7 @@
 
   <div id="endscreen" class="hidden">
     <div class="big" id="end-title">MATCH OVER</div>
+    <div id="end-xp"></div>
     <div id="mvp-card"></div>
     <div id="vote-box"></div>
     <div id="podium"></div>
@@ -145,7 +146,7 @@
         <button data-pane="play" class="sel"><span class="ic">▶</span><span class="lbl">Servers<small>Join or create a match</small></span></button>
         <button data-pane="loadout"><span class="ic">⌖</span><span class="lbl">Loadout<small>Pick your weapons</small></span></button>
         <button data-pane="character"><span class="ic">☺</span><span class="lbl">Character<small>Name, color, cosmetics</small></span></button>
-        <button data-pane="missions"><span class="ic">★</span><span class="lbl">Missions<small>Earn tokens</small></span><b id="nav-missions-count"></b></button>
+        <button data-pane="missions"><span class="ic">★</span><span class="lbl">Missions<small>Daily rewards &amp; challenges</small></span><b id="nav-missions-count"></b></button>
         <button data-pane="friends"><span class="ic">☻</span><span class="lbl">Friends<small>Gamertags &amp; party chat</small></span><b id="nav-friends-count" class="alert"></b></button>
         <button data-pane="mod" id="nav-mod" class="hidden"><span class="ic">🛡</span><span class="lbl">Mod Panel<small>Warn, ban, rename players</small></span></button>
         <button id="btn-practice"><span class="ic">🎯</span><span class="lbl">Practice<small>Solo range · every weapon</small></span></button>
@@ -166,6 +167,7 @@
       <div class="menu-body">
       <!-- Play -->
       <section class="menu-pane" data-pane="play">
+        <div id="home-strip" class="home-strip"></div>
         <!-- Join by code -->
         <div class="card join-card">
           <div class="join-row">

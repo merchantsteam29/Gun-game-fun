@@ -167,7 +167,8 @@ const claimed = new Set(store.get('claimed', []));
 let tokens = store.get('tokens', 0);
 let streak = 0;
 
-export const getStat = (k) => (k === 'modesPlayed' ? modes.size : k === 'mapsPlayed' ? maps.size : k === 'bought' ? owned.size : stats[k] || 0);
+const earnedWrap = (k) => k.startsWith('wrap:') && camoOf(k.slice(5)).reward;
+export const getStat = (k) => (k === 'modesPlayed' ? modes.size : k === 'mapsPlayed' ? maps.size : k === 'bought' ? [...owned].filter((x) => !earnedWrap(x)).length : stats[k] || 0);
 export const missionDone = (m) => getStat(m.stat) >= m.goal;
 export const getTokens = () => tokens;
 
@@ -219,15 +220,25 @@ export function buy(slot, id) {
 }
 
 // Weapon wraps (camos.js): free ones are always yours; premium ones are bought with tokens.
-export const ownsWrap = (id) => { const c = camoOf(id); return c.id === id && (!c.price || owned.has('wrap:' + id)); };
+export const ownsWrap = (id) => { const c = camoOf(id); return c.id === id && ((!c.price && !c.reward) || owned.has('wrap:' + id)); };
 export function buyWrap(id) {
   if (ownsWrap(id)) return true;
   const c = camoOf(id);
-  if (c.id !== id || tokens < c.price) return false;
+  if (c.id !== id || c.reward || tokens < c.price) return false;
   tokens -= c.price;
   owned.add('wrap:' + id);
   save();
   for (const m of claimMissions()) onComplete(m); // Collector missions
+  return true;
+}
+
+// Rewards from progress.js (levels, daily login, challenges, game night, leaderboard).
+export function addTokens(n) { if (n > 0) { tokens += Math.round(n); save(); } }
+// Gives an earned wrap. Returns true if it's new.
+export function grantWrap(id) {
+  if (owned.has('wrap:' + id) || camoOf(id).id !== id) return false;
+  owned.add('wrap:' + id);
+  save();
   return true;
 }
 
@@ -246,18 +257,25 @@ export function sanitizeCos(c) {
   if (!c || typeof c !== 'object') return out;
   for (const slot of Object.keys(COSMETICS)) if (COSMETICS[slot].some((x) => x.id === c[slot])) out[slot] = c[slot];
   if (HAIR_COLORS.includes(c.hairColor)) out.hairColor = c.hairColor;
+  // Level shown by your name (progress.js) and last week's leaderboard trophy.
+  if (Number.isInteger(c.lvl) && c.lvl >= 1 && c.lvl <= 100) out.lvl = c.lvl;
+  if (c.tro === 1) out.tro = 1;
   return out;
 }
 export function randomCos() {
   const pick = (a) => a[(Math.random() * a.length) | 0];
   const c = { hairColor: pick(HAIR_COLORS) };
   for (const slot of Object.keys(COSMETICS)) c[slot] = pick(COSMETICS[slot]).id;
+  c.lvl = 1 + Math.floor(Math.random() ** 2 * 40); // bots show a level too
   return c;
 }
 
 // ---------- Progress tracking ----------
 let onComplete = () => {};
 export function onMissionComplete(fn) { onComplete = fn; }
+// Every stat change ({ kills: 1, headshots: 1, … }), for XP and daily challenges (progress.js).
+const statListeners = [];
+export function onStats(fn) { statListeners.push(fn); }
 
 function bump(updates, pre = null) {
   if (pre) pre();
@@ -267,6 +285,7 @@ function bump(updates, pre = null) {
   }
   store.set('stats', stats);
   for (const m of claimMissions()) onComplete(m);
+  for (const fn of statListeners) fn(updates);
 }
 
 export const track = {

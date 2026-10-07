@@ -4,6 +4,7 @@ import { moveBody, overlap, raycast, rayAABB, PLAYER_R, phys } from './physics.j
 import { MODES, TEAM_COLORS, ZOMBIE_COLOR, JUGG_COLOR, JUGG_TEAM, defaultSettings } from './host.js';
 import { WEAPONS, DEFAULT_LOADOUT, GUNGAME_LADDER, SLOTS } from './weapons.js';
 import { track, onMissionComplete } from './missions.js';
+import { onProgress, myLevel } from './progress.js';
 import { statsFor, cleanModMap } from './mods.js';
 import { Viewmodel } from './viewmodel.js';
 import { RemotePlayer, netClock } from './remote.js';
@@ -97,6 +98,17 @@ export class Game {
     onMissionComplete((ms) => {
       this.hud.mission(ms.name, `+${ms.tokens} tokens`);
       sfx.kill(0.9);
+    });
+    // XP this match (end screen), level-ups and daily challenges (progress.js)
+    this.matchXp = 0;
+    onProgress((e) => {
+      if (e.type === 'xp') this.matchXp += e.amount;
+      else if (e.type === 'level') {
+        this.hud.mission(e.newRank ? `${e.rank.name.toUpperCase()} RANK · LEVEL ${e.level}` : `LEVEL ${e.level}`, `+${e.tokens} tokens${e.wrap ? ' · new wrap!' : ''}`, e.newRank ? 'RANK UP' : 'LEVEL UP');
+        sfx.kill(0.9);
+        if (this.onLevel) this.onLevel(e.level);
+      } else if (e.type === 'challenge') this.hud.mission(e.ch.text, `+${e.tokens} tokens`, 'DAILY CHALLENGE');
+      else if (e.type === 'allDaily') this.hud.mission('All 3 daily challenges', `+${e.tokens} bonus tokens`, 'DAILY COMPLETE');
     });
     this.fovK = 1; // widens the view on portrait screens (see resize)
     onOpts((o) => {
@@ -467,7 +479,7 @@ export class Game {
         this.loadMap(m.settings.map);
         this.players.clear();
         for (const p of m.players) {
-          this.players.set(p.id, { id: p.id, name: p.name, color: p.color, k: p.k, d: p.d, team: p.team, sc: p.sc, bot: p.bot, role: p.role || null, gt: p.gt || null });
+          this.players.set(p.id, { id: p.id, name: p.name, color: p.color, k: p.k, d: p.d, team: p.team, sc: p.sc, bot: p.bot, role: p.role || null, gt: p.gt || null, lvl: (p.cos && p.cos.lvl) || 0, tro: !!(p.cos && p.cos.tro) });
           this.addRemote(p);
         }
         this.refreshColors();
@@ -476,7 +488,7 @@ export class Game {
         if (this.onWelcome) this.onWelcome(); // staff send their proof (main.js)
         break;
       case 'pjoin':
-        this.players.set(m.id, { id: m.id, name: m.name, color: m.color, k: 0, d: 0, team: m.team, sc: 0, bot: m.bot, role: m.role || null, gt: m.gt || null });
+        this.players.set(m.id, { id: m.id, name: m.name, color: m.color, k: 0, d: 0, team: m.team, sc: 0, bot: m.bot, role: m.role || null, gt: m.gt || null, lvl: (m.cos && m.cos.lvl) || 0, tro: !!(m.cos && m.cos.tro) });
         this.addRemote(m);
         this.refreshColors();
         this.hud.say(`${m.name} joined`);
@@ -505,8 +517,9 @@ export class Game {
         sfx.pad(0.4);
         break;
       case 'pcos': {
-        const r = this.remotes.get(m.id);
+        const r = this.remotes.get(m.id), pl = this.players.get(m.id);
         if (r) r.setCosmetics(m.c);
+        if (pl && m.c) { pl.lvl = m.c.lvl || 0; pl.tro = !!m.c.tro; }
         break;
       }
       case 'prole': case 'pname': { // a player proved they're staff / an impostor was renamed
@@ -638,6 +651,7 @@ export class Game {
         break;
       case 'start':
         this.streaks.clear();
+        this.matchXp = 0;
         // The mouse was freed for the map vote: offer "Resume" to get back in.
         if (!this.locked && !this.touch && !this.padMode && this.onUnlock && this.endInfo) setTimeout(() => this.onUnlock && !this.locked && this.onUnlock(), 0);
         this.loadMap(m.map);
@@ -2014,6 +2028,7 @@ export class Game {
           banner: mvp.id === this.myId ? this.myBanner : r && r.cos && r.cos.banner },
         showMvp: !!mvp && now - e.at < 4500,
         vote: e.vote, onVote: (i) => this.voteMap(i),
+        xp: this.spectating ? null : { gained: this.matchXp, lv: myLevel() },
       });
     }
   }
