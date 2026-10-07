@@ -160,6 +160,72 @@ function weaponBlurb(id) {
   return `${k.shots} shots · ${k.ttk.toFixed(2)}s`;
 }
 
+// ---------- Preset loadouts ----------
+// Ready-made ones, plus 3 slots of your own (weapons + each gun's attachments / wrap), saved locally.
+const PRESETS = [
+  { name: 'Rifleman', icon: '🎯', l: ['ar', 'pistol', 'knife', 'frag'] },
+  { name: 'Rusher', icon: '⚡', l: ['smg', 'mpistol', 'knife', 'flash'] },
+  { name: 'Sniper', icon: '🔭', l: ['sniper', 'revolver', 'katana', 'smoke'] },
+  { name: 'Heavy', icon: '🛡', l: ['lmg', 'handcannon', 'sledge', 'frag'] },
+  { name: 'Shotgunner', icon: '💥', l: ['shotgun', 'sawedoff', 'axe', 'flash'] },
+  { name: 'Fun', icon: '🍳', l: ['flamethrower', 'nailgun', 'pan', 'vortex'] },
+];
+const customPresets = () => {
+  const saved = store.get('presets', []);
+  return [0, 1, 2].map((i) => (saved[i] && Array.isArray(saved[i].l) ? { ...saved[i], l: validLoadout(saved[i].l) } : null));
+};
+function useLoadout(l, mods = null) {
+  settings.loadout = validLoadout(l);
+  store.set('loadout', settings.loadout);
+  game.nextLoadout = settings.loadout.slice();
+  if (mods) {
+    settings.mods = cleanModMap({ ...settings.mods, ...mods });
+    store.set('mods', settings.mods);
+    game.setMods(settings.mods);
+  }
+  if (net && net.practice && game.me.alive) game.setLoadout(settings.loadout); // practice: right away
+  renderLoadout($('menu-loadout'));
+  renderLoadout($('pause-loadout'));
+  if (net && net.practice) renderPractice();
+}
+function presetsBar() {
+  const same = (l) => l.every((id, i) => settings.loadout[i] === id);
+  const custom = customPresets();
+  return `<div class="lo-presets"><span class="lo-presets-label">Presets</span>${PRESETS.map((p, i) =>
+    `<button class="lo-preset ${same(p.l) ? 'sel' : ''}" data-preset="${i}" title="${p.l.map((id) => WEAPONS[id].name).join(' · ')}">${p.icon} ${p.name}</button>`).join('')}
+    <span class="lo-presets-sep"></span>${custom.map((p, i) => p
+      ? `<span class="lo-custom ${same(p.l) ? 'sel' : ''}"><button data-custom="${i}" title="${p.l.map((id) => WEAPONS[id].name).join(' · ')}">★ ${esc(p.name)}</button><button class="ghost" data-csave="${i}" title="Save current loadout here">💾</button><button class="ghost" data-cname="${i}" title="Rename">✎</button></span>`
+      : `<button class="lo-custom-empty" data-csave="${i}" title="Save your current loadout here">+ Save as custom ${i + 1}</button>`).join('')}</div>`;
+}
+function bindPresets(el) {
+  el.querySelectorAll('[data-preset]').forEach((b) => { b.onclick = () => useLoadout(PRESETS[Number(b.dataset.preset)].l); });
+  el.querySelectorAll('[data-custom]').forEach((b) => { b.onclick = () => { const p = customPresets()[Number(b.dataset.custom)]; if (p) useLoadout(p.l, p.mods); }; });
+  el.querySelectorAll('[data-csave]').forEach((b) => {
+    b.onclick = () => {
+      const i = Number(b.dataset.csave), all = store.get('presets', []), old = customPresets()[i];
+      if (old && !confirm(`Replace "${old.name}" with your current loadout?`)) return;
+      const mods = {};
+      for (const id of settings.loadout) if (settings.mods[id]) mods[id] = settings.mods[id];
+      all[i] = { name: old ? old.name : `Custom ${i + 1}`, l: settings.loadout.slice(), mods };
+      store.set('presets', all);
+      renderLoadout($('menu-loadout'));
+      renderLoadout($('pause-loadout'));
+      toast(`Saved as "${all[i].name}"`);
+    };
+  });
+  el.querySelectorAll('[data-cname]').forEach((b) => {
+    b.onclick = () => {
+      const i = Number(b.dataset.cname), all = store.get('presets', []);
+      const name = all[i] && prompt('Name this loadout:', all[i].name);
+      if (!name || !name.trim()) return;
+      all[i].name = name.trim().slice(0, 16);
+      store.set('presets', all);
+      renderLoadout($('menu-loadout'));
+      renderLoadout($('pause-loadout'));
+    };
+  });
+}
+
 function renderLoadout(el) {
   const open = loadoutTab.get(el) || 0;
   const tabs = SLOTS.map((_, slot) =>
@@ -172,7 +238,7 @@ function renderLoadout(el) {
   const list = groups.map(([name, l]) => `<div class="lo-group"><h4>${name}</h4><div class="lo-grid">${l.map((id) =>
     `<button class="${settings.loadout[open] === id ? 'sel' : ''}" data-w="${id}"><b>${WEAPONS[id].name}</b><small>${weaponBlurb(id)}</small></button>`).join('')}</div></div>`).join('');
   const cur = settings.loadout[open];
-  el.innerHTML = `<div class="lo-tabs">${tabs}</div><div class="lo-body"><div class="lo-list">${list}</div>
+  el.innerHTML = `${presetsBar()}<div class="lo-tabs">${tabs}</div><div class="lo-body"><div class="lo-list">${list}</div>
     <div class="lo-side"><div class="lo-card">${statCard(cur)}</div>${modsPanel(cur)}</div></div>`;
   const card = el.querySelector('.lo-card');
   // Attachments: click to fit; hovering previews the stats and explains the part.
@@ -190,6 +256,7 @@ function renderLoadout(el) {
       renderLoadout($('pause-loadout'));
     };
   });
+  bindPresets(el);
   el.querySelectorAll('[data-morewraps]').forEach((b) => { b.onclick = () => { if (net) { $('pause').classList.add('hidden'); settingsUI.onClose = () => $('pause').classList.remove('hidden'); settingsUI.open('Customize'); } else showPane('character'); }; });
   el.querySelectorAll('[data-camo]').forEach((b) => {
     b.onclick = () => {

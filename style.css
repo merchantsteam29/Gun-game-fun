@@ -1350,3 +1350,14 @@ body.mobile:not(.tablet) .wr-body { grid-template-columns: 200px 1fr; }
 .mp-stats-table th { text-align: left; font-size: 10px; letter-spacing: 1px; color: var(--muted); padding: 3px 6px; text-transform: uppercase; }
 .mp-stats-table td { padding: 5px 6px; border-top: 1px solid var(--line); }
 .mod-row .gt.guest { color: #8a94a3; border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; }
+
+/* Preset loadouts */
+.lo-presets { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-bottom: 10px; }
+.lo-presets-label { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+.lo-presets button { padding: 5px 10px; font-size: 12px; }
+.lo-preset.sel, .lo-custom.sel > button:first-child { border-color: var(--accent); color: var(--accent); background: rgba(255,176,32,0.12); }
+.lo-presets-sep { width: 1px; height: 22px; background: var(--line); margin: 0 4px; }
+.lo-custom { display: inline-flex; gap: 2px; }
+.lo-custom .ghost { padding: 5px 6px; }
+.lo-custom-empty { border-style: dashed !important; color: var(--muted); }
+body.mobile:not(.tablet) .lo-presets button { padding: 4px 7px; font-size: 11px; }

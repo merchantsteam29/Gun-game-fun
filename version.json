@@ -1,8 +1,8 @@
 {
-  "version": "2026.10.08.4",
+  "version": "2026.10.08.5",
   "notes": [
-    "Balance: pistols and revolvers no longer kill as fast as rifles; Sawed-Off, PDW, LMG, Burst Rifle and Grenade Launcher toned down",
-    "Mod Panel: search every gamertag, watchlist, public servers list, moderator activity"
+    "Preset loadouts: 6 ready-made ones plus 3 slots to save your own (with attachments and wraps)",
+    "Balance: pistols and revolvers no longer kill as fast as rifles; Sawed-Off, PDW, LMG, Burst Rifle and Grenade Launcher toned down"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json",
