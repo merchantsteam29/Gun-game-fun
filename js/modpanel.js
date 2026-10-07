@@ -29,10 +29,12 @@ const when = (ts) => new Date(ts).toLocaleString([], { dateStyle: 'medium', time
 const opts = (list, sel) => list.map(([v, n]) => `<option value="${v}" ${v === sel ? 'selected' : ''}>${n}</option>`).join('');
 
 export class ModPanel {
-  constructor(el, social, { joinLobby } = {}) {
+  constructor(el, social, { joinLobby, servers } = {}) {
     this.el = el;
     this.social = social;
     this.joinLobby = joinLobby;
+    this.servers = servers; // { list(), start() } public server listings (servers.js)
+    this.query = '';
     this.tab = 'players';
     this.target = null; // { tag, since } of the looked-up player
     this.msg = '';
@@ -83,11 +85,12 @@ export class ModPanel {
     body.innerHTML = `
       <div class="mp-grid">
         <div class="card mp-look">
-          <h3>Look up a player</h3>
+          <h3>Find a player <span class="muted">(${moderation.directory.size} gamertags)</span></h3>
           <form id="mp-form" class="fr-add" autocomplete="off">
-            <input id="mp-tag" maxlength="16" placeholder="Gamertag" spellcheck="false" autocapitalize="off" value="${esc(this.target ? this.target.tag : '')}">
+            <input id="mp-tag" maxlength="16" placeholder="Any part of a gamertag" spellcheck="false" autocapitalize="off" value="${esc(this.query)}">
             <button class="primary" type="submit">Look up</button>
           </form>
+          <div id="mp-results" class="mp-results"></div>
           <div id="mp-player"></div>
         </div>
         <div class="card">
@@ -102,8 +105,33 @@ export class ModPanel {
         </div>
       </div>`;
     this.renderPlayer();
-    body.querySelector('#mp-form').onsubmit = (e) => { e.preventDefault(); this.look(body.querySelector('#mp-tag').value.trim()); };
+    this.renderResults();
+    const input = body.querySelector('#mp-tag');
+    input.oninput = () => { this.query = input.value; this.renderResults(); };
+    body.querySelector('#mp-form').onsubmit = (e) => {
+      e.preventDefault();
+      const hits = moderation.searchPlayers(input.value);
+      this.look(hits.length ? hits[0].tag : input.value.trim());
+    };
     body.querySelectorAll('[data-look]').forEach((b) => { b.onclick = () => this.look(b.dataset.look); });
+  }
+
+  // Search results: every gamertag containing what's typed (all of them, most recent first, when empty).
+  renderResults() {
+    const box = this.el.querySelector('#mp-results');
+    if (!box) return;
+    const hits = moderation.searchPlayers(this.query).slice(0, 40);
+    const now = Date.now();
+    box.innerHTML = hits.length ? hits.map((p) => {
+      const k = p.tag.toLowerCase(), rec = moderation.records.get(k), on = moderation.online.get(k);
+      const flags = [moderation.activeBan(rec) ? '<em class="bad">BANNED</em>' : '', moderation.activeMute(rec) ? '<em class="mute">MUTED</em>' : '',
+        rec && (rec.warns || []).length ? `<em>${rec.warns.length}⚠</em>` : '', moderation.badName(p.tag) ? '<em class="bad" title="Breaks the gamertag filter">NAME</em>' : ''].join('');
+      return `<button class="mp-hit ${this.target && this.target.tag.toLowerCase() === k ? 'sel' : ''}" data-look="${esc(p.tag)}">
+        <i class="fr-dot ${on ? 'on' : ''}"></i><b>${esc(p.tag)}</b>${badge(roles.roleOfTag(p.tag), true)}${moderation.isWatched(p.tag) ? '<span class="mp-star">★</span>' : ''}${flags}
+        <small>${on ? (on.mode === 'lobby' ? 'in a match' : 'online') : p.seen ? 'seen ' + ago(p.seen) : ''}</small></button>`;
+    }).join('') : `<div class="note">${moderation.directory.size ? 'No gamertag contains that.' : 'Loading the gamertag list…'} Players who never claimed a gamertag can't be looked up (they show as "guest" in matches).</div>`;
+    box.querySelectorAll('[data-look]').forEach((b) => { b.onclick = () => this.look(b.dataset.look); });
+    void now;
   }
 
   async look(tag) {
@@ -136,6 +164,7 @@ export class ModPanel {
         <div class="mp-head"><b>${esc(t.tag)}</b>${badge(role, true)}
           ${on ? `<span class="mp-on">● ${on.mode === 'lobby' ? `In match ${esc(on.lobby || '')}` : 'In the menu'}</span>` : ''}
           <span class="mp-state ${ban ? 'bad' : mute ? 'mute' : 'ok'}">${ban ? 'Banned' : mute ? 'Muted' : 'In good standing'}</span></div>
+        <button class="mp-watch ${moderation.isWatched(t.tag) ? 'on' : ''}" data-watch title="Get a pop-up when they come online (this device)">${moderation.isWatched(t.tag) ? '★ Watching' : '☆ Watch'}</button>
         <small class="muted">Gamertag since ${t.since ? when(t.since) : 'unknown'}${rec.rename ? ` · new gamertag requested ${ago(rec.rename.ts)}` : ''}</small>
         ${ban ? `<div class="mp-flag bad">🚫 Banned ${until(ban)} by ${esc(ban.by)}: ${esc(ban.reason)}</div>` : ''}
         ${mute ? `<div class="mp-flag mute">🔇 Chat muted ${until(mute)} by ${esc(mute.by)}: ${esc(mute.reason)}</div>` : ''}
@@ -164,6 +193,8 @@ export class ModPanel {
     box.querySelectorAll('input').forEach((i) => i.addEventListener('keydown', (e) => e.stopPropagation()));
     const join = box.querySelector('[data-join]');
     if (join) join.onclick = () => this.joinLobby(join.dataset.join);
+    const watchBtn = box.querySelector('[data-watch]');
+    if (watchBtn) watchBtn.onclick = () => { const on = moderation.toggleWatch(t.tag); this.say(on ? `Watching ${t.tag}: you'll get a pop-up when they come online.` : `Stopped watching ${t.tag}.`); this.renderPlayer(); this.renderResults(); };
     const spec = box.querySelector('[data-spec]');
     if (spec) spec.onclick = () => this.joinLobby(spec.dataset.spec, true);
     box.querySelectorAll('[data-act]').forEach((b) => {
@@ -192,7 +223,15 @@ export class ModPanel {
   // ---------- Online ----------
 
   renderOnline(body, online) {
+    if (this.servers) this.servers.start();
+    const servers = this.servers ? this.servers.list() : [];
     body.innerHTML = `<div class="card">
+      <h3>Public servers <span class="muted">(${servers.length})</span></h3>
+      <div class="mp-online">${servers.length ? servers.map((s) => `<div class="fr-row"><span class="fr-name">${esc(s.name)}</span>
+        <small>${esc(s.mode)} · ${esc(s.map)} · ${s.players}/${s.max}${s.bots ? ` +${s.bots} bots` : ''}${s.region ? ' · ' + esc(s.region) : ''} · <b>${esc(s.code)}</b></small>
+        ${this.joinLobby ? `<button data-spec="${esc(s.code)}">👁 Spectate</button><button data-join="${esc(s.code)}">▶ Join</button>` : ''}</div>`).join('') : '<div class="sv-empty">No public servers right now.</div>'}</div>
+    </div>`;
+    body.innerHTML += `<div class="card mp-gap">
       <h3>Online now <span class="muted">(${online.length})</span></h3>
       <div class="note">Players with a gamertag who have the game open. Updates every 30 seconds.</div>
       <div class="mp-online">${online.length ? online.map((o) => {
@@ -351,7 +390,10 @@ export class ModPanel {
     const sel = this.logBy && who.includes(this.logBy) ? this.logBy : '';
     const rows = log.filter((l) => !sel || l.by === sel).slice(0, 150);
     body.innerHTML = `<div class="card">
-      <h3>Staff action log</h3>
+      <h3>Moderator activity</h3>
+      <table class="mp-stats-table"><tr><th>Staff</th><th>Actions</th><th>Warns</th><th>Bans</th><th>Mutes</th><th>Kicks</th><th>Last</th></tr>${moderation.staffStats().map((s) =>
+        `<tr><td>${esc(s.by)}${badge(roles.roleOfTag(s.by), true)}</td><td>${s.total}</td><td>${s.warn}</td><td>${s.ban}</td><td>${s.mute}</td><td>${s.kick}</td><td>${ago(s.last)}</td></tr>`).join('') || '<tr><td colspan="7" class="muted">No actions yet.</td></tr>'}</table>
+      <h3 class="mp-gap">Staff action log</h3>
       <div class="mp-actions"><select id="mp-log-by"><option value="">Everyone (${log.length})</option>${who.map((w) => `<option value="${esc(w)}" ${w === sel ? 'selected' : ''}>${esc(w)}</option>`).join('')}</select></div>
       <div class="mp-list mp-log mp-biglog">${rows.length ? rows.map((l) =>
         `<div><small>${when(l.ts)}</small> <b>${esc(l.by)}</b> ${ACT_LABEL[l.act] || l.act} <a href="#" data-look="${esc(l.target)}">${esc(l.target)}</a>${l.note ? ': ' + esc(l.note) : ''}</div>`).join('') : '<small class="muted">No actions yet.</small>'}</div>

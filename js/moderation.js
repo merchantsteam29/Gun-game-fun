@@ -16,7 +16,7 @@ import { store } from './util.js';
 // game itself — clearing site data or a new gamertag gets around it.
 
 const V = 'whffa/v1/';
-const P = V + 'modrec/', ANN = V + 'announce', REP = V + 'report/', PRES = V + 'pres/', FILTER = V + 'chatfilter', APPEAL = V + 'appeal/', STAFFCHAT = V + 'staffchat/';
+const P = V + 'modrec/', ANN = V + 'announce', REP = V + 'report/', PRES = V + 'pres/', FILTER = V + 'chatfilter', APPEAL = V + 'appeal/', STAFFCHAT = V + 'staffchat/', TAG = V + 'tag/';
 const STAFFCHAT_KEEP = 3 * 864e5; // staff chat history: 3 days
 const LOG_MAX = 30;
 const REPORT_MAX_AGE = 7 * 864e5;
@@ -53,6 +53,9 @@ class Moderation {
     this.onKick = null; // (kick) staff removed you from your match
     this.onStaffChat = null; // (message) a new staff chat message
     this.staffChat = new Map(); // id -> { id, from, text, ts }
+    this.directory = new Map(); // (staff) lower tag -> { tag, since, seen }: every claimed gamertag
+    this.watch = new Set(store.get('watchlist', [])); // (staff, this device) gamertags to be told about
+    this.onWatched = null; // (tag) a watched player just came online
     this.onAnnounce = null; // (announcement | null)
     this.lastBan = null;
     this.lastMute = null;
@@ -74,6 +77,7 @@ class Moderation {
     else if (t === FILTER) this.receiveFilter(text);
     else if (t.startsWith(APPEAL)) this.receiveAppeal(t.slice(APPEAL.length), text);
     else if (t.startsWith(STAFFCHAT) && roles.myRole()) this.receiveStaffChat(t.slice(STAFFCHAT.length), text);
+    else if (t.startsWith(TAG) && roles.myRole() && this.watching.has(TAG + '+')) this.receiveClaim(t.slice(TAG.length), text);
   }
 
   // Everyone: your own record and announcements. Staff also: all records, reports and presence.
@@ -82,7 +86,7 @@ class Moderation {
     if (!s) return;
     const want = new Set([ANN, FILTER]);
     if (s.tag) { want.add(P + low(s.tag)); want.add(APPEAL + low(s.tag)); }
-    if (roles.myRole()) for (const t of [P + '+', REP + '+', PRES + '+', APPEAL + '+', STAFFCHAT + '+']) want.add(t);
+    if (roles.myRole()) for (const t of [P + '+', REP + '+', PRES + '+', APPEAL + '+', STAFFCHAT + '+', TAG + '+']) want.add(t);
     for (const w of this.watching) if (!want.has(w)) s.relay.unsubscribe(w);
     for (const w of want) if (!this.watching.has(w)) s.relay.subscribe(w);
     this.watching = want;
@@ -420,6 +424,51 @@ class Moderation {
 
   staffChatLog() { return [...this.staffChat.values()].sort((a, b) => a.ts - b.ts).slice(-100); }
 
+  // ---------- Player directory (staff) ----------
+  // Every claimed gamertag (the retained claims), so staff can search by part of a name.
+
+  receiveClaim(k, text) {
+    if (!text) { if (this.directory.delete(k) && this.onChange) this.onChange(null); return; }
+    let c;
+    try { c = JSON.parse(text); } catch { return; }
+    if (!c || low(c.tag) !== k || !c.pub) return;
+    const prev = this.directory.get(k);
+    if (prev && prev.since && Number(c.since) > prev.since) return; // first claim wins, like social.lookup
+    this.directory.set(k, { tag: clip(c.tag, 16), since: Number(c.since) || 0, seen: Number(c.seen) || 0 });
+    if (this.onChange) this.onChange(null);
+  }
+
+  // Search by any part of a gamertag (case doesn't matter); newest activity first.
+  searchPlayers(q = '') {
+    q = low(q).replace(/[^a-z0-9_]/g, '');
+    return [...this.directory.values()]
+      .filter((p) => !q || low(p.tag).includes(q))
+      .sort((a, b) => (low(a.tag) === q ? -1 : low(b.tag) === q ? 1 : 0) || b.seen - a.seen);
+  }
+
+  // ---------- Watchlist (staff, saved on this device) ----------
+  isWatched(tag) { return this.watch.has(low(tag)); }
+  toggleWatch(tag) {
+    const k = low(tag);
+    if (this.watch.has(k)) this.watch.delete(k); else this.watch.add(k);
+    store.set('watchlist', [...this.watch]);
+    if (this.onChange) this.onChange(null);
+    return this.watch.has(k);
+  }
+
+  // Moderator activity: actions per staff member (from the records' logs).
+  staffStats() {
+    const out = new Map();
+    for (const l of this.actionLog()) {
+      const s = out.get(l.by) || { by: l.by, total: 0, warn: 0, ban: 0, mute: 0, kick: 0, last: 0 };
+      s.total++;
+      if (s[l.act] !== undefined) s[l.act]++;
+      s.last = Math.max(s.last, l.ts);
+      out.set(l.by, s);
+    }
+    return [...out.values()].sort((a, b) => b.total - a.total);
+  }
+
   // ---------- Host checks ----------
 
   // Fetches someone's moderation record (verified) — used by hosts to turn away banned players.
@@ -446,7 +495,10 @@ class Moderation {
     const b = await this.social.verify(text);
     if (!b || low(b.from) !== k) return;
     const fresh = !(packet && packet.retain) || Math.abs(Date.now() - (Number(b.ts) || 0)) < ONLINE_MS;
-    if (b.on && fresh) this.online.set(k, { tag: b.from, mode: b.mode, lobby: b.lobby, at: Date.now() });
+    if (b.on && fresh) {
+      if (!this.online.has(k) && this.watch.has(k) && this.onWatched) this.onWatched(b.from, b);
+      this.online.set(k, { tag: b.from, mode: b.mode, lobby: b.lobby, at: Date.now() });
+    }
     else this.online.delete(k);
     if (this.onChange) this.onChange(null);
   }

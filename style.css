@@ -1333,3 +1333,20 @@ body.mobile:not(.tablet) .wr-body { grid-template-columns: 200px 1fr; }
 .sc-msg small { color: var(--muted); font-size: 10px; margin-left: 6px; }
 .sc-msg p { margin: 3px 0 0; font-size: 13px; white-space: pre-wrap; word-break: break-word; }
 .mod-row .gt { color: var(--muted); font-size: 10px; margin-left: 4px; }
+
+/* Player directory, watchlist, staff stats */
+.mp-gap { margin-top: 14px; }
+.mp-results { display: flex; flex-direction: column; gap: 3px; max-height: 260px; overflow-y: auto; margin: 8px 0; }
+.mp-hit { display: flex; align-items: center; gap: 6px; padding: 6px 9px; font-size: 13px; text-align: left; }
+.mp-hit.sel { border-color: var(--accent); }
+.mp-hit small { margin-left: auto; color: var(--muted); font-size: 11px; white-space: nowrap; }
+.mp-hit em { font-style: normal; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; background: rgba(255,176,32,0.15); color: var(--accent); }
+.mp-hit em.bad { background: rgba(255,70,70,0.15); color: var(--danger); }
+.mp-hit em.mute { background: rgba(160,110,255,0.18); color: #c9a2ff; }
+.mp-star { color: #ffd23f; }
+.mp-watch { margin-left: auto; padding: 3px 10px; font-size: 11px; }
+.mp-watch.on { border-color: #ffd23f; color: #ffd23f; }
+.mp-stats-table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 6px 0 4px; }
+.mp-stats-table th { text-align: left; font-size: 10px; letter-spacing: 1px; color: var(--muted); padding: 3px 6px; text-transform: uppercase; }
+.mp-stats-table td { padding: 5px 6px; border-top: 1px solid var(--line); }
+.mod-row .gt.guest { color: #8a94a3; border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; }

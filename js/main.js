@@ -662,7 +662,7 @@ function renderModList() {
   const rows = [...game.players.values()].filter((p) => p.id !== game.myId && !p.bot);
   $('mod-list').innerHTML = rows.length ? rows.map((p) => {
     const can = rank(mine) > rank(p.role);
-    return `<div class="mod-row"><span class="mod-name">${esc(p.name)}${badge(p.role, true)}${p.gt && p.gt !== p.name ? ` <small class="gt">@${esc(p.gt)}</small>` : p.gt ? ' <small class="gt">✓</small>' : ''}${p.muted ? ' <em>muted</em>' : ''}</span>
+    return `<div class="mod-row"><span class="mod-name">${esc(p.name)}${badge(p.role, true)}${p.gt && p.gt !== p.name ? ` <small class="gt">@${esc(p.gt)}</small>` : p.gt ? ' <small class="gt">✓</small>' : ' <small class="gt guest">guest</small>'}${p.muted ? ' <em>muted</em>' : ''}</span>
       ${can ? `<button data-mwarn="${p.id}" title="Pop up a warning on their screen">⚠ Warn</button><button data-mren="${p.id}" title="Change their name in this match">✎ Rename</button><button data-mfreeze="${p.id}">${p.frozen ? '🔥 Unfreeze' : '🧊 Freeze'}</button><button data-mute="${p.id}">${p.muted ? 'Unmute' : 'Mute'}</button>${p.id !== 'host' ? `<button class="danger" data-mkick="${p.id}">Kick</button>` : '<small>host</small>'}` : '<small>staff</small>'}</div>`;
   }).join('') : '<div class="note">No other players here yet.</div>';
   $('mod-list').querySelectorAll('[data-mute]').forEach((b) => { b.onclick = () => net.send({ t: 'modmute', id: b.dataset.mute }); });
@@ -743,6 +743,7 @@ renderStaff();
 // var: showPane() may run before this line
 var modPanel = new ModPanel($('mod-pane'), social, {
   joinLobby: (code, spectate = false) => { $('join-code').value = code; showPane('play'); joinLobby(spectate); },
+  servers: { list: () => browser.list(), start: () => browser.start() },
 });
 function renderModNav() {
   const staff = !!roles.myRole();
@@ -784,6 +785,9 @@ moderation.onAnnounce = (a) => {
 
 // Staff kicked you from your match from the Mod Panel.
 moderation.onKick = (k) => { if (net && !net.practice) leave(`You were removed from the match by ${k.by}: ${k.reason}`); };
+
+// Watchlist: a pop-up when a watched player comes online.
+moderation.onWatched = (tag, pres) => toast(`★ ${tag} is online${pres && pres.mode === 'lobby' ? ' (in a match)' : ''}`);
 
 // Staff chat: a ping for new messages from other staff while you're not looking at it.
 moderation.onStaffChat = (m) => {

@@ -1,10 +1,9 @@
 {
-  "version": "2026.10.08.2",
+  "version": "2026.10.08.3",
   "notes": [
-    "Weapon wraps in Character > Customize: 3D preview, apply to one gun or all, 8 new premium wraps",
-    "Key bindings: change any keyboard key (and mouse side buttons) in Settings > Controls",
-    "Banned players are now kept out of matches by the host; offensive gamertags are blocked",
-    "Staff: staff chat, kick from match, lock chat and slow mode"
+    "Mod Panel: search every gamertag by any part of the name, watchlist, public servers list, moderator activity",
+    "Weapon wraps in Character > Customize, key bindings in Settings > Controls",
+    "Banned players are kept out of matches by the host; offensive gamertags are blocked"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json",

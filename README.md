@@ -267,7 +267,11 @@ becomes free again.
   the owner's key, so nobody else can make moderators. Only the owner can remove them.
 - **Mod Panel:** a menu section only staff see, with live stats (online now, open reports, active bans, moderators)
   and these tabs:
-  - **Players:** look up any gamertag to see its warnings, staff notes, ban / mute status and full history, then:
+  - **Players:** a searchable directory of every claimed gamertag. Type any part of a name (case doesn't matter) and
+    each result shows online status, last seen, and banned / muted / warning flags. **NAME** marks a gamertag that breaks
+    the filter. **☆ Watch** a player to get a pop-up when they come online (saved on your device). Players who never
+    claimed a gamertag can't be looked up and show as **guest** in a match's Moderation list. Open anyone to see their
+    warnings, staff notes, ban / mute status and full history, then:
     - **Warn:** a pop-up they must acknowledge, shown next time they play if they're offline.
     - **Add note:** staff-only, not shown to the player.
     - **Mute chat** or **Ban:** 1 hour, 1 day, 7 days, 30 days or permanent. A ban kicks them out of matches and
@@ -276,7 +280,8 @@ becomes free again.
     - **Unban**, **Unmute**, **Clear warnings**, or **Join their match**.
 
     It also lists recent actions.
-  - **Online:** everyone with a gamertag who has the game open and where they are, with **Join** and **Look up**.
+  - **Online:** every public server (spectate or join), and everyone with a gamertag who has the game open and where
+    they are, with **Join** and **Look up**.
   - **Reports:** players report each other from the pause menu (**🚩 Report a player**), choosing a reason and adding
     optional details. Staff see who reported whom, in which match, and can look either player up, join that match or
     resolve the report.
@@ -286,7 +291,8 @@ becomes free again.
     and denied players see it was denied.
   - **Chat filter:** a built-in swear word and slur list (can be switched off) plus your own words. They're starred out
     in lobby and party chat for everyone, and spellings like "sh1t" and "fuuuck" are caught too.
-  - **Log:** every staff action with its time, filterable by moderator.
+  - **Log:** moderator activity (actions, warns, bans, mutes and kicks per staff member), then every staff action with
+    its time, filterable by moderator.
   - **Staff** (owner only): appoint and remove moderators, permanently or for 1, 7 or 30 days.
   - **Staff chat:** a private chat between the owner and moderators. Messages are signed and kept for 3 days, and
     new ones pop up even when the panel is closed.
