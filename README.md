@@ -123,7 +123,7 @@ slot, and so on). Attachments show on the gun model, and other players see yours
 
 | Slot | Options |
 |---|---|
-| Primary | Assault Rifle, Carbine, Battle Rifle, Burst Rifle, Laser Rifle, SMG, PDW, Vector, LMG, Minigun, DMR, Sniper Rifle, Anti-Materiel Rifle, Railgun, Shotgun, Auto Shotgun, Slug Shotgun, Double Barrel, Grenade Launcher, Rocket Launcher, Crossbow, Harpoon Gun, Flamethrower (short-range stream of fire, no headshot bonus) |
+| Primary | Assault Rifle, Carbine, Battle Rifle, Burst Rifle, SMG, PDW, Vector, LMG, Minigun, DMR, Sniper Rifle, Heavy Sniper Rifle, Railgun, Shotgun, Auto Shotgun, Slug Shotgun, Double Barrel, Grenade Launcher, Rocket Launcher, Crossbow, Harpoon Gun, Flamethrower (short-range stream of fire, no headshot bonus) |
 | Secondary | Pistol, Burst Pistol, Hand Cannon, Revolver, Auto Revolver, Machine Pistol, Micro SMG, Sawed-Off, Flare Gun, Nailgun (rapid-fire nails that stick) |
 | Melee | Combat Knife, Katana, Baseball Bat (knockback), Fire Axe, Sledgehammer (one-shot, knockback), Frying Pan (two hits, *clang*) — backstabs one-shot |
 | Utility | Frag, Sticky, Throwing Knives, Smoke, Flashbang, Vortex (pulls players in) |

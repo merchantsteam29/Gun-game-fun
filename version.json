@@ -1,10 +1,9 @@
 {
-  "version": "2026.10.08.6",
+  "version": "2026.10.08.7",
   "notes": [
-    "Preset loadouts: 6 ready-made ones plus 3 slots to save your own (with attachments and wraps)",
-    "Balance: pistols and revolvers no longer kill as fast as rifles; Sawed-Off, PDW, LMG, Burst Rifle and Grenade Launcher toned down",
-    "Reports now include a screenshot; chat spammers get auto-muted",
-    "Fix: \"X joined\" / \"X left\" show in chat again"
+    "Balance (thanks Idris): Battle Rifle and LMG kick harder, LMG 75-round box, SMG reloads slower, PDW 32 / Vector 40 round mags, Nailgun 24 nails with more recoil",
+    "The Laser Rifle has been removed; the Anti-Materiel Rifle is now the Heavy Sniper Rifle",
+    "Preset loadouts, report screenshots and chat spam auto-mute"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json",

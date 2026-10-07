@@ -10,7 +10,7 @@ export const WEAPONS = {
   },
   smg: {
     id: 'smg', name: 'SMG', type: 'gun', auto: true,
-    rate: 0.065, dmg: 17, head: 1.5, pellets: 1, mag: 35, reload: 1.7,
+    rate: 0.065, dmg: 17, head: 1.5, pellets: 1, mag: 35, reload: 2.1,
     spread: 0.02, moveSpread: 0.02, adsMul: 0.45, range: 120, falloff: [15, 40, 0.6],
     recoil: 0.009, speedMul: 1.1, switch: 0.28, reloadStyle: 'mag',
   },
@@ -22,9 +22,9 @@ export const WEAPONS = {
   },
   lmg: {
     id: 'lmg', name: 'LMG', type: 'gun', auto: true,
-    rate: 0.105, dmg: 20, head: 1.5, pellets: 1, mag: 100, reload: 4.2,
+    rate: 0.105, dmg: 20, head: 1.5, pellets: 1, mag: 75, reload: 4.2,
     spread: 0.022, moveSpread: 0.05, adsMul: 0.35, range: 250, falloff: [40, 90, 0.75],
-    recoil: 0.012, speedMul: 0.82, switch: 0.6, reloadStyle: 'box',
+    recoil: 0.018, speedMul: 0.82, switch: 0.6, reloadStyle: 'box',
   },
   sniper: {
     id: 'sniper', name: 'Sniper Rifle', type: 'gun', auto: false,
@@ -172,7 +172,7 @@ export const WEAPONS = {
   },
   pdw: {
     id: 'pdw', name: 'PDW', type: 'gun', auto: true,
-    rate: 0.055, dmg: 15, head: 1.5, pellets: 1, mag: 40, reload: 2.0,
+    rate: 0.055, dmg: 15, head: 1.5, pellets: 1, mag: 32, reload: 2.0,
     spread: 0.022, moveSpread: 0.015, adsMul: 0.5, range: 100, falloff: [12, 35, 0.55],
     recoil: 0.007, speedMul: 1.12, switch: 0.26, reloadStyle: 'mag',
   },
@@ -183,7 +183,7 @@ export const WEAPONS = {
     recoil: 0.003, speedMul: 1.0, switch: 0.35, reloadStyle: 'mag',
   },
   amr: {
-    id: 'amr', name: 'Anti-Materiel Rifle', type: 'gun', auto: false,
+    id: 'amr', name: 'Heavy Sniper Rifle', type: 'gun', auto: false,
     rate: 1.7, dmg: 130, head: 1.5, pellets: 1, mag: 4, reload: 3.6,
     spread: 0.12, moveSpread: 0.06, adsMul: 0, range: 450,
     recoil: 0.12, speedMul: 0.78, switch: 0.8, reloadStyle: 'mag',
@@ -246,11 +246,11 @@ export const WEAPONS = {
     id: 'br', name: 'Battle Rifle', type: 'gun', auto: true,
     rate: 0.15, dmg: 30, head: 1.6, pellets: 1, mag: 20, reload: 2.3,
     spread: 0.01, moveSpread: 0.04, adsMul: 0.25, range: 280, falloff: [45, 100, 0.8],
-    recoil: 0.024, speedMul: 0.92, switch: 0.42, reloadStyle: 'mag',
+    recoil: 0.034, speedMul: 0.92, switch: 0.42, reloadStyle: 'mag',
   },
   vector: {
     id: 'vector', name: 'Vector', type: 'gun', auto: true,
-    rate: 0.048, dmg: 14, head: 1.5, pellets: 1, mag: 30, reload: 1.8,
+    rate: 0.048, dmg: 14, head: 1.5, pellets: 1, mag: 40, reload: 1.8,
     spread: 0.019, moveSpread: 0.015, adsMul: 0.5, range: 90, falloff: [9, 28, 0.5],
     recoil: 0.006, speedMul: 1.12, switch: 0.26, reloadStyle: 'mag',
   },
@@ -277,10 +277,10 @@ export const WEAPONS = {
   nailgun: {
     // Rapid-fire nails: small, fast projectiles that stick where they land.
     id: 'nailgun', name: 'Nailgun', type: 'proj', auto: true, bolt: true, nail: true,
-    rate: 0.1, mag: 32, reload: 1.9,
+    rate: 0.1, mag: 24, reload: 1.9,
     projSpeed: 85, projGravity: 2, directDmg: 16, head: 1.6, nailSpread: 0.012,
     spread: 0, moveSpread: 0, adsMul: 1,
-    recoil: 0.012, speedMul: 1.0, switch: 0.3, reloadStyle: 'mag',
+    recoil: 0.022, speedMul: 1.0, switch: 0.3, reloadStyle: 'mag',
   },
   pan: {
     id: 'pan', name: 'Frying Pan', type: 'melee', style: 'chop',
@@ -302,7 +302,7 @@ export const WEAPONS = {
 
 // What players can pick. (Zombie Claws exist only in Infection.)
 export const SLOTS = [
-  ['ar', 'carbine', 'br', 'burst', 'laser', 'smg', 'pdw', 'vector', 'lmg', 'minigun', 'dmr', 'sniper', 'amr', 'railgun',
+  ['ar', 'carbine', 'br', 'burst', 'smg', 'pdw', 'vector', 'lmg', 'minigun', 'dmr', 'sniper', 'amr', 'railgun',
     'shotgun', 'autoshot', 'slug', 'doublebarrel', 'gl', 'rocket', 'crossbow', 'harpoon', 'flamethrower'],
   ['pistol', 'bpistol', 'handcannon', 'revolver', 'autorev', 'mpistol', 'microsmg', 'sawedoff', 'flare', 'nailgun'],
   ['knife', 'katana', 'bat', 'axe', 'sledge', 'pan'],
@@ -322,7 +322,7 @@ export const SHORT = {
   pistol: 'Pistol', revolver: 'Revolver', mpistol: 'M-Pistol', knife: 'Knife', axe: 'Axe',
   frag: 'Frag', sticky: 'Sticky', smoke: 'Smoke', claws: 'Claws',
   dmr: 'DMR', minigun: 'Minigun', rocket: 'Rocket', br: 'Battle', vector: 'Vector', doublebarrel: 'Dbl Barrel',
-  railgun: 'Railgun', sledge: 'Sledge', vortex: 'Vortex', carbine: 'Carbine', pdw: 'PDW', laser: 'Laser', amr: 'AMR',
+  railgun: 'Railgun', sledge: 'Sledge', vortex: 'Vortex', carbine: 'Carbine', pdw: 'PDW', laser: 'Laser', amr: 'H-Sniper',
   autoshot: 'Auto-SG', slug: 'Slug SG', crossbow: 'Crossbow', harpoon: 'Harpoon', bpistol: 'B-Pistol', autorev: 'Auto-Rev',
   microsmg: 'Micro SMG', flare: 'Flare', flamethrower: 'Flamer', nailgun: 'Nailgun', pan: 'Pan',
   handcannon: 'H-Cannon', sawedoff: 'Sawed-Off', katana: 'Katana', bat: 'Bat', flash: 'Flash', tknife: 'T-Knives',
@@ -330,7 +330,7 @@ export const SHORT = {
 
 // Weapon classes, for grouping in the loadout picker (in display order per slot).
 export const CLASSES = [
-  ['Rifles', ['ar', 'carbine', 'br', 'burst', 'laser']],
+  ['Rifles', ['ar', 'carbine', 'br', 'burst']],
   ['SMGs', ['smg', 'pdw', 'vector']],
   ['Heavy', ['lmg', 'minigun']],
   ['Long range', ['dmr', 'sniper', 'amr', 'railgun']],
