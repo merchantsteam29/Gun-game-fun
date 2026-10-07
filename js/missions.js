@@ -257,9 +257,8 @@ export function sanitizeCos(c) {
   if (!c || typeof c !== 'object') return out;
   for (const slot of Object.keys(COSMETICS)) if (COSMETICS[slot].some((x) => x.id === c[slot])) out[slot] = c[slot];
   if (HAIR_COLORS.includes(c.hairColor)) out.hairColor = c.hairColor;
-  // Level shown by your name (progress.js) and last week's leaderboard trophy.
+  // Level shown by your name (progress.js).
   if (Number.isInteger(c.lvl) && c.lvl >= 1 && c.lvl <= 100) out.lvl = c.lvl;
-  if (c.tro === 1) out.tro = 1;
   return out;
 }
 export function randomCos() {

@@ -208,6 +208,14 @@ Inferno, Galaxy, Dragon Scale, Rainbow, Solid Gold and Diamond cost tokens (seve
 - The owner sets the schedule (days, start time, length, time zone) in **Mod Panel → Announce**. Until then it's every
   day at 7 PM New York time for 2 hours.
 
+## Weekly leaderboard
+
+**Leaderboard** in the menu ranks everyone with a gamertag by **XP, kills, wins and headshots** for the week
+(Monday 00:00 UTC to the next Monday). Last week's #1 on each board gets a 🏆 next to their name all week (on the
+scoreboard and results), plus 500 tokens and the **Weekly Champion** wrap. Each player's game posts its own signed
+totals, capped to what's possible in a week; staff can take a player off the board from the Mod Panel
+(**Hide from leaderboard**).
+
 ## HUD
 
 - **Minimap** (top-left; top-right on phones and tablets): rotates with you and shows the map layout, teammates (blue

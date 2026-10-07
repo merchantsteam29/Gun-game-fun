@@ -1452,3 +1452,28 @@ body.mobile .home-strip > .hs-quick, body.mobile .home-strip > .hs-gn { grid-col
 .mp-gn-days label { border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; gap: 4px; }
 .mp-gn .mp-actions { display: flex; gap: 8px; }
 .card.mp-gn { margin-top: 12px; }
+/* Weekly leaderboard */
+.lb { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 12px; align-items: start; }
+.lb-side { display: grid; gap: 12px; }
+.lb-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.lb-head small { color: var(--muted); font-size: 12px; }
+.lb-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.lb-tabs button { padding: 6px 10px; font-size: 12px; }
+.lb-tabs button.sel { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.lb-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.lb-table td { padding: 7px 8px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.lb-table .rk { width: 40px; text-align: center; color: var(--muted); font-variant-numeric: tabular-nums; }
+.lb-table .sc { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.lb-table .sc small { color: var(--muted); font-weight: 400; font-size: 11px; }
+.lb-table tr.me td { background: var(--accent-soft); color: var(--accent-hi); }
+.lb-table tr.top1 td { font-size: 15px; }
+.lb-empty { text-align: center; color: var(--muted); padding: 24px 8px !important; }
+.lb-you { margin-top: 8px; font-size: 13px; color: var(--accent); }
+.lb-mine { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.lb-mine div { background: rgba(255,255,255,0.03); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
+.lb-mine b { display: block; font-size: 18px; font-variant-numeric: tabular-nums; }
+.lb-mine small { color: var(--muted); font-size: 11px; }
+.lb-champ { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13px; }
+.lb-champ small { color: var(--muted); }
+.lb-champ b { color: var(--accent-hi); }
+body.mobile .lb { grid-template-columns: 1fr; }

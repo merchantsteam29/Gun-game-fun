@@ -3,6 +3,7 @@ import { moderation, fmtHours, AUTO_FLAG } from './moderation.js';
 import { esc } from './util.js';
 import { validTag, TAG_RULES } from './social.js';
 import { gameNight, describe as describeGn, nextWindow, DAY_NAMES } from './gamenight.js';
+import { leaderboard } from './leaderboard.js';
 
 // The Mod Panel menu section (staff only), in tabs:
 //  Players   look up a gamertag: warnings, ban, chat mute, forced gamertag change, staff notes, history
@@ -188,6 +189,7 @@ export class ModPanel {
           ${ban ? '<button data-act="unban">Unban</button>' : ''}
           ${mute ? '<button data-act="unmute">Unmute</button>' : ''}
           ${warns.length ? '<button data-act="clearwarns" class="ghost">Clear warnings</button>' : ''}
+          <button data-lb title="Take them off (or put them back on) the weekly leaderboard, e.g. for faked stats">${leaderboard.isHidden(t.tag) ? '🏆 Show on leaderboard' : '🏆 Hide from leaderboard'}</button>
           ${on && on.lobby && this.joinLobby ? `<button data-join="${esc(on.lobby)}">▶ Join their match</button><button data-spec="${esc(on.lobby)}">👁 Spectate</button>` : ''}
           ${on && on.mode === 'lobby' ? '<button data-act="kick" class="danger">⏏ Kick from match</button>' : ''}
         </div>` : `<div class="note">${role ? 'Staff can only be moderated by someone ranked above them.' : 'You can\'t moderate yourself.'}</div>`}
@@ -203,6 +205,12 @@ export class ModPanel {
     if (watchBtn) watchBtn.onclick = () => { const on = moderation.toggleWatch(t.tag); this.say(on ? `Watching ${t.tag}: you'll get a pop-up when they come online.` : `Stopped watching ${t.tag}.`); this.renderPlayer(); this.renderResults(); };
     const spec = box.querySelector('[data-spec]');
     if (spec) spec.onclick = () => this.joinLobby(spec.dataset.spec, true);
+    const lbBtn = box.querySelector('[data-lb]');
+    if (lbBtn) lbBtn.onclick = async () => {
+      const hide = !leaderboard.isHidden(t.tag);
+      if (!confirm(`${hide ? 'Hide' : 'Show'} ${t.tag} ${hide ? 'from' : 'on'} the weekly leaderboard for everyone?`)) return;
+      try { await leaderboard.setHidden(t.tag, hide); this.say(`${t.tag} is ${hide ? 'hidden from' : 'back on'} the leaderboard.`); this.renderPlayer(); } catch (err) { this.say(err.message); }
+    };
     box.querySelectorAll('[data-act]').forEach((b) => {
       b.onclick = async () => {
         const act = b.dataset.act, reason = box.querySelector('#mp-reason').value.trim();

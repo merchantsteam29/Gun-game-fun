@@ -479,7 +479,7 @@ export class Game {
         this.loadMap(m.settings.map);
         this.players.clear();
         for (const p of m.players) {
-          this.players.set(p.id, { id: p.id, name: p.name, color: p.color, k: p.k, d: p.d, team: p.team, sc: p.sc, bot: p.bot, role: p.role || null, gt: p.gt || null, lvl: (p.cos && p.cos.lvl) || 0, tro: !!(p.cos && p.cos.tro) });
+          this.players.set(p.id, { id: p.id, name: p.name, color: p.color, k: p.k, d: p.d, team: p.team, sc: p.sc, bot: p.bot, role: p.role || null, gt: p.gt || null, lvl: (p.cos && p.cos.lvl) || 0 });
           this.addRemote(p);
         }
         this.refreshColors();
@@ -488,7 +488,7 @@ export class Game {
         if (this.onWelcome) this.onWelcome(); // staff send their proof (main.js)
         break;
       case 'pjoin':
-        this.players.set(m.id, { id: m.id, name: m.name, color: m.color, k: 0, d: 0, team: m.team, sc: 0, bot: m.bot, role: m.role || null, gt: m.gt || null, lvl: (m.cos && m.cos.lvl) || 0, tro: !!(m.cos && m.cos.tro) });
+        this.players.set(m.id, { id: m.id, name: m.name, color: m.color, k: 0, d: 0, team: m.team, sc: 0, bot: m.bot, role: m.role || null, gt: m.gt || null, lvl: (m.cos && m.cos.lvl) || 0 });
         this.addRemote(m);
         this.refreshColors();
         this.hud.say(`${m.name} joined`);
@@ -519,7 +519,7 @@ export class Game {
       case 'pcos': {
         const r = this.remotes.get(m.id), pl = this.players.get(m.id);
         if (r) r.setCosmetics(m.c);
-        if (pl && m.c) { pl.lvl = m.c.lvl || 0; pl.tro = !!m.c.tro; }
+        if (pl && m.c) pl.lvl = m.c.lvl || 0;
         break;
       }
       case 'prole': case 'pname': { // a player proved they're staff / an impostor was renamed

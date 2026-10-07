@@ -27,6 +27,7 @@ import { CAMOS, camoSwatch, camoOf } from './camos.js';
 import { myLevel, levelBadge, RANKS, loginState, claimLogin, LOGIN_REWARDS, STREAK_WRAP, dailyChallenges, ALL_DAILY_BONUS, fmtDuration, onProgress, setXpBoost } from './progress.js';
 import { gameNight, GN_NAME, GN_XP, describe as describeGn } from './gamenight.js';
 import { grantWrap } from './missions.js';
+import { leaderboard, BOARDS, weekEnds, CHAMP_TOKENS } from './leaderboard.js';
 import { MODS, MOD_SLOTS, MOD_SLOT_NAMES, modOptions, hasMods, cleanMods, cleanModMap, statsFor } from './mods.js';
 
 const $ = (id) => document.getElementById(id);
@@ -224,6 +225,43 @@ function dailyHtml() {
       <div class="dl-ranks">${ladder}</div>
       <p class="note">XP: kill 100 · headshot +25 · multi-kill +50 · finish a match 250 · win +250 · daily login 100. Every level pays tokens; each new rank unlocks a wrap.</p></div>
   </div>`;
+}
+
+// ---------- Weekly leaderboard ----------
+let lbBoard = store.get('lbBoard', 'xp'), lbWhich = 'cur', lbT = 0;
+function updateLbNav() {
+  const r = leaderboard.rows('xp').find((x) => x.me);
+  $('nav-lb-rank').textContent = r ? '#' + r.rank : '';
+}
+function renderLeaderboard() {
+  const el = $('menu-lb');
+  if (!el) return;
+  const rows = leaderboard.rows(lbBoard, lbWhich), b = BOARDS.find((x) => x.id === lbBoard) || BOARDS[0];
+  const me = rows.find((r) => r.me), top = rows.slice(0, 50);
+  const mine = leaderboard.mine;
+  const champs = BOARDS.map((x) => ({ b: x, top: leaderboard.rows(x.id, 'prev')[0] })).filter((c) => c.top);
+  const fmt = (n) => Number(n).toLocaleString();
+  el.innerHTML = `<div class="lb">
+    <div class="card lb-main">
+      <div class="lb-head">
+        <div class="seg lb-week"><button data-which="cur" class="${lbWhich === 'cur' ? 'sel' : ''}">This week</button><button data-which="prev" class="${lbWhich === 'prev' ? 'sel' : ''}">Last week</button></div>
+        <small>${lbWhich === 'cur' ? `Resets in ${fmtDuration(weekEnds() - Date.now())} (Monday, ${new Date(weekEnds()).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} your time)` : 'Final results'}</small>
+      </div>
+      <div class="lb-tabs">${BOARDS.map((x) => `<button data-board="${x.id}" class="${x.id === lbBoard ? 'sel' : ''}">${x.icon} ${x.name}</button>`).join('')}</div>
+      <table class="lb-table"><tbody>${top.length ? top.map((r) => `<tr class="${r.me ? 'me' : ''} ${r.rank <= 3 ? 'top' + r.rank : ''}"><td class="rk">${r.rank <= 3 ? ['🥇', '🥈', '🥉'][r.rank - 1] : r.rank}</td><td>${esc(r.tag)}${leaderboard.isChamp(r.tag) ? ' <span class="trophy" title="#1 last week">🏆</span>' : ''}</td><td class="sc">${fmt(r.value)} <small>${esc(b.name)}</small></td></tr>`).join('')
+        : `<tr><td class="lb-empty">${lbWhich === 'cur' ? 'Nobody on the board yet this week. Play a match to be first!' : 'No results from last week.'}</td></tr>`}</tbody></table>
+      ${me && me.rank > 50 ? `<div class="lb-you">You: #${me.rank} · ${fmt(me.value)} ${esc(b.name)}</div>` : ''}
+    </div>
+    <div class="lb-side">
+      <div class="card"><h3>Your week</h3>${social.tag ? '' : '<p class="note">Get a gamertag (Friends) to show up on the leaderboard. Your stats still count.</p>'}
+        <div class="lb-mine">${BOARDS.map((x) => `<div><b>${fmt(mine[x.id] || 0)}</b><small>${x.icon} ${x.name}</small></div>`).join('')}</div></div>
+      <div class="card"><h3>Last week's champions</h3>${champs.length ? champs.map((c) => `<div class="lb-champ"><span>${c.b.icon} ${c.b.name}</span><b>🏆 ${esc(c.top.tag)}</b><small>${fmt(c.top.value)}</small></div>`).join('') : '<p class="note">No champions yet.</p>'}
+        <p class="note">Finish #1 on any board to get a 🏆 by your name all next week, ${CHAMP_TOKENS} tokens and the Weekly Champion wrap.</p></div>
+      <p class="note">Only players with a gamertag are listed. Each player's game reports its own totals, so numbers are capped to what's possible in a week.</p>
+    </div>
+  </div>`;
+  el.querySelectorAll('[data-board]').forEach((x) => { x.onclick = () => { lbBoard = x.dataset.board; store.set('lbBoard', lbBoard); renderLeaderboard(); }; });
+  el.querySelectorAll('[data-which]').forEach((x) => { x.onclick = () => { lbWhich = x.dataset.which; renderLeaderboard(); }; });
 }
 
 // ---------- Menu widgets ----------
@@ -754,6 +792,7 @@ const PANE_INFO = {
   loadout: ['Loadout', 'One weapon per slot. Changes apply the next time you spawn.'],
   character: ['Character', 'Your callsign, color and cosmetics. Earn tokens from missions to unlock more.'],
   missions: ['Missions', 'Daily rewards, daily challenges, your level and missions. All of them pay tokens.'],
+  leaderboard: ['Leaderboard', 'This week\'s top players by XP, kills, wins and headshots. Resets every Monday.'],
   friends: ['Friends', 'Add friends by gamertag, see who\'s online, party up and chat.'],
   mod: ['Mod Panel', 'Staff only: warn, ban or force a new gamertag. Every action is signed with your key.'],
 };
@@ -771,6 +810,7 @@ function showPane(name) {
   if (name === 'missions') renderMissions();
   if (name === 'play') { browser.start(); renderServers(); }
   if (name === 'friends') renderFriends();
+  if (name === 'leaderboard') renderLeaderboard();
   if (name === 'mod' && modPanel) modPanel.render();
   document.querySelector('.menu-body').scrollTop = 0;
 }
@@ -940,7 +980,7 @@ $('staff-add').addEventListener('submit', async (e) => {
 });
 $('staff-tag').addEventListener('keydown', (e) => e.stopPropagation());
 roles.init(social);
-roles.onChange = () => { renderStaff(); renderFriends(); renderChip(); moderation.sync(); renderModNav(); };
+roles.onChange = () => { renderStaff(); renderFriends(); renderChip(); moderation.sync(); renderModNav(); leaderboard.reverify(); };
 renderStaff();
 
 // ---------- Mod panel, warnings, bans, forced gamertag changes ----------
@@ -957,6 +997,17 @@ function renderModNav() {
 }
 moderation.init(social);
 gameNight.init(social);
+leaderboard.init(social);
+leaderboard.onChange = () => {
+  clearTimeout(lbT);
+  lbT = setTimeout(() => { if (!game.active && menuPane === 'leaderboard') renderLeaderboard(); updateLbNav(); }, 300);
+};
+leaderboard.onChampion = (boards) => {
+  const msg = `🏆 You were #1 last week (${boards.join(', ')})! +${CHAMP_TOKENS} tokens and the Weekly Champion wrap.`;
+  if (game.active) game.hud.mission('Weekly Champion', `+${CHAMP_TOKENS} tokens · new wrap!`, '#1 LAST WEEK');
+  else toast(msg);
+  renderChip();
+};
 // Double XP in Game Night servers while it's live.
 setXpBoost(() => (game.active && game.rules.gn && gameNight.isLive() ? GN_XP : 1));
 // Finishing a match in a Game Night server earns the Midnight wrap (once).
