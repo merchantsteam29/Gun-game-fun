@@ -1,8 +1,8 @@
 {
-  "version": "2026.10.08.36",
+  "version": "2026.10.08.37",
   "notes": [
-    "Phones: the lobby chat no longer covers the pause menu",
-    "Final pass of the new look on phone, tablet and desktop"
+    "Fixed false cheat reports: kills on bots no longer count toward suspicious-stats flags",
+    "Auto-flags now need 25+ kills on real players, skip Gun Game, and never flag staff or the host"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",

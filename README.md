@@ -424,12 +424,9 @@ becomes free again.
 
   **Gamertag filter:** gamertags containing filtered words can't be claimed, even hidden inside a name ("xX_Sh1t_Xx").
 
-  Auto-flags: when you host, your game reports players with impossible-looking stats (80%+ headshot kills over 15+ gun
-  kills, or 6+ kills a minute over 20+ kills). They show in Reports, marked as automatic.
-- **👁 Spectate:** staff can watch any match invisibly from the Online, Reports or player views. There's no player,
-  avatar or scoreboard entry.
-  - Follow camera: Q / E or click to switch players, mouse to orbit.
-  - Free camera: F, then WASD, Space / C for up and down, Shift to go faster.
+  Auto-flags: when you host, your game reports players with impossible-looking stats against real players (85%+
+  headshot kills, or 8+ kills a minute, over 25+ kills on players). Kills on bots don't count, Gun Game and one-hit modes
+  are skipped, and staff and the host aren't checked.
 
   Moderation tools still work while spectating.
 

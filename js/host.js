@@ -746,19 +746,23 @@ export class HostLogic {
     return true;
   }
 
-  // Suspicious stats → an automatic report for staff (once per player per lobby). Only gun kills
-  // count, and modes where headshots / one-hit kills are normal are skipped.
-  checkFlags(p, w, head) {
+  // Suspicious stats → an automatic report for staff (once per player per lobby). Only gun kills on
+  // REAL players count (bots are easy, so racking up kills on them is normal), it needs a decent
+  // sample, and modes where headshots / one-hit kills / fast kills are normal are skipped. Staff
+  // and the host's own player aren't checked.
+  checkFlags(p, w, head, victim) {
     const W = WEAPONS[w];
-    if (!W || W.type !== 'gun' || p.flagged) return;
-    p.gunKills = (p.gunKills || 0) + 1;
-    if (head) p.gunHeads = (p.gunHeads || 0) + 1;
-    if (this.mode.instakill || this.s.oneShot || this.s.headshotsOnly || this.mode.bigHead) return;
-    const mins = Math.max(0.5, (Date.now() - p.joinedAt) / 60000);
-    const hsRate = (p.gunHeads || 0) / p.gunKills, kpm = p.kills / mins;
+    if (!W || W.type !== 'gun' || p.flagged || p.role || p.id === 'host') return;
+    if (!victim || victim.bot || victim.dummy) return;
+    p.realKills = (p.realKills || 0) + 1;
+    if (head) p.realHeads = (p.realHeads || 0) + 1;
+    if (this.mode.instakill || this.s.oneShot || this.s.headshotsOnly || this.mode.bigHead || this.s.mode === 'gungame') return;
+    if (!p.firstRealKill) p.firstRealKill = Date.now();
+    const mins = Math.max(1, (Date.now() - p.joinedAt) / 60000);
+    const hsRate = (p.realHeads || 0) / p.realKills, kpm = p.realKills / mins;
     const why = [];
-    if (p.gunKills >= 15 && hsRate >= 0.8) why.push(`${Math.round(hsRate * 100)}% headshot kills (${p.gunHeads}/${p.gunKills})`);
-    if (p.kills >= 20 && kpm >= 6) why.push(`${kpm.toFixed(1)} kills a minute (${p.kills} in ${mins.toFixed(1)} min)`);
+    if (p.realKills >= 25 && hsRate >= 0.85) why.push(`${Math.round(hsRate * 100)}% headshot kills on players (${p.realHeads}/${p.realKills})`);
+    if (p.realKills >= 25 && kpm >= 8) why.push(`${kpm.toFixed(1)} player kills a minute (${p.realKills} in ${mins.toFixed(1)} min)`);
     if (!why.length) return;
     p.flagged = true;
     if (this.onFlag) this.onFlag(p, `${why.join(' · ')} · ${MODES[this.s.mode].name} on ${MAPS[this.s.map].name}`);
@@ -775,7 +779,7 @@ export class HostLogic {
       if (head) attacker.heads = (attacker.heads || 0) + 1;
     }
     v.streak = 0;
-    if (enemyKill && !attacker.bot) this.checkFlags(attacker, w, head);
+    if (enemyKill && !attacker.bot) this.checkFlags(attacker, w, head, v);
     v.respawnAt = Date.now() + (v.dummy ? 1200 : this.s.respawn * 1000);
     const fb = enemyKill && !this.firstBlood; // first kill of the match (medal)
     if (fb) this.firstBlood = true;
