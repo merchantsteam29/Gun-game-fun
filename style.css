@@ -1603,3 +1603,8 @@ body.mobile #dmg-arcs i { left: -80px; top: -80px; width: 160px; height: 160px; 
 .home-strip > .hs-tutorial { grid-column: 1 / -1; border-color: var(--accent); background: var(--accent-soft); animation: hs-pulse 1.8s ease-in-out infinite; }
 body.mobile #tutorial { top: 46px; min-width: 240px; padding: 6px 10px 8px; }
 body.mobile #tutorial b { font-size: 16px; }
+
+/* Slow-device tip */
+.slow-tip { position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%); z-index: 40; display: flex; gap: 8px; align-items: center;
+  padding: 10px 14px; background: rgba(8,10,14,0.92); border: 1px solid var(--accent); border-radius: 10px; font-size: 13px; max-width: 94vw; flex-wrap: wrap; }
+.slow-tip button { padding: 6px 12px; }

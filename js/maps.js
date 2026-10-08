@@ -17,7 +17,7 @@ export const MAP_BLURB = {
   skyislands: 'Floating · don\'t fall', arctic: 'Snow · big base', neonstreets: 'Night city · highway',
 };
 // Render quality (lowered on mobile before any map is built).
-export const quality = { shadowSize: 2048, pointLights: true };
+export const quality = { shadowSize: 2048, pointLights: true, decor: true }; // decor: off in Low-end graphics
 
 // ---------- Builder API ----------
 
@@ -1720,7 +1720,7 @@ export function buildMapScene(scene, id) {
     mesh.receiveShadow = true;
     group.add(mesh);
   }
-  if (map.decor) map.decor(group, DECOR_MATS);
+  if (map.decor && quality.decor !== false) map.decor(group, DECOR_MATS);
 
   group.add(new THREE.HemisphereLight(t.hemi[0], t.hemi[1], t.hemi[2]));
   const sun = new THREE.DirectionalLight(t.sun[0], t.sun[1]);

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { MAPS, setMapData, buildMapScene, boxes } from './maps.js';
+import { MAPS, setMapData, buildMapScene, boxes, quality } from './maps.js';
 import { moveBody, overlap, raycast, rayAABB, PLAYER_R, phys } from './physics.js';
 import { MODES, TEAM_COLORS, ZOMBIE_COLOR, JUGG_COLOR, JUGG_TEAM, defaultSettings } from './host.js';
 import { WEAPONS, DEFAULT_LOADOUT, GUNGAME_LADDER, SLOTS } from './weapons.js';
@@ -53,6 +53,13 @@ export class Game {
     const params = new URLSearchParams(location.search);
     if (params.has('highgfx')) store.set('lowgfx', false);
     this.lowGfx = params.has('lowgfx') || store.get('lowgfx', false);
+    // Graphics level: 'potato' (Low-end: tiny resolution, no shadows/decorations, short view),
+    // 'low', 'normal' or 'high'. Auto resolution (opts.autoRes) scales the resolution with the frame rate.
+    this.gfx = params.has('lowgfx') ? 'low' : store.get('gfx', null) || (this.lowGfx ? 'low' : 'normal');
+    this.lowGfx = this.gfx === 'low' || this.gfx === 'potato';
+    quality.decor = this.gfx !== 'potato';
+    this.dynScale = 1;
+    this.perf = { frames: 0, acc: 0, slow: 0 };
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: !mobile, powerPreference: 'high-performance' });
     renderer.shadowMap.type = mobile ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -72,7 +79,9 @@ export class Game {
       e.preventDefault();
       sys(true);
       this.lowGfx = true;
+      if (this.gfx !== 'potato') this.gfx = 'low';
       store.set('lowgfx', true);
+      store.set('gfx', this.gfx);
     });
     canvas.addEventListener('webglcontextrestored', () => {
       this.applyGfx();
@@ -182,10 +191,32 @@ export class Game {
     renderer.setAnimationLoop(() => this.frame());
   }
 
+  // Change the graphics level (Settings → Video).
+  setGfx(level) {
+    const decorBefore = quality.decor;
+    this.gfx = level;
+    this.lowGfx = level === 'low' || level === 'potato';
+    quality.decor = level !== 'potato';
+    store.set('gfx', level);
+    store.set('lowgfx', this.lowGfx);
+    this.dynScale = 1;
+    if (decorBefore !== quality.decor && this.mapGroup) { // rebuild the map's scene with / without decorations
+      this.scene.remove(this.mapGroup);
+      this.mapGroup.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.isMesh && o.material && !o.material.userData.shared) o.material.dispose(); });
+      this.mapGroup = buildMapScene(this.scene, this.mapId);
+      this.fogFar0 = this.scene.fog ? this.scene.fog.far : 300;
+    }
+    this.applyGfx();
+  }
+
   applyGfx() {
-    const r = this.renderer, low = this.lowGfx;
-    const base = Math.min(devicePixelRatio, low ? 1 : this.tablet ? 1.5 : this.mobile ? 1.25 : 2);
-    r.setPixelRatio(Math.max(0.5, Math.min(3, base * (this.mobile ? 1 : opts.renderScale || 1)))); // render scale: PC-only Showroom setting
+    const r = this.renderer, low = this.lowGfx, potato = this.gfx === 'potato', high = this.gfx === 'high';
+    const base = potato ? 0.6 : Math.min(devicePixelRatio, low ? 1 : high ? 2 : this.tablet ? 1.5 : this.mobile ? 1.25 : 2);
+    r.setPixelRatio(Math.max(0.45, Math.min(3, base * (this.mobile || potato ? 1 : opts.renderScale || 1) * (this.dynScale || 1)))); // render scale: PC-only Showroom setting
+    if (this.fx) this.fx.scale = potato ? 0.35 : low ? 0.7 : 1;
+    // Low-end: shorter view distance (fog closes in so the cut-off isn't visible)
+    if (this.scene && this.scene.fog) this.scene.fog.far = potato ? Math.min(this.fogFar0 || 300, 65) : this.fogFar0 || this.scene.fog.far;
+    if (this.camera) { this.camera.far = potato ? 70 : 300; this.camera.updateProjectionMatrix(); }
     modelQuality.remoteShadows = !low && !this.mobile; // other players' shadows are the priciest part on phones
     if (r.shadowMap.enabled === !low) return;
     r.shadowMap.enabled = !low;
@@ -259,6 +290,8 @@ export class Game {
     }
     this.mapGroup = buildMapScene(this.scene, id);
     this.mapId = id;
+    this.fogFar0 = this.scene.fog ? this.scene.fog.far : 300;
+    if (this.gfx === 'potato' && this.scene.fog) this.scene.fog.far = Math.min(this.fogFar0, 65);
     for (const p of this.projectiles || []) this.scene.remove(p.mesh);
     this.projectiles = [];
     this.fx.clear();
@@ -907,10 +940,34 @@ export class Game {
     }
     if (this.active) this.update(gdt, now);
     else this.menuCam(now);
+    this.watchPerf(dt);
     this.fx.update(gdt);
     this.renderer.clear();
     this.renderer.render(this.scene, this.camera);
     if (this.active && this.me.alive && !this.scoped) this.vm.render(this.renderer);
+  }
+
+  // Frame-rate watch (in matches): auto resolution steps the resolution down when it's slow and
+  // back up when there's room; a slow device also gets one suggestion to try Low-end graphics.
+  watchPerf(dt) {
+    const p = this.perf;
+    if (!this.active || document.hidden) { p.frames = 0; p.acc = 0; return; }
+    p.frames++;
+    p.acc += dt;
+    if (p.acc < 2) return;
+    const fps = p.frames / p.acc;
+    p.frames = 0; p.acc = 0;
+    if (opts.autoRes) {
+      const before = this.dynScale;
+      if (fps < 42) this.dynScale = Math.max(0.6, this.dynScale - 0.1);
+      else if (fps > 57) this.dynScale = Math.min(1, this.dynScale + 0.05);
+      if (before !== this.dynScale) this.applyGfx();
+    } else if (this.dynScale !== 1) { this.dynScale = 1; this.applyGfx(); }
+    p.slow = fps < 28 ? p.slow + 1 : 0;
+    if (p.slow >= 3 && this.gfx !== 'potato' && !store.get('slowTipShown', false) && this.onSlow) {
+      store.set('slowTipShown', true);
+      this.onSlow(Math.round(fps));
+    }
   }
 
   menuCam(now) {

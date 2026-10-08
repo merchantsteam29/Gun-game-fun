@@ -47,6 +47,7 @@ const TABS = [
     { key: 'vmFov', label: 'Weapon field of view', hint: 'How large your gun and arms look', type: 'range', min: 50, max: 90, step: 1, fmt: deg },
     { key: 'bobbing', label: 'View bobbing', type: 'range', min: 0, max: 1.5, step: 0.05, fmt: pct },
     { special: 'graphics' },
+    { key: 'autoRes', label: 'Auto resolution', hint: 'Lowers the resolution a little when the game slows down, so it stays smooth', type: 'check' },
     { key: 'showFps', label: 'Show FPS counter', type: 'check' },
   ] },
   { name: 'HUD & Audio', rows: [
@@ -251,14 +252,13 @@ export class SettingsUI {
     const el = document.createElement('div');
     el.className = 'set-row';
     if (kind === 'graphics') {
-      const low = this.game.lowGfx;
-      el.innerHTML = `<div class="set-label">Graphics<small>Low turns off shadows and lowers resolution (smoother on weak devices)</small></div>
-        <div class="pick"><button data-g="high" class="${low ? '' : 'sel'}">High</button><button data-g="low" class="${low ? 'sel' : ''}">Low</button></div>`;
+      const g = this.game.gfx;
+      const names = { potato: 'Low-end', low: 'Low', normal: 'Normal', high: 'High' };
+      el.innerHTML = `<div class="set-label">Graphics<small>Low-end: for school laptops and old phones (low resolution, no shadows or decorations, shorter view). Low: no shadows. High: sharpest.</small></div>
+        <div class="pick">${Object.entries(names).map(([k, n]) => `<button data-g="${k}" class="${g === k ? 'sel' : ''}">${n}</button>`).join('')}</div>`;
       el.querySelectorAll('[data-g]').forEach((b) => {
         b.onclick = () => {
-          this.game.lowGfx = b.dataset.g === 'low';
-          store.set('lowgfx', this.game.lowGfx);
-          this.game.applyGfx();
+          this.game.setGfx(b.dataset.g);
           this.render();
         };
       });

@@ -1,8 +1,10 @@
 {
-  "version": "2026.10.08.23",
+  "version": "2026.10.08.24",
   "notes": [
-    "Tutorial for new players: 11 quick steps in the Practice Range, with keyboard, controller or touch instructions",
-    "150 tokens for finishing it, then straight into a real match"
+    "Low-end graphics mode for school laptops and old phones (Settings > Video)",
+    "Auto resolution keeps matches smooth by lowering the resolution a little when frames drop",
+    "If a match runs very slowly, the game suggests Low-end mode",
+    "Faster loading: the game files download in parallel"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",

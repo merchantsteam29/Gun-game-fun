@@ -15,6 +15,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://unpkg.com" crossorigin>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script type="importmap">
 {
@@ -24,6 +26,61 @@
   }
 }
 </script>
+<!-- Fetch every game module in parallel (must come after the import map). Add new js files here too. -->
+<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js">
+<link rel="modulepreload" href="js/main.js">
+<link rel="modulepreload" href="js/game.js">
+<link rel="modulepreload" href="js/net.js">
+<link rel="modulepreload" href="js/host.js">
+<link rel="modulepreload" href="js/maps.js">
+<link rel="modulepreload" href="js/weapons.js">
+<link rel="modulepreload" href="js/models.js">
+<link rel="modulepreload" href="js/remote.js">
+<link rel="modulepreload" href="js/hud.js">
+<link rel="modulepreload" href="js/audio.js">
+<link rel="modulepreload" href="js/banners.js">
+<link rel="modulepreload" href="js/binds.js">
+<link rel="modulepreload" href="js/bot.js">
+<link rel="modulepreload" href="js/camos.js">
+<link rel="modulepreload" href="js/chat.js">
+<link rel="modulepreload" href="js/clans.js">
+<link rel="modulepreload" href="js/cosmetics.js">
+<link rel="modulepreload" href="js/effects.js">
+<link rel="modulepreload" href="js/gamenight.js">
+<link rel="modulepreload" href="js/gamepad.js">
+<link rel="modulepreload" href="js/guns.js">
+<link rel="modulepreload" href="js/hostpanel.js">
+<link rel="modulepreload" href="js/invites.js">
+<link rel="modulepreload" href="js/leaderboard.js">
+<link rel="modulepreload" href="js/medals.js">
+<link rel="modulepreload" href="js/missions.js">
+<link rel="modulepreload" href="js/modelkit.js">
+<link rel="modulepreload" href="js/moderation.js">
+<link rel="modulepreload" href="js/modpanel.js">
+<link rel="modulepreload" href="js/mods.js">
+<link rel="modulepreload" href="js/nav.js">
+<link rel="modulepreload" href="js/physics.js">
+<link rel="modulepreload" href="js/profiles.js">
+<link rel="modulepreload" href="js/progress.js">
+<link rel="modulepreload" href="js/radar.js">
+<link rel="modulepreload" href="js/ranked.js">
+<link rel="modulepreload" href="js/relay.js">
+<link rel="modulepreload" href="js/rig.js">
+<link rel="modulepreload" href="js/roles.js">
+<link rel="modulepreload" href="js/rulesets.js">
+<link rel="modulepreload" href="js/seasons.js">
+<link rel="modulepreload" href="js/servers.js">
+<link rel="modulepreload" href="js/settings.js">
+<link rel="modulepreload" href="js/settingsui.js">
+<link rel="modulepreload" href="js/showroom.js">
+<link rel="modulepreload" href="js/social.js">
+<link rel="modulepreload" href="js/touch.js">
+<link rel="modulepreload" href="js/tutorial.js">
+<link rel="modulepreload" href="js/updater.js">
+<link rel="modulepreload" href="js/util.js">
+<link rel="modulepreload" href="js/version.js">
+<link rel="modulepreload" href="js/viewmodel.js">
+<link rel="modulepreload" href="js/voice.js">
 </head>
 <body>
 <canvas id="game"></canvas>

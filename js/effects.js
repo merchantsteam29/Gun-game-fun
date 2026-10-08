@@ -16,6 +16,7 @@ export class Effects {
     this.scene = scene;
     this.tracers = [];
     this.particles = [];
+    this.scale = 1; // fewer particles on lower graphics (game.js setGfx)
     this.booms = [];
     this.smokes = [];
 
@@ -59,6 +60,7 @@ export class Effects {
 
   burst(pos, normal, color, n = 6, speed = 3, size = 0.05, life = 0.4) {
     const col = new THREE.Color(color);
+    n = Math.max(1, Math.round(n * this.scale));
     for (let i = 0; i < n && this.particles.length < MAX_PARTICLES; i++) {
       const v = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(speed);
       if (normal) v.addScaledVector(normal, speed * 0.8);

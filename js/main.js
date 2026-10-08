@@ -1470,6 +1470,17 @@ async function startPractice(tut = false) {
   if (tut) tutorial.start(game);
 }
 $('btn-practice').onclick = () => startPractice();
+// A slow device gets one suggestion to switch to Low-end graphics.
+game.onSlow = (fps) => {
+  const tip = document.createElement('div');
+  tip.className = 'slow-tip';
+  tip.innerHTML = `<span>Running slow (${fps} FPS)? <b>Low-end graphics</b> makes it much smoother.</span><button class="primary">Switch</button><button class="ghost">No thanks</button>`;
+  document.body.appendChild(tip);
+  const [yes, no] = tip.querySelectorAll('button');
+  yes.onclick = () => { game.setGfx('potato'); tip.remove(); toast('Low-end graphics on. Change it any time in Settings → Video.'); };
+  no.onclick = () => tip.remove();
+  setTimeout(() => tip.remove(), 15000);
+};
 $('tu-replay').onclick = (e) => { e.preventDefault(); startPractice(true); };
 game.onTick = (dt) => tutorial.tick(dt);
 tutorial.onDone = (first) => {
