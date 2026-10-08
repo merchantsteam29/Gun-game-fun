@@ -949,6 +949,7 @@ export class Game {
     this.renderer.clear();
     this.renderer.render(this.scene, this.camera);
     if (this.active && this.me.alive && !this.scoped) this.vm.render(this.renderer);
+    if (this.onRendered) this.onRendered(now); // highlight recorder copies the frame here (main.js)
   }
 
   // Frame-rate watch (in matches): auto resolution steps the resolution down when it's slow and
@@ -962,9 +963,13 @@ export class Game {
     const fps = p.frames / p.acc;
     p.frames = 0; p.acc = 0;
     if (opts.autoRes) {
+      // Hysteresis: resizing the canvas causes a hitch, so only step down after 2 slow windows in a
+      // row (4 s) and back up after 3 fast ones (6 s).
       const before = this.dynScale;
-      if (fps < 42) this.dynScale = Math.max(0.6, this.dynScale - 0.1);
-      else if (fps > 57) this.dynScale = Math.min(1, this.dynScale + 0.05);
+      p.low = fps < 40 ? (p.low || 0) + 1 : 0;
+      p.high = fps > 57 ? (p.high || 0) + 1 : 0;
+      if (p.low >= 2) { this.dynScale = Math.max(0.6, this.dynScale - 0.1); p.low = 0; }
+      else if (p.high >= 3 && this.dynScale < 1) { this.dynScale = Math.min(1, this.dynScale + 0.1); p.high = 0; }
       if (before !== this.dynScale) this.applyGfx();
     } else if (this.dynScale !== 1) { this.dynScale = 1; this.applyGfx(); }
     p.slow = fps < 28 ? p.slow + 1 : 0;

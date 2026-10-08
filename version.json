@@ -1,8 +1,9 @@
 {
-  "version": "2026.10.08.26",
+  "version": "2026.10.08.28",
   "notes": [
-    "Highlights: your best moment of each match is saved as a short video clip",
-    "Watch it on the results screen, save it, or share it (computers; Settings > Video > Record highlights)"
+    "Fixed bad lag in matches: highlight recording now uses a small 640x360 copy and one light encoder (it was encoding full-size video twice)",
+    "Highlight recording pauses when the game is in the background",
+    "Auto resolution changes less often, so no more hitches every few seconds"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",

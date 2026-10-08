@@ -1096,6 +1096,7 @@ function startHighlights() {
   if (opts.highlights && !mobile && game.gfx !== 'potato' && net && !net.practice && !game.spectating) highlights.start(game.renderer.domElement);
 }
 game.onMoment = (m) => highlights.moment(m.score, m.label);
+game.onRendered = (now) => highlights.frame(now);
 game.onMatchStart = () => highlights.resetMatch();
 highlights.onChange = () => { game.highlight = highlights.best; };
 
