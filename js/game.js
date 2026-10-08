@@ -5,6 +5,7 @@ import { MODES, TEAM_COLORS, ZOMBIE_COLOR, JUGG_COLOR, JUGG_TEAM, defaultSetting
 import { WEAPONS, DEFAULT_LOADOUT, GUNGAME_LADDER, SLOTS } from './weapons.js';
 import { track, onMissionComplete } from './missions.js';
 import { onProgress, myLevel } from './progress.js';
+import { rateMatch } from './ranked.js';
 import { statsFor, cleanModMap } from './mods.js';
 import { Viewmodel } from './viewmodel.js';
 import { RemotePlayer, netClock } from './remote.js';
@@ -671,6 +672,7 @@ export class Game {
       case 'start':
         this.streaks.clear();
         this.matchXp = 0;
+        this.rankRes = null;
         // The mouse was freed for the map vote: offer "Resume" to get back in.
         if (!this.locked && !this.touch && !this.padMode && this.onUnlock && this.endInfo) setTimeout(() => this.onUnlock && !this.locked && this.onUnlock(), 0);
         this.loadMap(m.map);
@@ -871,6 +873,8 @@ export class Game {
     else won = !!m.scores && m.scores[0] && m.scores[0].id === this.myId;
     const mine = (m.scores || []).find((s) => s.id === this.myId);
     if (this.onMatchTracked) this.onMatchTracked();
+    this.rankRes = this.rules.ranked && !this.spectating ? rateMatch(m.scores, this.myId) : null;
+    if (this.rankRes && this.rankRes.counted && this.onRanked) this.onRanked(this.rankRes);
     track.matchEnd({
       mode, won, map: this.mapId, teams: !!MODES[mode].redBlue,
       survived: mode === 'infection' && team === 1 && m.title === 'SURVIVORS WIN',
@@ -2093,6 +2097,7 @@ export class Game {
         showMvp: !!mvp && now - e.at < 4500,
         vote: e.vote, onVote: (i) => this.voteMap(i),
         xp: this.spectating ? null : { gained: this.matchXp, lv: myLevel() },
+        ranked: this.rankRes,
       });
     }
   }

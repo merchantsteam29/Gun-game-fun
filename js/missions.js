@@ -274,6 +274,9 @@ export function sanitizeCos(c) {
   if (Number.isInteger(c.lvl) && c.lvl >= 1 && c.lvl <= 100) out.lvl = c.lvl;
   // Clan tag claimed by the player (shown only once the clan's member list confirms it: clans.js).
   if (typeof c.clan === 'string' && /^[A-Z0-9]{2,5}$/.test(c.clan)) out.clan = c.clan;
+  // Ranked skill rating (ranked.js) and whether they're still in placement matches.
+  if (Number.isInteger(c.sr) && c.sr >= 0 && c.sr <= 5000) out.sr = c.sr;
+  if (c.srp === 1) out.srp = 1;
   return out;
 }
 export function randomCos() {

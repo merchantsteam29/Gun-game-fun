@@ -114,6 +114,7 @@ export class HostPanel {
   renderRules() {
     const s = this.logic.s, el = $('hp-rules');
     el.innerHTML = '';
+    if (s.ranked) { el.innerHTML = '<div class="note">🏆 Ranked server: standard rules, so ratings are fair. They can\'t be changed.</div>'; return; }
     this.renderPresets(el);
     for (const r of RULES) {
       const row = document.createElement('label');

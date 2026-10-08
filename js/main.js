@@ -33,6 +33,7 @@ import { seasons, TIERS, TIER_XP, tierTokens } from './seasons.js';
 import { bannerOf, bannerHtml } from './banners.js';
 import { invites, INVITE_TOKENS, MAX_INVITES } from './invites.js';
 import { RULE_PRESETS, presetRules, savedPresets, WEAPON_RULES } from './rulesets.js';
+import { myRanked, srBadge, RANKED_MATCH, PLACEMENTS, divisionOf } from './ranked.js';
 import { leaderboard, BOARDS, weekEnds, CHAMP_TOKENS } from './leaderboard.js';
 import { MODS, MOD_SLOTS, MOD_SLOT_NAMES, modOptions, hasMods, cleanMods, cleanModMap, statsFor } from './mods.js';
 
@@ -145,7 +146,7 @@ function updateMissionCount() {
 }
 
 // Your cosmetics plus the level shown next to your name (sent to the host).
-const myCos = () => { const c = clans.myClan(); return { ...getCos(), lvl: myLevel().level, ...(c ? { clan: c.tag } : {}) }; };
+const myCos = () => { const c = clans.myClan(), r = myRanked(); return { ...getCos(), lvl: myLevel().level, sr: r.sr, ...(r.placing ? { srp: 1 } : {}), ...(c ? { clan: c.tag } : {}) }; };
 
 // ---------- Home strip (top of Servers) and Daily (Missions) ----------
 // Level, the daily login reward and today's challenges at a glance.
@@ -160,6 +161,8 @@ function renderHome() {
     <button class="hs-tile hs-quick" data-quick title="Joins the busiest public server, or starts one with bots if there are none">
       <span class="hs-ic">▶</span><span class="hs-txt"><b>Quick Play</b><small>${quickLabel()}</small></span>
     </button>
+    ${(() => { const r = myRanked(); return `<button class="hs-tile hs-ranked" data-ranked style="--dv:${r.div.color}" title="Ranked Free For All: your rating moves with where you finish among real players">
+      <span class="hs-ic">🏆</span><span class="hs-txt"><b>Play Ranked</b><small>${r.placing ? `Placement ${r.played}/${PLACEMENTS}` : `${r.div.icon} ${r.div.name} · ${r.sr} SR`}</small></span></button>`; })()}
     <div class="hs-tile hs-gn ${gnLive ? 'live' : ''}">
       <span class="hs-ic">🌙</span>
       <span class="hs-txt"><b>${gnLive ? `Game Night is LIVE · ${GN_XP}x XP` : 'Game Night'}</b><small>${!gn ? 'Off for now' : gnLive
@@ -190,6 +193,7 @@ function renderHome() {
   const c = el.querySelector('[data-claim]');
   if (c) c.onclick = doClaim;
   el.querySelector('[data-quick]').onclick = quickPlay;
+  el.querySelector('[data-ranked]').onclick = playRanked;
   el.querySelector('[data-feat]').onclick = playFeatured;
   const ins = el.querySelector('[data-install]');
   if (ins) ins.onclick = installApp;
@@ -225,6 +229,17 @@ async function quickPlay() {
   if (best) return joinCode(best.code);
   status('');
   hostLobby({ name: `${settings.name || 'Player'}'s Quick Play`, mode: 'ffa', map: randomMap(), max: 12, bots: 6, rotate: true, vis: 'public' });
+}
+// Ranked: a ranked server near your rating (busiest first), or a new one.
+async function playRanked() {
+  if (busy) return;
+  const me = myRanked();
+  status('Finding a ranked match…');
+  const open = (await freshServers()).filter((s) => s.ranked && Math.abs((s.sr || 1000) - me.sr) <= 350)
+    .sort((a, b) => b.players - a.players || Math.abs(a.sr - me.sr) - Math.abs(b.sr - me.sr));
+  if (open[0]) return joinCode(open[0].code);
+  status('');
+  hostLobby({ name: `🏆 Ranked · ${me.div.name}`, mode: RANKED_MATCH.mode, map: randomMap(), max: RANKED_MATCH.max, bots: RANKED_MATCH.bots, rotate: true, vis: 'public', ranked: true });
 }
 // Today's featured mode: a public server already playing it, or a new one with bots.
 async function playFeatured() {
@@ -627,6 +642,7 @@ function myProfile() {
     name: settings.name || 'Player', color: settings.color, level: myLevel().level, kills: st.kills || 0, deaths: st.deaths || 0,
     wins: st.wins || 0, matches: st.matches || 0, heads: st.headshots || 0, streak: st.bestStreak || 0, fav, favKills,
     banner: getCos().banner, wrap: (m && m.camo) || '', seasons: seasons.badges(), since: store.get('firstPlayed', 0),
+    sr: myRanked().sr, srPlayed: myRanked().played,
   };
 }
 async function openProfile(tag) {
@@ -648,6 +664,7 @@ async function openProfile(tag) {
     <div class="pf-stats">
       ${[['Kills', p.kills.toLocaleString()], ['K/D', kd], ['Wins', p.wins.toLocaleString()], ['Win rate', wr], ['Matches', p.matches.toLocaleString()], ['Headshots', p.heads.toLocaleString()], ['Best streak', p.streak]].map(([n, v]) => `<div><b>${v}</b><small>${n}</small></div>`).join('')}
     </div>
+    ${p.srPlayed ? `<div class="pf-fav pf-sr"><i style="background:${divisionOf(p.sr).color}"></i><span><small>Ranked</small><b>${divisionOf(p.sr).icon} ${esc(divisionOf(p.sr).name)}</b></span><em>${p.srPlayed >= PLACEMENTS ? p.sr + ' SR' : 'Placements'}</em></div>` : ''}
     ${W ? `<div class="pf-fav">${camo && camo.id !== 'default' ? `<i style="background:${camoSwatch(camo)}" title="${esc(camo.name)} wrap"></i>` : '<i></i>'}<span><small>Favorite gun</small><b>${esc(W.name)}</b></span><em>${p.favKills.toLocaleString()} kills</em></div>` : ''}
     ${p.seasons.length ? `<div class="pf-badges"><small>Season badges</small>${p.seasons.map((n) => `<span class="pf-sb">S${n}</span>`).join('')}</div>` : ''}
     <div class="pf-foot"><small>${p.since ? 'Playing since ' + new Date(p.since).toLocaleDateString([], { month: 'short', year: 'numeric' }) : ''}</small>
@@ -958,7 +975,7 @@ function renderServers() {
     const mode = MODES[s.mode] ? MODES[s.mode].name : s.mode;
     const map = MAPS[s.map] ? MAPS[s.map].name : s.map;
     return `<div class="sv-row">
-      <div class="sv-main"><b>${s.gn ? '🌙 ' : ''}${esc(s.name)}</b><small>${s.mode === featuredMode() ? '⭐ ' : ''}${esc(mode)} · ${esc(map)}${s.rules ? ` · <em class="sv-rules">${esc(s.rules)}</em>` : ''}</small></div>
+      <div class="sv-main"><b>${s.gn ? '🌙 ' : ''}${esc(s.name)}${s.ranked ? ` ${srBadge(s.sr || 1000)}` : ''}</b><small>${s.mode === featuredMode() ? '⭐ ' : ''}${esc(mode)} · ${esc(map)}${s.rules ? ` · <em class="sv-rules">${esc(s.rules)}</em>` : ''}</small></div>
       ${s.region ? `<span class="sv-region">${esc(s.region)}</span>` : '<span></span>'}
       <div class="sv-players ${full ? 'full' : ''}">${s.players}/${s.max}${s.bots ? `<small>+${s.bots} bots</small>` : ''}</div>
       <button class="primary" data-join="${esc(s.code)}" ${full ? 'disabled' : ''}>${full ? 'Full' : 'Join'}</button>
@@ -973,7 +990,7 @@ function listingInfo() {
   const L = net && net.logic;
   const all = L ? [...L.players.values()] : [];
   return {
-    name: hosting.name, max: hosting.max, region: hosting.region, gn: hosting.gn ? 1 : 0, rules: L ? L.s.rulesName || '' : '',
+    name: hosting.name, max: hosting.max, region: hosting.region, gn: hosting.gn ? 1 : 0, ranked: L && L.s.ranked ? 1 : 0, sr: myRanked().sr, rules: L ? L.s.rulesName || '' : '',
     mode: L ? L.s.mode : settings.mode, map: L ? L.s.map : settings.map,
     players: all.filter((p) => !p.bot).length, bots: all.filter((p) => p.bot).length,
   };
@@ -1223,6 +1240,7 @@ invites.onReward = (e) => {
   renderChip();
 };
 if (invites.pending()) setTimeout(() => toast(`${invites.pending()} invited you: finish your first match and you both get 🪙 ${INVITE_TOKENS}!`), 1500);
+game.onRanked = (r) => { if (r.newDiv) game.hud.mission(r.delta >= 0 ? `Promoted to ${r.newDiv.name}` : `Dropped to ${r.newDiv.name}`, `${r.sr} SR`, 'RANKED'); };
 gameNight.init(social);
 leaderboard.init(social);
 leaderboard.onChange = () => {
@@ -1483,7 +1501,7 @@ async function hostLobby(preset = null) {
     net = newNet();
     try {
       await net.host(code, settings.name || 'Player', settings.color,
-        preset ? { map: preset.map, mode: preset.mode, maxPlayers: preset.max, botFill: Math.min(preset.bots, preset.max), gn: !!preset.gn }
+        preset ? { map: preset.map, mode: preset.mode, maxPlayers: preset.max, botFill: Math.min(preset.bots, preset.max), gn: !!preset.gn, ranked: !!preset.ranked }
           : { map: settings.map, mode: settings.mode, maxPlayers: serverCfg.max, botFill: Math.min(serverCfg.bots, serverCfg.max), rules }, myCos());
       net.logic.s.rotate = preset ? preset.rotate : serverCfg.rotate;
       net.logic.onFlag = (p, details) => moderation.autoFlag({ target: p.name, lobby: net.code, details });

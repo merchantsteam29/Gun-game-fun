@@ -219,6 +219,14 @@ Inferno, Galaxy, Dragon Scale, Rainbow, Solid Gold and Diamond cost tokens (seve
 Gun Game 3D can be installed like an app, with its own icon, full screen and no browser bar. Use **Install app** on
 the Servers screen (or in the menu sidebar). On iPhone / iPad: Safari → Share → **Add to Home Screen**.
 
+## Ranked
+
+**Play Ranked** (Servers screen) finds a ranked Free For All server near your skill rating (SR), or starts one.
+You start at 1,000 SR; after each ranked match your SR moves by where you finished among the real players (bots
+don't count, and it needs at least 2 players). The first 5 matches are placements and move it faster. Divisions:
+Rookie, Contender (1,100), Veteran (1,250), Elite (1,400), Master (1,550) and Legend (1,700). Ranked servers use the
+standard rules, show their rating in the server list, and your division shows on your profile.
+
 ## Quick Play & Game Night
 
 - **Quick Play** (top of the Servers screen) drops you into the busiest public server with room, or starts a public

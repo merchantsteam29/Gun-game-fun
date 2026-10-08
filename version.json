@@ -1,16 +1,15 @@
 {
-  "version": "2026.10.08.19",
+  "version": "2026.10.08.20",
   "notes": [
-    "New map: Sky Islands, floating islands with bridges and jump pads (fall off and you die)",
-    "New map: Arctic Base, a big snowy research base with a frozen lake and a radar tower",
-    "New map: Neon Streets, night city blocks with a raised highway down the middle",
-    "Bots no longer walk off edges on maps with a drop"
+    "Ranked: Play Ranked finds a match near your skill rating (SR) or starts one",
+    "Divisions from Rookie to Legend, 5 placement matches, rating change on the results screen",
+    "Ranked servers use standard rules; your division shows on your profile"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",
     "js/audio.js", "js/banners.js", "js/bot.js", "js/chat.js", "js/cosmetics.js", "js/effects.js", "js/game.js", "js/gamepad.js", "js/guns.js", "js/host.js",
     "js/hostpanel.js", "js/hud.js", "js/main.js", "js/maps.js", "js/missions.js", "js/moderation.js", "js/modpanel.js", "js/radar.js", "js/mods.js", "js/modelkit.js", "js/models.js", "js/nav.js",
     "js/net.js", "js/physics.js", "js/relay.js", "js/remote.js", "js/roles.js", "js/rig.js", "js/servers.js", "js/settings.js", "js/settingsui.js", "js/showroom.js", "js/social.js",
-    "js/touch.js", "js/updater.js", "js/util.js", "js/medals.js", "js/camos.js", "js/binds.js", "js/progress.js", "js/gamenight.js", "js/leaderboard.js", "js/seasons.js", "js/invites.js", "js/profiles.js", "js/clans.js", "js/rulesets.js", "js/version.js", "js/viewmodel.js", "js/voice.js", "js/weapons.js"
+    "js/touch.js", "js/updater.js", "js/util.js", "js/medals.js", "js/camos.js", "js/binds.js", "js/progress.js", "js/gamenight.js", "js/leaderboard.js", "js/seasons.js", "js/invites.js", "js/profiles.js", "js/clans.js", "js/rulesets.js", "js/ranked.js", "js/version.js", "js/viewmodel.js", "js/voice.js", "js/weapons.js"
   ]
 }

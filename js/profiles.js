@@ -14,7 +14,7 @@ export function cleanProfile(b) {
     level: num(b.level, 100), kills: num(b.kills, 1e7), deaths: num(b.deaths, 1e7), wins: num(b.wins, 1e6), matches: num(b.matches, 1e6),
     heads: num(b.heads, 1e7), streak: num(b.streak, 1000), fav: str(b.fav, 20), favKills: num(b.favKills, 1e7),
     banner: str(b.banner, 20), wrap: str(b.wrap, 20), seasons: Array.isArray(b.seasons) ? b.seasons.map((x) => num(x, 999)).slice(0, 50) : [],
-    since: Number(b.since) || 0, ts: Number(b.ts) || 0,
+    since: Number(b.since) || 0, ts: Number(b.ts) || 0, sr: num(b.sr, 5000), srPlayed: num(b.srPlayed, 1e6),
   };
 }
 

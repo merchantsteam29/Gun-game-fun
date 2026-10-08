@@ -115,6 +115,7 @@ export class HostLogic {
     this.specs = new Map(); // staff spectating: get every update but aren't players
     this.s = defaultSettings(MODES[opts.mode] ? opts.mode : 'ffa', MAPS[opts.map] ? opts.map : MAP_ORDER[0]);
     if (opts.gn) this.s.gn = true; // Game Night server (double XP for players while it's live)
+    if (opts.ranked) this.s.ranked = true; // ranked server: standard rules, SR on (ranked.js)
     if (opts.rules) Object.assign(this.s, cleanRules(opts.rules), { rulesName: String(opts.rules.rulesName || '').slice(0, 24) }); // custom rules preset
     this.botCount = 0;
     this.botFill = Math.max(0, Math.min(12, opts.botFill || 0)); // keep humans + bots at this many
@@ -1045,6 +1046,8 @@ export class HostLogic {
   }
 
   applySettings(partial) {
+    // Ranked servers keep the standard rules (only map rotation can change).
+    if (this.s.ranked) partial = 'rotate' in partial ? { rotate: partial.rotate } : {};
     const weaponsBefore = this.s.weapons;
     Object.assign(this.s, partial);
     if ('weapons' in partial && partial.weapons !== weaponsBefore) {

@@ -7,6 +7,7 @@ import { MedalQueue } from './medals.js';
 import { MAPS, MAP_BLURB } from './maps.js';
 import { sfx } from './audio.js';
 import { levelBadge } from './progress.js';
+import { srBadge } from './ranked.js';
 import { leaderboard } from './leaderboard.js';
 import { clans } from './clans.js';
 
@@ -344,9 +345,17 @@ export class Hud {
   // info: { scores, myId, mode, title, now, secs, nextMap, mvp, showMvp, vote, onVote }
   end(show, info = {}) {
     $('endscreen').classList.toggle('hidden', !show);
-    if (!show) { this.lastEnd = this.lastVote = this.lastMvp = this.lastXp = ''; return; }
+    if (!show) { this.lastEnd = this.lastVote = this.lastMvp = this.lastXp = this.lastSr = ''; return; }
     const { scores = [], myId, mode, title, now, secs, nextMap, mvp, showMvp, vote } = info;
     $('end-title').textContent = title || 'MATCH OVER';
+    // Ranked: rating change
+    const rk = info.ranked ? JSON.stringify(info.ranked) : '';
+    if (rk !== this.lastSr) {
+      this.lastSr = rk;
+      const r = info.ranked;
+      $('end-sr').innerHTML = !r ? '' : !r.counted ? `<span class="muted">🏆 ${esc(r.reason)}</span>`
+        : `🏆 <b class="${r.delta >= 0 ? 'up' : 'down'}">${r.delta >= 0 ? '+' : ''}${r.delta} SR</b> ${srBadge(r.sr, r.placing)} <span style="color:${r.div.color}">${esc(r.div.name)}</span>${r.newDiv ? ` · <b>${r.delta >= 0 ? 'Promoted' : 'Dropped'} to ${esc(r.newDiv.name)}!</b>` : ''}${r.placing ? ` · placement ${r.played}/5` : ''}`;
+    }
     // XP earned this match and your level bar
     const xk = info.xp ? JSON.stringify([info.xp.gained, info.xp.lv.level, Math.round(info.xp.lv.pct * 100)]) : '';
     if (xk !== this.lastXp) {

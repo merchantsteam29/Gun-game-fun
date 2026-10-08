@@ -1381,7 +1381,7 @@ body.mobile:not(.tablet) .lo-presets button { padding: 4px 7px; font-size: 11px;
 .trophy { margin: 0 2px 0 4px; font-size: 0.9em; }
 .home-strip { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
 .home-strip > * { grid-column: span 4; }
-.home-strip > .hs-quick, .home-strip > .hs-gn, .home-strip > .hs-feat { padding: 12px 14px; }
+.home-strip > .hs-quick, .home-strip > .hs-ranked, .home-strip > .hs-gn, .home-strip > .hs-feat { padding: 12px 14px; grid-column: span 3; }
 .hs-tile { display: flex; align-items: center; gap: 10px; text-align: left; padding: 10px 12px; background: var(--panel-2); border: 1px solid var(--line);
   border-radius: var(--radius); color: var(--text); font: inherit; min-width: 0; }
 button.hs-tile { cursor: pointer; }
@@ -1489,6 +1489,7 @@ body.mobile .home-strip > .hs-install { grid-column: 1 / -1; }
 .tile.feat { border-color: var(--accent); }
 .tile.feat small { color: var(--accent); }
 body.mobile .home-strip > .hs-feat { grid-column: 1 / -1; }
+body.mobile .home-strip > .hs-quick, body.mobile .home-strip > .hs-ranked { grid-column: span 1; }
 
 /* Season pass */
 .sp { border-color: color-mix(in srgb, var(--sp) 45%, transparent); background: linear-gradient(135deg, color-mix(in srgb, var(--sp) 14%, transparent), rgba(255,255,255,0.02)); }
@@ -1563,3 +1564,13 @@ body.mobile .sp-track { grid-template-columns: repeat(10, minmax(0, 1fr)); }
 .hp-preset-row button { padding: 6px 10px; font-size: 12px; }
 .sv-rules { font-style: normal; color: var(--accent); }
 .lo-rule { padding: 8px 12px; margin-bottom: 8px; border: 1px solid var(--accent); background: var(--accent-soft); border-radius: 6px; font-size: 13px; }
+
+/* Ranked */
+.sr-badge { display: inline-block; padding: 0 6px; margin: 0 4px; border-radius: 4px; font-size: 11px; font-weight: 700; color: var(--dv); border: 1px solid var(--dv); vertical-align: 1px; font-variant-numeric: tabular-nums; }
+.hs-ranked { border-color: color-mix(in srgb, var(--dv) 55%, transparent); background: linear-gradient(135deg, color-mix(in srgb, var(--dv) 18%, transparent), rgba(255,255,255,0.02)); }
+.hs-ranked b { color: var(--text); font-size: 15px; letter-spacing: 0.5px; text-transform: uppercase; }
+#end-sr { text-align: center; font-size: 14px; margin: -4px auto 10px; }
+#end-sr:empty { display: none; }
+#end-sr .up { color: var(--ok); }
+#end-sr .down { color: var(--danger); }
+.pf-sr { margin-bottom: 8px; }
