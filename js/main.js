@@ -28,6 +28,7 @@ import { myLevel, levelBadge, RANKS, loginState, claimLogin, LOGIN_REWARDS, STRE
 import { gameNight, GN_NAME, GN_XP, describe as describeGn } from './gamenight.js';
 import { grantWrap, COSMETICS, allStats } from './missions.js';
 import { profiles } from './profiles.js';
+import { clans, CLAN_COLORS, MAX_MEMBERS } from './clans.js';
 import { seasons, TIERS, TIER_XP, tierTokens } from './seasons.js';
 import { bannerOf, bannerHtml } from './banners.js';
 import { invites, INVITE_TOKENS, MAX_INVITES } from './invites.js';
@@ -143,7 +144,7 @@ function updateMissionCount() {
 }
 
 // Your cosmetics plus the level shown next to your name (sent to the host).
-const myCos = () => ({ ...getCos(), lvl: myLevel().level });
+const myCos = () => { const c = clans.myClan(); return { ...getCos(), lvl: myLevel().level, ...(c ? { clan: c.tag } : {}) }; };
 
 // ---------- Home strip (top of Servers) and Daily (Missions) ----------
 // Level, the daily login reward and today's challenges at a glance.
@@ -300,10 +301,18 @@ function updateLbNav() {
   const r = leaderboard.rows('xp').find((x) => x.me);
   $('nav-lb-rank').textContent = r ? '#' + r.rank : '';
 }
+// Clans ranked by their members' XP this week.
+function clanRows(which) {
+  const xp = new Map(leaderboard.rows('xp', which).map((r) => [r.tag.toLowerCase(), r.value]));
+  const mine = clans.myClan();
+  return clans.list().map((c) => ({ tag: `[${c.tag}] ${c.name}`, clan: c.tag, value: c.members.reduce((n, m) => n + (xp.get(m.toLowerCase()) || 0), 0), me: !!mine && mine.tag === c.tag }))
+    .filter((r) => r.value > 0).sort((a, b2) => b2.value - a.value).map((r, i) => ({ ...r, rank: i + 1 }));
+}
 function renderLeaderboard() {
   const el = $('menu-lb');
   if (!el) return;
-  const rows = leaderboard.rows(lbBoard, lbWhich), b = BOARDS.find((x) => x.id === lbBoard) || BOARDS[0];
+  if (lbBoard === 'clans') clans.loadAll();
+  const rows = lbBoard === 'clans' ? clanRows(lbWhich) : leaderboard.rows(lbBoard, lbWhich), b = lbBoard === 'clans' ? { name: 'XP' } : BOARDS.find((x) => x.id === lbBoard) || BOARDS[0];
   const me = rows.find((r) => r.me), top = rows.slice(0, 50);
   const mine = leaderboard.mine;
   const champs = BOARDS.map((x) => ({ b: x, top: leaderboard.rows(x.id, 'prev')[0] })).filter((c) => c.top);
@@ -314,8 +323,8 @@ function renderLeaderboard() {
         <div class="seg lb-week"><button data-which="cur" class="${lbWhich === 'cur' ? 'sel' : ''}">This week</button><button data-which="prev" class="${lbWhich === 'prev' ? 'sel' : ''}">Last week</button></div>
         <small>${lbWhich === 'cur' ? `Resets in ${fmtDuration(weekEnds() - Date.now())} (Monday, ${new Date(weekEnds()).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} your time)` : 'Final results'}</small>
       </div>
-      <div class="lb-tabs">${BOARDS.map((x) => `<button data-board="${x.id}" class="${x.id === lbBoard ? 'sel' : ''}">${x.icon} ${x.name}</button>`).join('')}</div>
-      <table class="lb-table"><tbody>${top.length ? top.map((r) => `<tr class="${r.me ? 'me' : ''} ${r.rank <= 3 ? 'top' + r.rank : ''}"><td class="rk">${r.rank <= 3 ? ['🥇', '🥈', '🥉'][r.rank - 1] : r.rank}</td><td class="pf-link" data-profile="${esc(r.tag)}">${esc(r.tag)}${leaderboard.isChamp(r.tag) ? ' <span class="trophy" title="#1 last week">🏆</span>' : ''}</td><td class="sc">${fmt(r.value)} <small>${esc(b.name)}</small></td></tr>`).join('')
+      <div class="lb-tabs">${BOARDS.map((x) => `<button data-board="${x.id}" class="${x.id === lbBoard ? 'sel' : ''}">${x.icon} ${x.name}</button>`).join('')}<button data-board="clans" class="${lbBoard === 'clans' ? 'sel' : ''}">🛡 Clans</button></div>
+      <table class="lb-table"><tbody>${top.length ? top.map((r) => `<tr class="${r.me ? 'me' : ''} ${r.rank <= 3 ? 'top' + r.rank : ''}"><td class="rk">${r.rank <= 3 ? ['🥇', '🥈', '🥉'][r.rank - 1] : r.rank}</td><td ${r.clan ? '' : `class="pf-link" data-profile="${esc(r.tag)}"`}>${esc(r.tag)}${leaderboard.isChamp(r.tag) ? ' <span class="trophy" title="#1 last week">🏆</span>' : ''}</td><td class="sc">${fmt(r.value)} <small>${esc(b.name)}</small></td></tr>`).join('')
         : `<tr><td class="lb-empty">${lbWhich === 'cur' ? 'Nobody on the board yet this week. Play a match to be first!' : 'No results from last week.'}</td></tr>`}</tbody></table>
       ${me && me.rank > 50 ? `<div class="lb-you">You: #${me.rank} · ${fmt(me.value)} ${esc(b.name)}</div>` : ''}
     </div>
@@ -667,8 +676,57 @@ function renderInvite() {
   const share = $('inv-share');
   if (share) share.onclick = () => navigator.share({ title: 'Gun Game 3D', text: `Play Gun Game 3D with me! We both get ${INVITE_TOKENS} tokens.`, url: $('inv-link').value }).catch(() => {});
 }
+// ---------- Clans ----------
+let clanForm = 'create';
+function renderClan() {
+  const el = $('clan-card');
+  const c = clans.myClan(), pend = clans.mine && clans.mine.pending ? clans.mine.tag : null;
+  const keep = (sel) => { const i = el.querySelector(sel); return i ? i.value : ''; };
+  const draft = { tag: keep('#cl-tag'), name: keep('#cl-name'), join: keep('#cl-join'), say: keep('#cl-say') };
+  if (!social.tag) { el.innerHTML = '<h3>🛡 Clan</h3><p class="note">Get a gamertag first to create or join a clan.</p>'; return; }
+  if (pend) {
+    el.innerHTML = `<h3>🛡 Clan</h3><p class="note">Request sent to <b>[${esc(pend)}]</b>. Waiting for their leader to let you in.</p><button id="cl-cancel">Cancel request</button>`;
+    $('cl-cancel').onclick = () => clans.cancelRequest();
+    return;
+  }
+  if (!c) {
+    el.innerHTML = `<h3>🛡 Clan</h3><p class="note">Team up under a tag like <b>[GIGA]</b>, shown before your name in matches, with clan chat and a clan leaderboard.</p>
+      <div class="seg cl-seg"><button data-cf="create" class="${clanForm === 'create' ? 'sel' : ''}">Create a clan</button><button data-cf="join" class="${clanForm === 'join' ? 'sel' : ''}">Join a clan</button></div>
+      ${clanForm === 'create' ? `<div class="cl-form"><input id="cl-tag" maxlength="5" placeholder="TAG" value="${esc(draft.tag)}" autocapitalize="characters" spellcheck="false"><input id="cl-name" maxlength="24" placeholder="Clan name" value="${esc(draft.name)}" spellcheck="false">
+        <div class="cl-colors">${CLAN_COLORS.map((x, i) => `<button data-cc="${x}" class="${i === 0 ? 'sel' : ''}" style="background:${x}"></button>`).join('')}</div>
+        <button class="primary" id="cl-create">Create</button></div>`
+      : `<div class="cl-form"><input id="cl-join" maxlength="5" placeholder="Clan TAG" value="${esc(draft.join)}" autocapitalize="characters" spellcheck="false"><button class="primary" id="cl-req">Ask to join</button></div>`}
+      <p class="note" id="cl-msg"></p>`;
+    el.querySelectorAll('[data-cf]').forEach((b) => { b.onclick = () => { clanForm = b.dataset.cf; renderClan(); }; });
+    let color = CLAN_COLORS[0];
+    el.querySelectorAll('[data-cc]').forEach((b) => { b.onclick = () => { color = b.dataset.cc; el.querySelectorAll('[data-cc]').forEach((x) => x.classList.toggle('sel', x === b)); }; });
+    const msg = (t) => { $('cl-msg').textContent = t; };
+    if ($('cl-create')) $('cl-create').onclick = async () => { msg('Checking the tag…'); try { await clans.create($('cl-tag').value, $('cl-name').value, color); toast('Clan created!'); } catch (e) { msg(e.message); } };
+    if ($('cl-req')) $('cl-req').onclick = async () => { msg('Looking it up…'); try { const k = await clans.requestJoin($('cl-join').value); toast(`Request sent to [${k.tag}] ${k.name}`); } catch (e) { msg(e.message); } };
+    el.querySelectorAll('input').forEach((i) => i.addEventListener('keydown', (e) => e.stopPropagation()));
+    return;
+  }
+  const lead = clans.isLeader();
+  const reqs = [...clans.requests.values()];
+  el.innerHTML = `<div class="cl-head"><b class="cl-name" style="color:${c.color}">[${esc(c.tag)}] ${esc(c.name)}</b><small>${c.members.length}/${MAX_MEMBERS} members</small>
+      ${lead ? '<button class="danger" id="cl-disband">Disband</button>' : '<button id="cl-leave">Leave</button>'}</div>
+    ${lead && reqs.length ? `<div class="cl-reqs">${reqs.map((r) => `<div class="fr-row"><span class="fr-name pf-link" data-profile="${esc(r.tag)}">${esc(r.tag)}</span><small>wants to join</small><button class="primary" data-cacc="${esc(r.tag)}">Accept</button><button data-cdeny="${esc(r.tag)}">Deny</button></div>`).join('')}</div>` : ''}
+    <div class="cl-members">${c.members.map((m) => `<span class="cl-m"><span class="pf-link" data-profile="${esc(m)}">${m.toLowerCase() === c.leader.toLowerCase() ? '👑 ' : ''}${esc(m)}</span>${lead && m.toLowerCase() !== c.leader.toLowerCase() ? `<button class="ghost" data-ckick="${esc(m)}" title="Remove from clan">✕</button>` : ''}</span>`).join('')}</div>
+    <div class="cl-chat" id="cl-chat">${clans.chat.length ? clans.chat.map((x) => `<div><b>${esc(x.from)}</b> ${esc(x.text)}</div>`).join('') : '<small class="muted">Clan chat: messages show for members who are online.</small>'}</div>
+    <form id="cl-chat-form" class="fr-add" autocomplete="off"><input id="cl-say" maxlength="200" placeholder="Message your clan" value="${esc(draft.say)}"><button class="primary" type="submit">Send</button></form>`;
+  const log = $('cl-chat'); log.scrollTop = log.scrollHeight;
+  $('cl-say').addEventListener('keydown', (e) => e.stopPropagation());
+  $('cl-chat-form').onsubmit = async (e) => { e.preventDefault(); const v = $('cl-say').value.trim(); if (!v) return; $('cl-say').value = ''; try { await clans.say(v); } catch (err) { toast(err.message); } };
+  if ($('cl-leave')) $('cl-leave').onclick = async () => { if (confirm(`Leave [${c.tag}]?`)) try { await clans.leave(); } catch (e) { toast(e.message); } };
+  if ($('cl-disband')) $('cl-disband').onclick = async () => { if (confirm(`Disband [${c.tag}] for everyone? The tag becomes free.`)) await clans.disband(); };
+  el.querySelectorAll('[data-cacc]').forEach((b) => { b.onclick = async () => { try { await clans.accept(b.dataset.cacc); } catch (e) { toast(e.message); } }; });
+  el.querySelectorAll('[data-cdeny]').forEach((b) => { b.onclick = () => clans.deny(b.dataset.cdeny); });
+  el.querySelectorAll('[data-ckick]').forEach((b) => { b.onclick = async () => { if (confirm(`Remove ${b.dataset.ckick} from the clan?`)) await clans.kick(b.dataset.ckick); }; });
+}
+
 function renderFriends() {
   renderInvite();
+  renderClan();
   const n = social.pendingCount;
   $('nav-friends-count').textContent = n ? String(n) : '';
   $('fr-me').innerHTML = social.tag
@@ -795,6 +853,7 @@ $('pt-follow').onclick = () => { if ($('pt-follow').dataset.code) { $('join-code
 
 social.onChange = () => {
   invites.watch();
+  clans.sync();
   renderFriends();
   applyGamertag();
   // Gamertag claimed / released, or this device's key just loaded: the staff role may have changed.
@@ -978,6 +1037,9 @@ function chatOnNet(m) {
     if (p && m.id !== game.myId) moderation.notePlayer(p.name, p.gt, net.code);
   }
   if (net && !net.practice && m.t === 'welcome') for (const p of m.players) if (!p.bot && p.id !== m.id) moderation.notePlayer(p.name, p.gt, net.code);
+  if (m.t === 'pjoin' && m.cos && m.cos.clan) clans.lookup(m.cos.clan);
+  if (m.t === 'pcos' && m.c && m.c.clan) clans.lookup(m.c.clan);
+  if (m.t === 'welcome') for (const p of m.players) if (p.cos && p.cos.clan) clans.lookup(p.cos.clan);
   if (m.t === 'pjoin' && !m.bot) chat.system(`${m.name} joined`);
   else if (m.t === 'pleave' && !String(m.name).startsWith('[BOT]')) chat.system(`${m.name} left`);
   // Pause-menu player lists follow joins, leaves and staff actions.
@@ -1134,6 +1196,15 @@ seasons.onTier = (e) => {
   else toast(`Season tier ${e.tier}: 🪙 ${e.tokens}${what}`);
 };
 profiles.init(social);
+clans.init(social);
+clans.onChange = () => {
+  if (!game.active && menuPane === 'friends' && !(document.activeElement && document.activeElement.closest && document.activeElement.closest('#clan-card input'))) renderClan();
+  if (!game.active && menuPane === 'leaderboard') renderLeaderboard();
+};
+clans.onChat = (x) => {
+  if (game.active && social.tag && x.from.toLowerCase() !== social.tag.toLowerCase()) chat.system(`[${clans.myClan().tag}] ${x.from}: ${x.text}`);
+  else if (menuPane === 'friends' && $('cl-chat')) { const log = $('cl-chat'); if (!log.querySelector('b')) log.innerHTML = ''; log.insertAdjacentHTML('beforeend', `<div><b>${esc(x.from)}</b> ${esc(x.text)}</div>`); log.scrollTop = log.scrollHeight; }
+};
 invites.init(social);
 invites.onReward = (e) => {
   const msg = e.kind === 'joined' ? `Thanks for joining through ${e.name}'s invite! 🪙 ${e.tokens} for you both.` : `${e.name} joined through your invite: 🪙 ${e.tokens}!`;
@@ -1526,7 +1597,7 @@ settingsUI = new SettingsUI({
   editLayout: (done) => touch.edit(done),
   getColor: () => settings.color,
   getName: () => settings.name || 'Player',
-  onCos: (c) => { game.myBanner = c.banner; if (net) net.send({ t: 'cos', c: { ...c, lvl: myLevel().level } }); },
+  onCos: (c) => { game.myBanner = c.banner; if (net) net.send({ t: 'cos', c: { ...myCos(), ...c } }); },
   // Weapon wraps from Customize: saved with the attachments (looks only).
   getMods: () => settings.mods,
   onMods: (m) => {

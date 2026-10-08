@@ -8,6 +8,10 @@ import { MAPS, MAP_BLURB } from './maps.js';
 import { sfx } from './audio.js';
 import { levelBadge } from './progress.js';
 import { leaderboard } from './leaderboard.js';
+import { clans } from './clans.js';
+
+// [TAG] before a name when the clan confirms the player is a member.
+const clanTag = (gt) => { const t = clans.tagOf(gt); return t ? `<span class="clan-tag" style="color:${clans.color(t)}">[${esc(t)}]</span>` : ''; };
 
 const roleIcon = (r) => (ROLE_INFO[r] ? `<b class="role-ico ${r}" title="${ROLE_INFO[r].label}">${ROLE_INFO[r].icon}</b>` : '');
 
@@ -313,7 +317,7 @@ export class Hud {
       const c = colorFor ? colorFor(p) : p.color;
       const sc = mode === 'gungame' ? p.sc + 1 : p.sc;
       const kd = (p.k / Math.max(1, p.d)).toFixed(2);
-      return `<tr class="${p.id === myId ? 'me' : ''}" style="--c:${esc(c)}"><td class="rk">${rank}</td><td><span class="dot" style="background:${esc(c)}"></span>${levelBadge(p.lvl)}${esc(p.name)}${leaderboard.isChamp(p.gt) ? TROPHY : ''}${badge(p.role, true)}</td><td class="sc">${sc}</td><td>${p.k}</td><td>${p.d}</td><td class="kd">${kd}</td></tr>`;
+      return `<tr class="${p.id === myId ? 'me' : ''}" style="--c:${esc(c)}"><td class="rk">${rank}</td><td><span class="dot" style="background:${esc(c)}"></span>${levelBadge(p.lvl)}${clanTag(p.gt)}${esc(p.name)}${leaderboard.isChamp(p.gt) ? TROPHY : ''}${badge(p.role, true)}</td><td class="sc">${sc}</td><td>${p.k}</td><td>${p.d}</td><td class="kd">${kd}</td></tr>`;
     }).join('');
   }
 
@@ -368,7 +372,7 @@ export class Hud {
       $('podium').innerHTML = top.map((p, i) => !p ? '<div class="pd empty"></div>' :
         `<div class="pd p${[2, 1, 3][i]} ${p.id === myId ? 'me' : ''}" style="--c:${esc(p.color)}"><div class="pd-name">${esc(p.name)}</div><div class="pd-sc">${p.sc} ${label}</div><div class="pd-step">${[2, 1, 3][i]}</div></div>`).join('');
       $('end-body').innerHTML = scores.map((p, i) =>
-        `<tr class="${p.id === myId ? 'me' : ''}"><td class="rk">${i + 1}</td><td><span class="dot" style="background:${esc(p.color)}"></span>${levelBadge(p.cos && p.cos.lvl)}${esc(p.name)}${leaderboard.isChamp(p.gt) ? TROPHY : ''}${badge(p.role, true)}</td><td class="sc">${p.sc} ${label}</td><td>${p.k} K</td><td>${p.d} D</td></tr>`
+        `<tr class="${p.id === myId ? 'me' : ''}"><td class="rk">${i + 1}</td><td><span class="dot" style="background:${esc(p.color)}"></span>${levelBadge(p.cos && p.cos.lvl)}${clanTag(p.gt)}${esc(p.name)}${leaderboard.isChamp(p.gt) ? TROPHY : ''}${badge(p.role, true)}</td><td class="sc">${p.sc} ${label}</td><td>${p.k} K</td><td>${p.d} D</td></tr>`
       ).join('');
     }
     // Map vote

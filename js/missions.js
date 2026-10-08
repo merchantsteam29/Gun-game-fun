@@ -272,6 +272,8 @@ export function sanitizeCos(c) {
   if (HAIR_COLORS.includes(c.hairColor)) out.hairColor = c.hairColor;
   // Level shown by your name (progress.js).
   if (Number.isInteger(c.lvl) && c.lvl >= 1 && c.lvl <= 100) out.lvl = c.lvl;
+  // Clan tag claimed by the player (shown only once the clan's member list confirms it: clans.js).
+  if (typeof c.clan === 'string' && /^[A-Z0-9]{2,5}$/.test(c.clan)) out.clan = c.clan;
   return out;
 }
 export function randomCos() {

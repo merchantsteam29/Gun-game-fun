@@ -1532,3 +1532,26 @@ body.mobile .sp-track { grid-template-columns: repeat(10, minmax(0, 1fr)); }
 .pf-badges { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
 .pf-sb { padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; background: var(--accent); color: #0b0d10; }
 .pf-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; min-height: 30px; }
+
+/* Clans */
+.clan-card { margin-bottom: 12px; }
+.clan-card h3 { margin: 0 0 4px; }
+.cl-seg { margin: 8px 0; max-width: 360px; }
+.cl-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.cl-form #cl-tag, .cl-form #cl-join { width: 90px; text-transform: uppercase; letter-spacing: 2px; }
+.cl-form #cl-name { flex: 1; min-width: 140px; }
+.cl-colors { display: flex; gap: 4px; }
+.cl-colors button { width: 22px; height: 22px; padding: 0; border-radius: 50%; border: 2px solid transparent; }
+.cl-colors button.sel { border-color: #fff; }
+.cl-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cl-name { font-size: 18px; letter-spacing: 1px; }
+.cl-head small { color: var(--muted); }
+.cl-head button { margin-left: auto; }
+.cl-reqs { margin: 8px 0; }
+.cl-members { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.cl-m { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border: 1px solid var(--line); border-radius: 999px; font-size: 13px; }
+.cl-m button { padding: 0 4px; font-size: 11px; }
+.cl-chat { max-height: 160px; overflow-y: auto; font-size: 13px; padding: 8px; background: rgba(0,0,0,0.2); border: 1px solid var(--line); border-radius: 6px; margin-bottom: 8px; }
+.cl-chat div { padding: 2px 0; }
+.cl-chat b { color: var(--accent); margin-right: 4px; }
+.clan-tag { font-weight: 700; margin-right: 4px; }

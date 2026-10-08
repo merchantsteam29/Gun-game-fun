@@ -213,6 +213,13 @@ the Servers screen (or in the menu sidebar). On iPhone / iPad: Safari → Share 
 - The owner sets the schedule (days, start time, length, time zone) in **Mod Panel → Announce**. Until then it's every
   day at 7 PM New York time for 2 hours.
 
+## Clans
+
+In **Friends → Clan**, create a clan (a 2–5 letter **[TAG]**, a name and a color) or ask to join one by its tag; the
+leader accepts requests, can remove members and can disband it. Members get their **[TAG]** before their name on the
+scoreboard and results (only once the clan's signed member list includes them), a clan chat (which also shows in
+matches), and the **Clans** tab on the weekly leaderboard ranks clans by their members' XP. Up to 30 members.
+
 ## Player profiles
 
 Click a gamertag (your own in **Friends**, a friend, or anyone on the **Leaderboard**) to see their profile: banner,
