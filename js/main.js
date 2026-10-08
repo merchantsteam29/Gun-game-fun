@@ -29,6 +29,7 @@ import { gameNight, GN_NAME, GN_XP, describe as describeGn } from './gamenight.j
 import { grantWrap, COSMETICS } from './missions.js';
 import { seasons, TIERS, TIER_XP, tierTokens } from './seasons.js';
 import { bannerOf } from './banners.js';
+import { invites, INVITE_TOKENS, MAX_INVITES } from './invites.js';
 import { leaderboard, BOARDS, weekEnds, CHAMP_TOKENS } from './leaderboard.js';
 import { MODS, MOD_SLOTS, MOD_SLOT_NAMES, modOptions, hasMods, cleanMods, cleanModMap, statsFor } from './mods.js';
 
@@ -602,7 +603,23 @@ $('tag-form').onsubmit = async (e) => {
 };
 $('tag-later').onclick = () => { $('tag-pop').classList.add('hidden'); sessionStorage.setItem('tagLater', '1'); };
 
+function renderInvite() {
+  const el = $('invite-card');
+  const n = invites.count(), base = location.origin + location.pathname;
+  el.innerHTML = `<div class="inv-head"><span class="inv-ic">🎁</span><div><h3>Invite friends</h3>
+      <p class="note">Send your link. When a new player opens it and finishes their first match, you <b>both</b> get 🪙 ${INVITE_TOKENS}. (${n} / ${MAX_INVITES} friends so far)</p></div></div>
+    ${social.tag ? `<div class="inv-row"><input id="inv-link" readonly value="${esc(invites.link(base))}"><button class="primary" id="inv-copy">Copy link</button>${navigator.share ? '<button id="inv-share">Share</button>' : ''}</div>`
+      : '<p class="note">Get a gamertag first (below) so your friends\' joins count for you.</p>'}`;
+  const copy = $('inv-copy');
+  if (copy) copy.onclick = async () => {
+    try { await navigator.clipboard.writeText($('inv-link').value); copy.textContent = 'Copied!'; } catch { $('inv-link').select(); }
+    setTimeout(() => { copy.textContent = 'Copy link'; }, 1500);
+  };
+  const share = $('inv-share');
+  if (share) share.onclick = () => navigator.share({ title: 'Gun Game 3D', text: `Play Gun Game 3D with me! We both get ${INVITE_TOKENS} tokens.`, url: $('inv-link').value }).catch(() => {});
+}
 function renderFriends() {
+  renderInvite();
   const n = social.pendingCount;
   $('nav-friends-count').textContent = n ? String(n) : '';
   $('fr-me').innerHTML = social.tag
@@ -728,6 +745,7 @@ window.voice = voice; // debugging
 $('pt-follow').onclick = () => { if ($('pt-follow').dataset.code) { $('join-code').value = $('pt-follow').dataset.code; joinLobby(); } };
 
 social.onChange = () => {
+  invites.watch();
   renderFriends();
   applyGamertag();
   // Gamertag claimed / released, or this device's key just loaded: the staff role may have changed.
@@ -1066,6 +1084,14 @@ seasons.onTier = (e) => {
   if (game.active) game.hud.mission(`Season tier ${e.tier}`, `+${e.tokens} tokens${e.item ? ' · new ' + (e.item.kind === 'wrap' ? 'wrap' : 'banner') + '!' : ''}`, `SEASON ${e.season.n}`);
   else toast(`Season tier ${e.tier}: 🪙 ${e.tokens}${what}`);
 };
+invites.init(social);
+invites.onReward = (e) => {
+  const msg = e.kind === 'joined' ? `Thanks for joining through ${e.name}'s invite! 🪙 ${e.tokens} for you both.` : `${e.name} joined through your invite: 🪙 ${e.tokens}!`;
+  if (game.active) game.hud.mission(e.kind === 'joined' ? 'Welcome bonus' : `${e.name} joined!`, `+${e.tokens} tokens`, 'INVITE');
+  else toast(msg);
+  renderChip();
+};
+if (invites.pending()) setTimeout(() => toast(`${invites.pending()} invited you: finish your first match and you both get 🪙 ${INVITE_TOKENS}!`), 1500);
 gameNight.init(social);
 leaderboard.init(social);
 leaderboard.onChange = () => {
@@ -1082,6 +1108,7 @@ leaderboard.onChampion = (boards) => {
 setXpBoost(() => !game.active ? 1 : (game.rules.gn && gameNight.isLive() ? GN_XP : 1) * (game.rules.mode === featuredMode() ? FEATURED_XP : 1));
 // Finishing a match in a Game Night server earns the Midnight wrap (once).
 game.onMatchTracked = () => {
+  invites.matchDone(settings.name);
   if (game.rules.mode === featuredMode()) {
     const paid = claimFeatured();
     if (paid) game.hud.mission(`Featured mode: ${MODES[game.rules.mode].name}`, `+${paid} tokens`, 'DAILY FEATURED');
@@ -1504,7 +1531,7 @@ $('btn-hostpanel').onclick = () => {
 $('hp-public').onchange = () => setPublic($('hp-public').checked);
 game.onKicked = () => leave('You were kicked from the match.');
 $('btn-copy').onclick = async () => {
-  const link = `${location.origin}${location.pathname}?lobby=${net ? net.code : ''}`;
+  const link = invites.link(location.origin + location.pathname, net ? net.code : '');
   try {
     await navigator.clipboard.writeText(link);
     $('btn-copy').textContent = 'Copied!';

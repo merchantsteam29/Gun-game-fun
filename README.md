@@ -213,6 +213,11 @@ the Servers screen (or in the menu sidebar). On iPhone / iPad: Safari → Share 
 - The owner sets the schedule (days, start time, length, time zone) in **Mod Panel → Announce**. Until then it's every
   day at 7 PM New York time for 2 hours.
 
+## Invite friends
+
+**Friends → Invite friends** gives you a link with your gamertag (the pause menu's **Copy invite** includes it too).
+When a new player opens it and finishes their first match, you both get 🪙 200, for up to 10 friends.
+
 ## Season pass
 
 A free 30-tier pass every 6 weeks (Season 1 **Ignition** started Monday 5 October 2026, then Season 2 **Frostbite**).
