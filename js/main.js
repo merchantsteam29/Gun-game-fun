@@ -1093,7 +1093,7 @@ function newNet() {
 // Highlight clips: on computers (not Low-end graphics), in real matches.
 function startHighlights() {
   highlights.resetMatch();
-  if (opts.highlights && !mobile && game.gfx !== 'potato' && net && !net.practice && !game.spectating) highlights.start(game.renderer.domElement);
+  if (opts.recordClips && !mobile && game.gfx !== 'potato' && net && !net.practice && !game.spectating) highlights.start(game.renderer.domElement);
 }
 game.onMoment = (m) => highlights.moment(m.score, m.label);
 game.onRendered = (now) => highlights.frame(now);

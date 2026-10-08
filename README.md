@@ -285,10 +285,9 @@ totals, capped to what's possible in a week; staff can take a player off the boa
 
 ## Highlights
 
-On computers the game keeps a short rolling recording of your view during matches. When you do something big
+If you turn on **Settings → Video → Record highlight clips** (off by default; computers only), the game keeps a short rolling recording of the game screen (never your camera) during matches. When you do something big
 (multi-kills, streaks, longshots, headshots, first blood…) it saves that moment, and the results screen shows **your best
-moment** of the match as a clip you can **Save** (WebM video) or **Share**. Turn it off in Settings → Video → Record
-highlights (it's off on phones and in Low-end graphics).
+moment** of the match as a clip you can **Save** (WebM video) or **Share**. Browsers may show a recording icon while it's on.
 
 ## HUD
 

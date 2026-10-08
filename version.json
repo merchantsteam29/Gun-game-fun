@@ -1,9 +1,8 @@
 {
-  "version": "2026.10.08.28",
+  "version": "2026.10.08.29",
   "notes": [
-    "Fixed bad lag in matches: highlight recording now uses a small 640x360 copy and one light encoder (it was encoding full-size video twice)",
-    "Highlight recording pauses when the game is in the background",
-    "Auto resolution changes less often, so no more hitches every few seconds"
+    "Highlight clips are now off by default (Settings > Video > Record highlight clips to turn them on)",
+    "The game never uses your camera: clips record only the game screen, but some browsers show a recording icon while they run"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",

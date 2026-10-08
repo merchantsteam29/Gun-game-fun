@@ -17,8 +17,8 @@ const DEFAULTS = {
   crossSize: 1,
   crossDot: true,
   showFps: false,
-  autoRes: true,
-  highlights: true,   // record a clip of your best moment each match (computers only: highlights.js)      // lower the resolution a little when frames drop (game.js)
+  autoRes: true,      // lower the resolution a little when frames drop (game.js)
+  recordClips: false, // opt-in highlight clips (highlights.js); off by default since browsers show a recording icon
   minimap: true,
   // PC-only extras from the secret Showroom (js/showroom.js)
   renderScale: 1,
