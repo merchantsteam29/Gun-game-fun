@@ -1,5 +1,6 @@
 import { moveBody, raycast, rayAABB } from './physics.js';
 import { WEAPONS } from './weapons.js';
+import { MAPS, boxes } from './maps.js';
 
 const WALK = 5.6, JUMP = 8, EYE = 1.62;
 const DIFF = {
@@ -189,7 +190,10 @@ export class Bot {
     this.stuckT += dt;
     if (this.stuckT > 0.8) {
       const moved = Math.hypot(b.pos.x - this.lastPos.x, b.pos.z - this.lastPos.z);
-      if (ml > 0.01 && moved < 0.35 && b.onGround) { b.vel.y = JUMP * L.s.jump; this.pathT = 0; this.goal = null; }
+      if (ml > 0.01 && moved < 0.35 && b.onGround) {
+        if (!(MAPS[L.s.map] && MAPS[L.s.map].voidY !== undefined)) b.vel.y = JUMP * L.s.jump;
+        this.pathT = 0; this.goal = null;
+      }
       this.lastPos.x = b.pos.x; this.lastPos.z = b.pos.z;
       this.stuckT = 0;
     }
@@ -197,6 +201,18 @@ export class Bot {
     const next = this.path && this.path[0];
     if (next && next.y - b.pos.y > 0.6 && b.onGround && Math.hypot(next.x - b.pos.x, next.z - b.pos.z) < 1.4) b.vel.y = JUMP * L.s.jump;
 
+    // Maps with a void (Sky Islands): don't walk off the edge, and steer back if airborne over nothing.
+    if (MAPS[L.s.map] && MAPS[L.s.map].voidY !== undefined) {
+      const groundAt = (x, z, below) => boxes.some((q) => x >= q.x0 && x <= q.x1 && z >= q.z0 && z <= q.z1 && q.y1 <= b.pos.y + 0.6 && q.y1 >= b.pos.y - below);
+      const sp = Math.hypot(b.vel.x, b.vel.z);
+      if (b.onGround) {
+        if (groundAt(b.pos.x, b.pos.z, 0.3)) this.lastSafe = { x: b.pos.x, z: b.pos.z };
+        if (sp > 0.1 && !groundAt(b.pos.x + (b.vel.x / sp) * 0.8, b.pos.z + (b.vel.z / sp) * 0.8, 3)) { b.vel.x = 0; b.vel.z = 0; this.strafe = -this.strafe; this.pathT = 0; }
+      } else if (this.lastSafe && !groundAt(b.pos.x, b.pos.z, 30)) {
+        const dx = this.lastSafe.x - b.pos.x, dz = this.lastSafe.z - b.pos.z, dl = Math.hypot(dx, dz) || 1;
+        b.vel.x = (dx / dl) * speed; b.vel.z = (dz / dl) * speed;
+      }
+    }
     moveBody(b, dt, 1.8);
     if (b.onGround && b.ground && b.ground.mat === 'pad') { b.vel.y = 14 * L.s.jump; b.onGround = false; }
     if (b.pos.y < -20) { const s = L.pickSpawn(p); b.pos.x = s.x; b.pos.y = s.y; b.pos.z = s.z; }

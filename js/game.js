@@ -1173,7 +1173,7 @@ export class Game {
       this.stepAcc += dt * hs * 0.36;
       if (this.stepAcc >= 1) { this.stepAcc = 0; sfx.step(this.sprinting ? 0.22 : 0.14); }
     }
-    if (me.pos.y < -20) me.pos.set(0, 3, 0);
+    if (me.pos.y < (MAPS[this.mapId].voidY !== undefined ? -60 : -20)) me.pos.set(0, 3, 0); // void maps: the host kills you first
   }
 
   // ---------- Weapons ----------

@@ -1074,6 +1074,9 @@ export class HostLogic {
       if (this.mode.hill) this.tickHill(rdt, now);
       if (this.s.mode === 'killconfirmed') this.tickTags(now);
       this.tickPickups(now);
+      // Maps with no floor under the edges (Sky Islands): falling off kills you.
+      const voidY = MAPS[this.s.map] && MAPS[this.s.map].voidY;
+      if (voidY !== undefined) for (const p of this.players.values()) if (p.alive && !p.dummy && p.st[1] < voidY) this.kill(p, p, 'fall', false);
       if (this.s.mode === 'rotation') this.tickRotation(now);
       if (this.flags) this.tickFlags(now);
       if (this.dom && this.phase === 'playing') this.tickDom(rdt);

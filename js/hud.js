@@ -16,7 +16,7 @@ const clanTag = (gt) => { const t = clans.tagOf(gt); return t ? `<span class="cl
 const roleIcon = (r) => (ROLE_INFO[r] ? `<b class="role-ico ${r}" title="${ROLE_INFO[r].label}">${ROLE_INFO[r].icon}</b>` : '');
 
 const $ = (id) => document.getElementById(id);
-const W_LABEL = SHORT;
+const W_LABEL = { ...SHORT, fall: 'Fell' };
 
 // Last week's #1 on the leaderboard
 const TROPHY = '<span class="trophy" title="Weekly champion">🏆</span>';

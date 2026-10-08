@@ -5,7 +5,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 // These arrays are mutated in place when the map changes so importers keep valid references.
 export const boxes = [];
 export const spawns = [];
-export const MAP_ORDER = ['warehouse', 'yard', 'town', 'pit', 'outpost', 'docks', 'arena', 'compound', 'rooftops', 'station', 'canyon', 'construction', 'castle', 'hangar', 'mall', 'temple', 'oilrig', 'subway'];
+export const MAP_ORDER = ['warehouse', 'yard', 'town', 'pit', 'outpost', 'docks', 'arena', 'compound', 'rooftops', 'station', 'canyon', 'construction', 'castle', 'hangar', 'mall', 'temple', 'oilrig', 'subway', 'skyislands', 'arctic', 'neonstreets'];
 // Short descriptions for the map pickers and the end-of-match vote.
 export const MAP_BLURB = {
   warehouse: 'Indoor · mezzanines', yard: 'Outdoor · containers', town: 'Rooftops · houses', pit: 'Small · jump pads',
@@ -14,6 +14,7 @@ export const MAP_BLURB = {
   station: 'Sci-fi · reactor', canyon: 'Mesas · bridge', construction: 'Floors · crane',
   castle: 'Keep · ramparts', hangar: 'Plane · catwalks', mall: 'Shops · 2 floors',
   temple: 'Pyramid · jungle', oilrig: 'Decks · derrick', subway: 'Tracks · platforms',
+  skyislands: 'Floating · don\'t fall', arctic: 'Snow · big base', neonstreets: 'Night city · highway',
 };
 // Render quality (lowered on mobile before any map is built).
 export const quality = { shadowSize: 2048, pointLights: true };
@@ -1058,6 +1059,186 @@ export const MAPS = {
       const stripe = [];
       for (const s of [-1, 1]) stripe.push(new THREE.BoxGeometry(60, 0.02, 0.35).translate(0, 0.011, s * 4.25));
       addMerged(g, stripe, M.roadLine);
+    },
+  },
+
+  // Floating islands joined by bridges, with jump pads up to a perch over the middle. Falling
+  // off the islands (below voidY) kills you.
+  skyislands: {
+    name: 'Sky Islands',
+    theme: { sky: '#8fc4ef', fog: [55, 150], hemi: ['#f2f8ff', '#5d7a4a', 2.1], sun: ['#fff4dc', 2.5, [24, 42, 10]] },
+    bounds: 34,
+    voidY: -9,
+    hills: [[0, 0, 0, 3.5], [-22, 0, 0, 3], [0, 0, 22, 3], [22, 0, 0, 3], [0, 0, -22, 3]],
+    build({ add, add2, crate2, spawn2, stairs }) {
+      // Islands: grass tops on rock bases
+      add(-7, -2.5, -7, 7, 0, 7, 'grass');
+      add(-6, -6, -6, 6, -2.5, 6, 'rockGray');
+      add2(-29, -2.5, -7, -15, 0, 7, 'grass');
+      add2(-28, -6, -6, -16, -2.5, 6, 'rockGray');
+      add2(-6, -2.5, 15, 6, 0, 29, 'grass');
+      add2(-5, -6, 16, 5, -2.5, 28, 'rockGray');
+      // Small high corner islands (reached by stairs from the side islands)
+      add2(-28, -1, 17, -18, 2.5, 27, 'grass');
+      add2(-27, -5, 18, -19, -1, 26, 'rockGray');
+      stairs(-21, 7, -18.5, 17, 0, 2.5, '+z', 'wood');
+      // Bridges (rails on one side only, so you can still be knocked off)
+      add2(-15, -0.3, -1.3, -7, 0, 1.3, 'wood');
+      add2(-15, 0, -1.4, -7, 0.9, -1.3, 'rail');
+      add2(-1.3, -0.3, 7, 1.3, 0, 15, 'wood');
+      add2(1.3, 0, 7, 1.4, 0.9, 15, 'rail');
+      add2(-18, 2.2, 22, -6, 2.5, 23.6, 'wood'); // high walkway from the corner to the top island
+      add2(-18, 2.5, 21.9, -6, 3.3, 22, 'rail');
+      add2(-18, 2.5, 23.6, -6, 3.3, 23.7, 'rail');
+      stairs(-6, 21.6, -3, 23.6, 0, 2.5, '-x', 'wood');
+      // Perch above the middle, reached by jump pads
+      add(-2.5, 3.6, -2.5, 2.5, 4, 2.5, 'grate');
+      add(-2.5, 4, -2.5, 2.5, 4.8, -2.4, 'rail');
+      add(-2.5, 4, 2.4, 2.5, 4.8, 2.5, 'rail');
+      add2(3.4, 0, -0.6, 4.6, 0.15, 0.6, 'pad');
+      // Ruins and rocks for cover
+      add2(-4, 0, -5, -1, 2.2, -4.4, 'castleStone');
+      add2(-5.5, 0, 1, -5, 1.4, 4, 'castleStone');
+      add2(-26, 0, -5, -24, 1.6, -3, 'rockGray');
+      add2(-20, 0, 2, -18.5, 2.4, 5.5, 'castleStone');
+      add2(-25, 0, 3, -24.4, 2.4, 6, 'castleStone');
+      add2(-4, 0, 19, -1.5, 1.3, 20, 'rockGray');
+      add2(2, 0, 24, 4.5, 2, 25, 'castleStone');
+      crate2(-17, -5); crate2(-17, -5, 1.2); crate2(-3, 26); crate2(-22, 24, 2.5);
+      for (const [x, y, z] of [[-25, 0, 0], [-22, 0, -5], [-22, 0, 5], [0, 0, 25], [-4, 0, 17], [3, 0, 21], [-24, 2.5, 22], [-5, 0, -3]]) spawn2(x, y, z);
+    },
+    decor(g, M) {
+      // Clouds below the islands
+      const clouds = [];
+      for (const [x, y, z, r] of [[-32, -14, 10, 5], [30, -16, -14, 6], [8, -18, 30, 5], [-12, -15, -30, 6], [0, -20, 0, 8], [34, -12, 24, 4], [-30, -18, -24, 5]]) {
+        clouds.push(new THREE.SphereGeometry(r, 10, 8).scale(1.6, 0.5, 1).translate(x, y, z));
+        clouds.push(new THREE.SphereGeometry(r * 0.7, 10, 8).scale(1.4, 0.5, 1).translate(x + r, y + 0.5, z - r * 0.4));
+      }
+      addMerged(g, clouds, M.glass);
+      const trees = [];
+      for (const [x, z] of [[-27, -5], [27, 5], [-5, 27], [5, -27], [6, 5.5], [-6, -5.5]]) {
+        trees.push(new THREE.ConeGeometry(1.4, 3.4, 8).translate(x, 2.6, z));
+        trees.push(new THREE.CylinderGeometry(0.2, 0.25, 1.2, 6).translate(x, 0.6, z));
+      }
+      addMerged(g, trees, M.pine, true);
+    },
+  },
+
+  // A big snowy research base: labs, a radar tower, fuel tanks and a frozen lake in the middle.
+  arctic: {
+    name: 'Arctic Base',
+    theme: { sky: '#d3e1ec', fog: [40, 130], hemi: ['#f2f7ff', '#8e9cab', 2.0], sun: ['#ffffff', 2.3, [-24, 36, 20]] },
+    bounds: 38,
+    hills: [[0, 0, 0, 4], [-24, 0, -14, 3], [-8, 3.6, 22, 2.5], [24, 0, 14, 3], [8, 3.6, -22, 2.5]],
+    build({ add, add2, crate2, spawn2, stairs, building }) {
+      add(-38, -1, -30, 38, 0, 30, 'snow');
+      add(-38, 0, 29, 38, 4, 30, 'palisade');
+      add(-38, 0, -30, 38, 4, -29, 'palisade');
+      add(37, 0, -29, 38, 4, 29, 'palisade');
+      add(-38, 0, -29, -37, 4, 29, 'palisade');
+      // Frozen lake with ice blocks
+      add(-10, 0, -7, 10, 0.05, 7, 'ice');
+      add(-1.5, 0, -1.5, 1.5, 1.6, 1.5, 'iceBlock');
+      add2(-7, 0, -4, -5, 1.2, -2.5, 'iceBlock');
+      add2(-4, 0, 3, -2.5, 1, 5, 'iceBlock');
+      // Main labs with roof access
+      building(-30, -22, -18, -8, 3.3, [{ side: 'e', at: -15, w: 2 }, { side: 'n', at: -24, w: 2 }, { side: 'n', at: -20, w: 1.4, y0: 1.2, h: 0.8 }, { side: 's', at: -26, w: 1.8 }],
+        { mat: 'officeExt', roofMat: 'metalFloor', parapet: ['e', 's'] });
+      stairs(-32, -22, -30.2, -14, 0, 3.6, '+z', 'grate');
+      add2(-28, 0, -20, -26, 1, -18.6, 'console');
+      add2(-22, 0, -12, -20, 1, -10.6, 'console');
+      // Barracks
+      building(-16, 16, -2, 26, 3.3, [{ side: 's', at: -12, w: 2 }, { side: 's', at: -6, w: 2 }, { side: 'w', at: 21, w: 1.6 }],
+        { mat: 'bunkerWall', roofMat: 'metalFloor', parapet: ['n'] });
+      stairs(-2, 18, 0.5, 22, 0, 3.6, '-x', 'grate');
+      // Radar tower
+      add2(-33, 0, 14, -32.6, 6, 14.4, 'steelDark');
+      add2(-29.4, 0, 14, -29, 6, 14.4, 'steelDark');
+      add2(-33, 0, 17.6, -32.6, 6, 18, 'steelDark');
+      add2(-29.4, 0, 17.6, -29, 6, 18, 'steelDark');
+      add2(-33.2, 6, 13.8, -28.8, 6.3, 18.2, 'grate');
+      add2(-33.2, 6.3, 13.8, -28.8, 7.1, 13.9, 'rail');
+      stairs(-28.8, 14.6, -22, 17.4, 0, 6, '-x', 'grate');
+      // Fuel tanks, snowbanks and crates for cover
+      add2(-14, 0, -24, -10, 3, -20, 'tank');
+      add2(-8, 0, -26, -5, 2.4, -23, 'tank');
+      add2(-14, 0, 2, -11, 1, 3, 'snowBank');
+      add2(-20, 0, 6, -19, 1.1, 10, 'sandbag');
+      add2(-26, 0, 0, -22, 0.9, 0.8, 'snowBank');
+      add2(-12, 0, 10, -9, 1.2, 11, 'sandbag');
+      add2(-34, 0, -4, -32, 1.2, 4, 'sandbag');
+      add2(-2, 0, -14, 2, 1.1, -13, 'snowBank');
+      crate2(-16, -4); crate2(-16, -4, 1.2); crate2(-14.8, -4); crate2(-24, 10); crate2(-6, 12);
+      for (const [x, y, z] of [[-34, 0, -24], [-24, 0, -16], [-24, 3.6, -12], [-30, 6.3, 16], [-10, 0, 20], [-34, 0, 8], [-16, 0, -12], [-4, 0, -18], [-20, 0, 26], [-12, 0, 0]]) spawn2(x, y, z);
+    },
+    decor(g, M) {
+      const pines = [], dome = [];
+      for (const [x, z] of [[-35, 26], [35, -26], [-35, -26], [35, 26], [-20, 27.5], [20, -27.5], [-4, 27.5], [4, -27.5]]) {
+        pines.push(new THREE.ConeGeometry(1.8, 3.4, 8).translate(x, 3, z));
+        pines.push(new THREE.ConeGeometry(1.2, 2.4, 8).translate(x, 4.8, z));
+      }
+      addMerged(g, pines, M.pineSnow, true);
+      for (const s of [-1, 1]) dome.push(new THREE.SphereGeometry(1.6, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2).translate(s * -31, 6.3, s * 16));
+      addMerged(g, dome, M.glass);
+    },
+  },
+
+  // Night city blocks with alleys, shops you can go through, and a raised highway down the middle.
+  neonstreets: {
+    name: 'Neon Streets',
+    theme: { sky: '#161b33', fog: [35, 110], hemi: ['#a9b2ff', '#4a3a58', 2.6], sun: ['#d8dcff', 1.6, [16, 40, -12]], night: true },
+    bounds: 36,
+    hills: [[0, 4.4, 0, 3], [-22, 0, -12, 3], [-10, 0, 14, 3], [22, 0, 12, 3], [10, 0, -14, 3]],
+    build({ add, add2, crate2, spawn2, stairs, building }) {
+      add(-36, -1, -28, 36, 0, 28, 'asphalt');
+      add(-36, 0, 27, 36, 9, 28, 'brick');
+      add(-36, 0, -28, 36, 9, -27, 'brick');
+      add(35, 0, -27, 36, 9, 27, 'brick');
+      add(-36, 0, -27, -35, 9, 27, 'brick');
+      // Raised highway along the x axis, ramps at both ends
+      add(-18, 4, -2.5, 18, 4.4, 2.5, 'tarmac');
+      add(-18, 4.4, -2.6, 18, 5.2, -2.5, 'barrier');
+      add(-18, 4.4, 2.5, 18, 5.2, 2.6, 'barrier');
+      stairs(-30, -2.5, -18, 2.5, 0, 4.4, '+x', 'tarmac');
+      stairs(18, -2.5, 30, 2.5, 0, 4.4, '-x', 'tarmac');
+      for (const x of [-12, -4, 4, 12]) add(x - 0.6, 0, -0.6, x + 0.6, 4, 0.6, 'pillar');
+      // City blocks (shops you can walk through)
+      building(-33, -25, -22, -14, 4.5, [{ side: 'n', at: -27, w: 2.2 }, { side: 'e', at: -20, w: 2 }, { side: 'e', at: -17, w: 1.5, y0: 1.2, h: 1 }],
+        { mat: 'brick', roofMat: 'roof' });
+      building(-18, -25, -6, -16, 6, [{ side: 'n', at: -12, w: 2.2 }, { side: 'w', at: -20, w: 1.8 }],
+        { mat: 'neonWall', roofMat: 'metalFloor', parapet: ['s', 'w'] });
+      stairs(-6, -24, -3.5, -17, 0, 6, '-z', 'grate');
+      building(-33, 12, -20, 25, 5, [{ side: 's', at: -26, w: 2.2 }, { side: 'e', at: 18, w: 2 }, { side: 'e', at: 22, w: 1.5, y0: 1.2, h: 1 }],
+        { mat: 'brick', roofMat: 'roof' });
+      // Alley clutter and street cover
+      add2(-14, 0, 8, -10, 1.1, 9, 'barrier');
+      add2(-26, 0, 6, -24, 1.4, 8, 'crate');
+      add2(-20, 0, -10, -18, 2.4, -6, 'carRed');
+      add2(-8, 0, 7, -4, 1.5, 9, 'carBlue');
+      add2(-3, 0, -12, -1, 1.2, -8, 'barrier');
+      add2(-16, 0, 20, -12, 2.4, 22, 'containerBlue');
+      add2(-28, 0, -6, -27, 2.4, -4, 'kiosk');
+      crate2(-10, 18); crate2(-10, 18, 1.2); crate2(-30, 2); crate2(-8, -20);
+      for (const [x, y, z] of [[-33, 0, 0], [-28, 0, -20], [-12, 0, -20], [-12, 6.3, -20], [-26, 0, 18], [-6, 4.4, 0], [-20, 0, 3], [-6, 0, 24], [-30, 0, -10], [-14, 0, 12]]) spawn2(x, y, z);
+    },
+    decor(g, M) {
+      const pink = [], cyan = [], lamps = [], lines = [];
+      for (const s of [-1, 1]) {
+        pink.push(new THREE.BoxGeometry(5, 1.2, 0.08).translate(s * -27.5, 5.6, s * -13.9));
+        cyan.push(new THREE.BoxGeometry(0.08, 1, 4).translate(s * -5.9, 6.8, s * -20.5));
+        pink.push(new THREE.BoxGeometry(6, 1, 0.08).translate(s * -26.5, 6, s * 11.9));
+        cyan.push(new THREE.BoxGeometry(36, 0.08, 0.12).translate(0, 5.25, s * 2.55));
+      }
+      addMerged(g, pink, M.neonPink);
+      addMerged(g, cyan, M.neonCyan);
+      for (const [x, z] of [[-24, 4], [24, -4], [-8, -4], [8, 4], [-30, -24], [30, 24]]) {
+        lamps.push(new THREE.CylinderGeometry(0.08, 0.1, 4.5, 6).translate(x, 2.25, z));
+        lamps.push(new THREE.BoxGeometry(0.9, 0.12, 0.3).translate(x, 4.5, z));
+      }
+      addMerged(g, lamps, M.lamp);
+      for (let x = -34; x <= 34; x += 4) lines.push(new THREE.BoxGeometry(2, 0.02, 0.18).translate(x, 0.011, 6));
+      for (let x = -34; x <= 34; x += 4) lines.push(new THREE.BoxGeometry(2, 0.02, 0.18).translate(x, 0.011, -6));
+      addMerged(g, lines, M.roadLine);
     },
   },
 

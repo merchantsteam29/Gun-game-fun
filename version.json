@@ -1,9 +1,10 @@
 {
-  "version": "2026.10.08.18",
+  "version": "2026.10.08.19",
   "notes": [
-    "Custom rules: weapon restrictions (snipers, shotguns, pistols, melee, explosives only, or random) and one shot kills",
-    "12 rule presets like Moon knife fight, Pistol duel and Chaos; pick one when creating a server",
-    "Save your own presets and share them with a code"
+    "New map: Sky Islands, floating islands with bridges and jump pads (fall off and you die)",
+    "New map: Arctic Base, a big snowy research base with a frozen lake and a radar tower",
+    "New map: Neon Streets, night city blocks with a raised highway down the middle",
+    "Bots no longer walk off edges on maps with a drop"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",

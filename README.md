@@ -104,6 +104,9 @@ The lobby creator gets a **Host panel** button in the pause menu (Esc):
 | Jungle Temple | A stepped pyramid with a shrine on top and stairs on every side, a pillared plaza and mossy corner ruins |
 | Oil Rig | Offshore platform: drilling derrick in the middle, two raised decks (one with a helipad), containers and pipes |
 | Subway | Two platforms either side of a sunken track with parked trains, a footbridge over the tracks and steps down at the ends |
+| Sky Islands | Floating grass islands joined by bridges, high corner islands, and jump pads up to a perch over the middle. Fall off and you die |
+| Arctic Base | Big snowy research base: labs and barracks with roof access, a radar tower, fuel tanks and a frozen lake |
+| Neon Streets | Night city blocks with shops you can walk through, alleys, parked cars and a raised highway down the middle |
 
 ## Loadout
 
