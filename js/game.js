@@ -1063,7 +1063,7 @@ export class Game {
     this.updateDom(now);
 
     this.vm.update(dt, {
-      speed: hs, strafe, vy: me.vel.y, ads: this.ads, sprint: this.sprinting, onGround: me.onGround,
+      speed: hs, strafe, vy: me.vel.y, ads: this.ads, sprint: this.sprinting, onGround: me.onGround, crouch: me.crouch, slide: this.slideT > 0,
       reload: this.reloadT > 0 && w.reload ? 1 - this.reloadT / w.reload : -1,
       hasUtil: this.util > 0,
       spin: w.spinup ? this.spin / w.spinup : 0,

@@ -36,6 +36,43 @@ const UPPER = 0.38, FORE = 0.45;
 
 const _v = new THREE.Vector3(), _e = new THREE.Vector3(), _h = new THREE.Vector3();
 
+// A damped spring on 3 axes (semi-implicit Euler). Kick it with impulses (v += …) or give it a
+// target; it overshoots a little and settles, which is what makes motion feel weighty.
+class Spring3 {
+  constructor(k, d) { this.k = k; this.d = d; this.x = new THREE.Vector3(); this.v = new THREE.Vector3(); this.target = new THREE.Vector3(); }
+  step(dt) {
+    const n = dt > 1 / 120 ? Math.ceil(dt * 120) : 1, h = dt / n; // substeps keep stiff springs stable
+    for (let i = 0; i < n; i++) {
+      this.v.x += ((this.target.x - this.x.x) * this.k - this.v.x * this.d) * h;
+      this.v.y += ((this.target.y - this.x.y) * this.k - this.v.y * this.d) * h;
+      this.v.z += ((this.target.z - this.x.z) * this.k - this.v.z * this.d) * h;
+      this.x.addScaledVector(this.v, h);
+    }
+    return this.x;
+  }
+}
+
+// Recoil feel per weapon class: back (m/s impulse), climb (rad/s), roll / yaw scatter.
+const RECOIL = {
+  pistol: { back: 1.15, up: 0.3, climb: 3.1, roll: 1.5, yaw: 1.0 },
+  smg: { back: 0.6, up: 0.15, climb: 1.0, roll: 1.0, yaw: 0.9 },
+  rifle: { back: 0.85, up: 0.2, climb: 1.6, roll: 1.2, yaw: 0.8 },
+  lmg: { back: 0.9, up: 0.22, climb: 1.4, roll: 1.6, yaw: 1.2 },
+  shotgun: { back: 2.0, up: 0.5, climb: 5.2, roll: 2.4, yaw: 1.2 },
+  sniper: { back: 2.3, up: 0.55, climb: 5.7, roll: 1.8, yaw: 0.8 },
+  launcher: { back: 1.7, up: 0.45, climb: 3.9, roll: 1.8, yaw: 1.0 },
+};
+function recoilClass(w) {
+  if (w.type === 'proj') return 'launcher';
+  if (w.pellets > 1) return 'shotgun';
+  if (['sniper', 'amr', 'railgun', 'dmr', 'crossbow', 'harpoon'].includes(w.id)) return 'sniper';
+  if (['lmg', 'minigun'].includes(w.id)) return 'lmg';
+  if (['smg', 'pdw', 'vector', 'microsmg', 'mpistol'].includes(w.id)) return 'smg';
+  if (['pistol', 'bpistol', 'handcannon', 'revolver', 'autorev', 'flare', 'nailgun'].includes(w.id)) return 'pistol';
+  return 'rifle';
+}
+const easeOutBack = (t) => { const c = 1.6; return 1 + (c + 1) * (t - 1) ** 3 + c * (t - 1) ** 2; };
+
 // First-person weapon + arms, rendered in its own scene on top of the world so it never clips walls.
 export class Viewmodel {
   constructor() {
@@ -106,6 +143,14 @@ export class Viewmodel {
     this.cylTarget = 0;
     this.bobT = 0;
     this.sway = new THREE.Vector2();
+    // Springs: recoil position / rotation, look inertia, body motion (jump / land / impacts).
+    this.rp = new Spring3(300, 20);
+    this.rr = new Spring3(240, 16);
+    this.sw = new Spring3(150, 15);
+    this.mv = new Spring3(110, 12);
+    this.lookAcc = new THREE.Vector2();
+    this.wasGround = true;
+    this.reloadJolt = false;
     this.pos = new THREE.Vector3(...HIP.ar);
     this.spinAngle = 0;
     this.rot = new THREE.Vector3();
@@ -183,6 +228,13 @@ export class Viewmodel {
     const big = w.type === 'proj' || ['shotgun', 'sniper', 'revolver', 'sawedoff', 'handcannon', 'dmr', 'doublebarrel', 'railgun', 'amr', 'autoshot', 'slug', 'autorev'].includes(w.id);
     this.kick = Math.min(1.4, this.kick + (big ? 1 : 0.45));
     this.kickYaw = (Math.random() - 0.5) * (big ? 0.12 : 0.05);
+    const R = RECOIL[recoilClass(w)], ads = 1 - this.adsT * 0.45, r = () => Math.random() - 0.5;
+    this.rp.v.z += R.back * ads;
+    this.rp.v.y += R.up * ads;
+    this.rp.v.x += r() * R.back * 0.25;
+    this.rr.v.x += R.climb * ads;
+    this.rr.v.y += r() * R.yaw;
+    this.rr.v.z += r() * R.roll;
     this.flashT = w.quiet ? 0 : 0.05; // suppressors hide the flash
     this.flash.rotation.z = Math.random() * Math.PI;
     if (w.id === 'revolver') this.cylTarget += Math.PI / 3;
@@ -220,9 +272,14 @@ export class Viewmodel {
 
   inspect() { if (!this.anim && !this.next && this.raiseT <= 0) this.inspectT = 0; }
   cancelInspect() { this.inspectT = -1; }
-  landed(k) { this.land = Math.max(this.land, k); }
+  landed(k) {
+    this.land = Math.max(this.land, k);
+    this.mv.v.y -= 0.6 * k;
+    this.rr.v.x -= 1.0 * k;
+  }
 
   look(dx, dy) {
+    this.lookAcc.x += dx; this.lookAcc.y += dy;
     this.sway.x = THREE.MathUtils.clamp(this.sway.x - dx * 0.0004, -0.05, 0.05);
     this.sway.y = THREE.MathUtils.clamp(this.sway.y + dy * 0.0004, -0.05, 0.05);
   }
@@ -255,6 +312,18 @@ export class Viewmodel {
     this.cylAngle += (this.cylTarget - this.cylAngle) * Math.min(1, dt * 18);
     if (s.reload >= 0 || s.sprint) this.inspectT = -1;
 
+    // ----- Inertia, jump / land -----
+    // The gun lags behind where you look (and rolls into turns), lifts as you jump and drops
+    // into a bounce when you land.
+    const ld = Math.max(dt, 1 / 240);
+    this.sw.target.set(THREE.MathUtils.clamp(this.lookAcc.y / ld * 0.00006, -0.12, 0.12), THREE.MathUtils.clamp(-this.lookAcc.x / ld * 0.00006, -0.14, 0.14), THREE.MathUtils.clamp(-this.lookAcc.x / ld * 0.00009, -0.18, 0.18));
+    this.sw.target.multiplyScalar(1 - this.adsT * 0.7);
+    this.lookAcc.set(0, 0);
+    if (this.wasGround && !s.onGround && s.vy > 1) { this.mv.v.y += 0.3; this.rr.v.x += 0.6; }
+    this.wasGround = s.onGround;
+    this.mv.target.set(0, s.onGround ? 0 : THREE.MathUtils.clamp(-s.vy * 0.003, -0.025, 0.02), 0);
+    this.rp.step(dt); this.rr.step(dt); this.sw.step(dt); this.mv.step(dt);
+
     // ----- Base pose -----
     const tp = this.tPos.fromArray(HIP[id] || HIP.ar);
     const tr = this.tRot.set(0, 0, 0);
@@ -262,22 +331,36 @@ export class Viewmodel {
     tp.lerp(_v.fromArray(m.ads), this.adsT);
     tr.multiplyScalar(1 - this.adsT);
 
+    // Walk / run: a figure-8 (side to side once per stride, down on every step) with a little
+    // roll; bigger and faster when sprinting. Idle: slow breathing.
     const amt = Math.min(1, s.speed / 6) * (s.onGround ? 1 : 0.15) * (1 - this.adsT * 0.85) * (s.bob ?? 1);
-    this.bobT += dt * (4 + s.speed * 1.6);
-    const big = 1 + this.sprintT * 0.8;
-    tp.x += Math.sin(this.bobT) * 0.012 * amt * big + this.sway.x;
-    tp.y += -Math.abs(Math.cos(this.bobT)) * 0.016 * amt * big + this.sway.y + Math.sin(this.t * 1.7) * 0.003 * (1 - this.adsT);
-    tr.z += Math.sin(this.bobT) * 0.02 * amt - s.strafe * 0.07 * (1 - this.adsT * 0.7);
+    this.bobT += dt * (3.6 + s.speed * 1.45) * (1 + this.sprintT * 0.15);
+    const big = 1 + this.sprintT * 0.9;
+    const breathe = (1 - amt) * (1 - this.adsT * 0.8);
+    tp.x += Math.sin(this.bobT) * 0.013 * amt * big + this.sway.x;
+    tp.y += (Math.cos(this.bobT * 2) - 1) * 0.008 * amt * big + this.sway.y + Math.sin(this.t * 1.6) * 0.0035 * breathe;
+    tr.x += Math.sin(this.t * 1.6 + 0.6) * 0.008 * breathe + (Math.cos(this.bobT * 2) - 1) * 0.012 * amt;
+    tr.z += Math.sin(this.bobT) * 0.025 * amt * big - s.strafe * 0.07 * (1 - this.adsT * 0.7);
+    tr.y += Math.sin(this.bobT) * 0.012 * amt;
+    // Crouch: lower and cant the gun a touch; slide: tilt it hard.
+    const cr = (this.crouchT = (this.crouchT || 0) + ((s.crouch ? 1 : 0) - (this.crouchT || 0)) * Math.min(1, dt * 10));
+    const sl = (this.slideTk = (this.slideTk || 0) + ((s.slide ? 1 : 0) - (this.slideTk || 0)) * Math.min(1, dt * 12));
+    tp.y -= 0.012 * cr * (1 - this.adsT); tr.z += 0.07 * cr * (1 - this.adsT);
+    tp.x -= 0.035 * sl; tp.y -= 0.02 * sl; tr.z += 0.32 * sl * (1 - this.adsT * 0.6); tr.y -= 0.08 * sl;
     tr.y += this.sway.x * 1.5;
     tp.y -= THREE.MathUtils.clamp(s.vy * 0.005, -0.04, 0.04) + this.land * 0.07;
     tr.x -= this.land * 0.08;
 
-    tp.x -= this.sprintT * 0.06; tp.y -= this.sprintT * 0.04; tp.z += this.sprintT * 0.03;
-    tr.x -= this.sprintT * 0.3; tr.y += this.sprintT * 0.65; tr.z += this.sprintT * 0.3;
+    const sp = this.sprintT * this.sprintT * (3 - 2 * this.sprintT); // eased into / out of the sprint pose
+    tp.x -= sp * 0.06; tp.y -= sp * 0.045; tp.z += sp * 0.035;
+    tr.x -= sp * 0.32; tr.y += sp * 0.68; tr.z += sp * 0.32;
 
-    // Draw (raiseT 1 -> 0) eases up from below; holster (lower 0 -> 1) tips the weapon away.
-    const e = this.raiseT * this.raiseT * (3 - 2 * this.raiseT);
-    tp.y -= 0.32 * e; tr.x -= 0.9 * e; tr.z += 0.4 * e;
+    // Draw (raiseT 1 -> 0): guns swing up from below and settle with a small overshoot; melee
+    // weapons sweep in from the side. Holster (lower 0 -> 1) tips the weapon away.
+    const meleeW = w.type === 'melee';
+    const up = easeOutBack(1 - this.raiseT), e = 1 - up;
+    if (meleeW) { tp.x += 0.12 * e; tp.y -= 0.2 * e; tr.y -= 0.9 * e; tr.z -= 0.5 * e; }
+    else { tp.y -= 0.32 * e; tr.x -= 0.9 * e; tr.z += 0.45 * e; tr.y += 0.15 * e; }
     if (lower > 0) {
       const l = lower * lower;
       tp.y -= 0.34 * l; tp.x += 0.05 * l; tr.x -= 0.8 * l; tr.z -= 0.5 * l;
@@ -301,7 +384,11 @@ export class Viewmodel {
       const p = s.reload;
       leftP = p;
       leftKeys = reloadPose(w.reloadStyle, p, P, tp, tr);
-    }
+      const roll = bump(p, 0.04, 0.96);
+      tr.z += 0.22 * roll; tp.y -= 0.02 * roll; tr.x += 0.05 * roll;
+      if (p > 0.6 && !this.reloadJolt) { this.reloadJolt = true; this.rr.v.x -= 1.2; this.rp.v.y += 0.3; } // mag seated
+    } else this.reloadJolt = false;
+    if (s.reload >= 0 && s.reload < 0.05) this.reloadJolt = false;
 
     // ----- Post-shot cycle (bolt / pump) -----
     if (this.cycleAnim) {
@@ -332,6 +419,7 @@ export class Viewmodel {
       const a = this.anim;
       a.t += dt;
       const p = Math.min(1, a.t / a.dur);
+      if (!a.hit && ((a.name === 'slash' && p > 0.4) || (a.name === 'chop' && p > 0.45))) { a.hit = true; this.rr.v.z -= 1.5 * (a.side || 1); this.rp.v.z -= 0.6; }
       if (a.name === 'slash') {
         const wind = seg(p, 0, 0.22) * (1 - seg(p, 0.22, 0.4));
         const sl = seg(p, 0.22, 0.48) * (1 - seg(p, 0.6, 1));
@@ -374,10 +462,13 @@ export class Viewmodel {
       this.inspectT += dt;
       const p = this.inspectT / 2.4;
       if (p >= 1) this.inspectT = -1;
-      const a = seg(p, 0.05, 0.25) * (1 - seg(p, 0.45, 0.6));
-      const b = seg(p, 0.5, 0.65) * (1 - seg(p, 0.85, 1));
-      tr.y -= 0.9 * a; tr.z += 0.5 * a; tp.x -= 0.08 * a; tp.z += 0.05 * a;
-      tr.x += 0.6 * b; tr.z -= 0.4 * b; tp.y += 0.05 * b;
+      // Turn it to show the side, flip to the top, then back to the hands with a settle.
+      const a = seg(p, 0.04, 0.22) * (1 - seg(p, 0.4, 0.52));
+      const b = seg(p, 0.45, 0.6) * (1 - seg(p, 0.76, 0.9));
+      const c = seg(p, 0.86, 0.95) * (1 - seg(p, 0.95, 1));
+      tr.y -= 1.0 * a; tr.z += 0.55 * a; tp.x -= 0.09 * a; tp.z += 0.06 * a; tp.y += 0.02 * a;
+      tr.x += 0.7 * b; tr.z -= 0.5 * b; tp.y += 0.06 * b; tp.x -= 0.03 * b;
+      tr.x -= 0.08 * c;
     }
 
     // ----- Smooth + recoil -----
@@ -386,10 +477,9 @@ export class Viewmodel {
     this.rot.lerp(tr, k);
     const h = m.holder;
     const kick = this.kick * (1 - this.adsT * 0.5);
-    h.position.copy(this.pos);
-    h.position.z += kick * 0.055;
-    h.position.y += kick * 0.01;
-    h.rotation.set(this.rot.x + kick * 0.14, this.rot.y + this.kickYaw * this.kick, this.rot.z);
+    h.position.copy(this.pos).add(this.rp.x).add(this.mv.x);
+    h.position.z += kick * 0.02;
+    h.rotation.set(this.rot.x + this.rr.x.x + this.sw.x.x, this.rot.y + this.rr.x.y + this.sw.x.y, this.rot.z + this.rr.x.z + this.sw.x.z);
 
     if (P.slide) P.slide.position.z = P.slide.userData.base.z + Math.min(1, this.kick) * 0.035;
     if (P.bolt && !this.cycleAnim && s.reload < 0) P.bolt.position.z = P.bolt.userData.base.z + Math.min(1, this.kick) * 0.03;

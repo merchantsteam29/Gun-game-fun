@@ -1,8 +1,9 @@
 {
-  "version": "2026.10.08.37",
+  "version": "2026.10.08.38",
   "notes": [
-    "Fixed false cheat reports: kills on bots no longer count toward suspicious-stats flags",
-    "Auto-flags now need 25+ kills on real players, skip Gun Game, and never flag staff or the host"
+    "New first-person animations: weighty spring recoil that differs per weapon type (pistol snap, shotgun punch, sniper kick)",
+    "Your gun now trails and rolls when you turn, lifts when you jump and bounces when you land",
+    "Smoother walk/run bob and breathing, crouch and slide tilt, a better draw, reload, inspect and melee follow-through"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",
