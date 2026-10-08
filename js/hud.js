@@ -369,9 +369,24 @@ export class Hud {
   // info: { scores, myId, mode, title, now, secs, nextMap, mvp, showMvp, vote, onVote }
   end(show, info = {}) {
     $('endscreen').classList.toggle('hidden', !show);
-    if (!show) { this.lastEnd = this.lastVote = this.lastMvp = this.lastXp = this.lastSr = ''; return; }
+    if (!show) { this.lastEnd = this.lastVote = this.lastMvp = this.lastXp = this.lastSr = this.lastHl = ''; $('end-hl').innerHTML = ''; return; }
     const { scores = [], myId, mode, title, now, secs, nextMap, mvp, showMvp, vote } = info;
     $('end-title').textContent = title || 'MATCH OVER';
+    // Your best moment (highlights.js): the clip with download / share
+    const hk = info.highlight ? info.highlight.url : '';
+    if (hk !== this.lastHl) {
+      this.lastHl = hk;
+      const h = info.highlight;
+      $('end-hl').innerHTML = h ? `<div class="hl-card"><video src="${h.url}" autoplay muted loop playsinline></video>
+        <div class="hl-side"><small>YOUR BEST MOMENT</small><b>${esc(h.label)}</b>
+        <a class="hl-btn" href="${h.url}" download="gun-game-3d-${esc(h.label.toLowerCase().replace(/[^a-z0-9]+/g, '-'))}.${h.ext}">⬇ Save clip</a>
+        ${navigator.canShare ? '<button class="hl-btn" data-hlshare>↗ Share</button>' : ''}</div></div>` : '';
+      const sh = $('end-hl').querySelector('[data-hlshare]');
+      if (sh && h) sh.onclick = async () => {
+        const file = new File([h.blob], `gun-game-3d-highlight.${h.ext}`, { type: h.blob.type });
+        try { if (navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title: 'Gun Game 3D', text: `${h.label} in Gun Game 3D!` }); } catch { /* cancelled */ }
+      };
+    }
     // Ranked: rating change
     const rk = info.ranked ? JSON.stringify(info.ranked) : '';
     if (rk !== this.lastSr) {

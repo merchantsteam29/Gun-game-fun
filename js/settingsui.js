@@ -48,6 +48,7 @@ const TABS = [
     { key: 'bobbing', label: 'View bobbing', type: 'range', min: 0, max: 1.5, step: 0.05, fmt: pct },
     { special: 'graphics' },
     { key: 'autoRes', label: 'Auto resolution', hint: 'Lowers the resolution a little when the game slows down, so it stays smooth', type: 'check' },
+    { key: 'highlights', label: 'Record highlights', hint: 'Keeps a short clip of your best moment each match to watch, save or share (computers only; off in Low-end graphics)', type: 'check' },
     { key: 'showFps', label: 'Show FPS counter', type: 'check' },
   ] },
   { name: 'HUD & Audio', rows: [

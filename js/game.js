@@ -12,7 +12,8 @@ import { RemotePlayer, netClock } from './remote.js';
 import { Effects } from './effects.js';
 import { Hud } from './hud.js';
 import { sfx } from './audio.js';
-import { medalsFor } from './medals.js';
+import { medalsFor, MEDALS } from './medals.js';
+import { momentOf } from './highlights.js';
 import { binds, actionOf, mouseCode } from './binds.js';
 import { buildProjectile, modelQuality } from './models.js';
 import { clamp, esc, store } from './util.js';
@@ -704,6 +705,7 @@ export class Game {
         break;
       case 'start':
         this.streaks.clear();
+        if (this.onMatchStart) this.onMatchStart();
         this.matchXp = 0;
         this.rankRes = null;
         // The mouse was freed for the map vote: offer "Resume" to get back in.
@@ -808,10 +810,12 @@ export class Game {
         const revenge = m.v === this.lastKiller;
         const dist = this.remotes.get(m.v) ? this.remotes.get(m.v).pos.distanceTo(this.me.pos) : 0;
         const explosive = ['gl', 'rocket', 'flare', 'frag', 'sticky', 'vortex'].includes(m.w);
-        this.hud.medals(medalsFor({
+        const medalIds = medalsFor({
           head: !!m.head, melee: !!W && W.type === 'melee', explosive, dist, revenge,
           multi: this.multi, streak: this.lifeKills, firstBlood: !!m.fb, victimStreak,
-        }), { longshot: `${Math.round(dist)} m` });
+        });
+        this.hud.medals(medalIds, { longshot: `${Math.round(dist)} m` });
+        if (!practice && this.onMoment) this.onMoment(momentOf(medalIds, MEDALS, dist)); // highlight clip
         if (revenge) this.lastKiller = null; // one REVENGE per death
         if (!practice) track.kill({
           weapon: m.w, weaponType: W && W.type, head: !!m.head, mode: this.rules.mode,
@@ -2210,6 +2214,7 @@ export class Game {
         vote: e.vote, onVote: (i) => this.voteMap(i),
         xp: this.spectating ? null : { gained: this.matchXp, lv: myLevel() },
         ranked: this.rankRes,
+        highlight: this.highlight || null,
       });
     }
   }

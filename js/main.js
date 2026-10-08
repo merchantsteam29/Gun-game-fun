@@ -35,6 +35,7 @@ import { invites, INVITE_TOKENS, MAX_INVITES } from './invites.js';
 import { RULE_PRESETS, presetRules, savedPresets, WEAPON_RULES } from './rulesets.js';
 import { myRanked, srBadge, RANKED_MATCH, PLACEMENTS, divisionOf } from './ranked.js';
 import { tutorial, tutorialDone, TUTORIAL_TOKENS } from './tutorial.js';
+import { highlights } from './highlights.js';
 import { addTokens } from './missions.js';
 import { addXp } from './progress.js';
 import { leaderboard, BOARDS, weekEnds, CHAMP_TOKENS } from './leaderboard.js';
@@ -1089,7 +1090,17 @@ function newNet() {
   return n;
 }
 
+// Highlight clips: on computers (not Low-end graphics), in real matches.
+function startHighlights() {
+  highlights.resetMatch();
+  if (opts.highlights && !mobile && game.gfx !== 'potato' && net && !net.practice && !game.spectating) highlights.start(game.renderer.domElement);
+}
+game.onMoment = (m) => highlights.moment(m.score, m.label);
+game.onMatchStart = () => highlights.resetMatch();
+highlights.onChange = () => { game.highlight = highlights.best; };
+
 function enterGame() {
+  setTimeout(startHighlights, 0);
   $('menu').classList.add('hidden');
   if (!game.spectating && !net.practice) social.setWhere('lobby', net.code); // friends see you're in a match and can join
   $('pause-code').textContent = net.code;
@@ -1578,6 +1589,8 @@ async function joinLobby(spectateArg = false) {
 }
 
 function leave(reason) {
+  highlights.stop();
+  highlights.resetMatch();
   if (tutorial.active || !$('tutorial').classList.contains('hidden')) tutorial.stop();
   if (hosting) { announcer.stop(); hosting = null; }
   if (net) { net.destroy(); net = null; }

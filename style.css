@@ -1609,3 +1609,13 @@ body.mobile #tutorial b { font-size: 16px; }
   padding: 10px 14px; background: rgba(8,10,14,0.92); border: 1px solid var(--accent); border-radius: 10px; font-size: 13px; max-width: 94vw; flex-wrap: wrap; }
 .slow-tip button { padding: 6px 12px; }
 .ac-flag { color: var(--danger); font-style: normal; font-size: 11px; font-weight: 700; }
+
+/* Highlight clip on the results screen */
+#end-hl:empty { display: none; }
+.hl-card { display: flex; gap: 12px; align-items: center; margin: 4px auto 10px; max-width: 520px; padding: 8px; border: 1px solid var(--line-2); border-radius: 8px; background: rgba(0,0,0,0.35); }
+.hl-card video { width: 220px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 6px; background: #000; }
+.hl-side { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.hl-side small { font-size: 10px; letter-spacing: 2px; color: var(--accent); font-weight: 700; }
+.hl-side b { font-size: 17px; }
+.hl-btn { padding: 6px 12px; font-size: 12px; border: 1px solid var(--accent); border-radius: 6px; color: var(--accent); background: var(--accent-soft); text-decoration: none; font-family: inherit; cursor: pointer; }
+body.mobile .hl-card video { width: 150px; }

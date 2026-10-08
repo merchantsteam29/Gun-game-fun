@@ -283,6 +283,13 @@ scoreboard and results), plus 500 tokens and the **Weekly Champion** wrap. Each 
 totals, capped to what's possible in a week; staff can take a player off the board from the Mod Panel
 (**Hide from leaderboard**).
 
+## Highlights
+
+On computers the game keeps a short rolling recording of your view during matches. When you do something big
+(multi-kills, streaks, longshots, headshots, first blood…) it saves that moment, and the results screen shows **your best
+moment** of the match as a clip you can **Save** (WebM video) or **Share**. Turn it off in Settings → Video → Record
+highlights (it's off on phones and in Low-end graphics).
+
 ## HUD
 
 - **Minimap** (top-left; top-right on phones and tablets): rotates with you and shows the map layout, teammates (blue
