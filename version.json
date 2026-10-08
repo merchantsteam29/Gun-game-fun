@@ -1,9 +1,9 @@
 {
-  "version": "2026.10.08.16",
+  "version": "2026.10.08.17",
   "notes": [
-    "Clans: create one with a [TAG], or ask to join; the leader accepts members",
-    "Your clan tag shows before your name in matches",
-    "Clan chat, and a Clans tab on the weekly leaderboard"
+    "Map pickups: health packs, ammo crates and a power weapon in the middle of the map",
+    "Power weapon (Railgun, Minigun, Rocket Launcher or Heavy Sniper) spawns every 90 seconds; everyone sees who grabs it",
+    "Hosts can turn pickups off in the host panel"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",

@@ -12,6 +12,7 @@ const RULES = [
   { key: 'infiniteAmmo', label: 'Infinite ammo & grenades', type: 'check' },
   { key: 'headshotsOnly', label: 'Headshots only (guns)', type: 'check' },
   { key: 'friendlyFire', label: 'Friendly fire (TDM)', type: 'check' },
+  { key: 'pickups', label: 'Map pickups (health, ammo, power weapon)', type: 'check' },
 ];
 const PHYSICS = [
   { key: 'gameSpeed', label: 'Game speed', min: 0.25, max: 2, step: 0.05 },

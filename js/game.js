@@ -446,6 +446,8 @@ export class Game {
     this.lastSnapTm = 0; // a new host has a different clock
     this.clockInit = false;
     this.updateTags(0); // removes any dog tags left in the scene
+    this.pickupData = null;
+    this.updatePickups(0);
     this.updateFlags(0); // and CTF flags
     this.domData = null;
     this.updateDom(0); // and Domination zones
@@ -512,6 +514,22 @@ export class Game {
         if (this.slot !== 0) this.switchSlot(0);
         break;
       }
+      case 'pickup': // walked over a map pickup (host.js tickPickups)
+        if (!this.me.alive) break;
+        if (m.k === 'hp') { this.hud.say('+50 HEALTH'); sfx.pad(0.5); }
+        else if (m.k === 'ammo') {
+          for (const id of this.loadout) this.ammo[id] = this.W(id).mag || 0;
+          if (this.utilId) this.util = WEAPONS[this.utilId].count;
+          this.hud.say('AMMO REFILLED');
+          sfx.equip(0.8);
+        } else if (m.k === 'power' && WEAPONS[m.w]) {
+          this.loadout[0] = m.w;
+          this.ammo[m.w] = this.W(m.w).mag || 0;
+          this.switchSlot(0, true);
+          this.hud.say(`POWER WEAPON: ${WEAPONS[m.w].name.toUpperCase()}`);
+          sfx.equip(1);
+        }
+        break;
       case 'tagc':
         track.tag();
         sfx.pad(0.4);
@@ -589,6 +607,7 @@ export class Game {
         this.zone = m.z || null;
         this.infection = m.inf ?? 0;
         this.tagData = m.tg || null;
+        this.pickupData = m.pk || null;
         this.rot = m.rot || null;
         this.flagData = m.fl || null;
         this.domData = m.dom || null;
@@ -954,6 +973,7 @@ export class Game {
     this.updateProjectiles(dt);
     this.updateZone(now);
     this.updateTags(now);
+    this.updatePickups(now);
     this.updateFlags(now);
     this.updateDom(now);
 
@@ -1798,6 +1818,49 @@ export class Game {
       o.arc.geometry.setDrawRange(0, Math.round(48 * p) * 6);
       o.label.position.y = 2.9 + Math.sin(now * 0.003 + i) * 0.08;
     });
+  }
+
+  // Map pickups: health pack (white box, red cross), ammo crate, power weapon (glowing gold orb).
+  updatePickups(now) {
+    this.pickupMeshes = this.pickupMeshes || new Map();
+    const want = new Set();
+    for (const [id, kind, x, y, z] of this.pickupData || []) {
+      const key = id + kind;
+      want.add(key);
+      let m = this.pickupMeshes.get(key);
+      if (!m) {
+        m = new THREE.Group();
+        if (kind === 'hp') {
+          m.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.36, 0.36), new THREE.MeshStandardMaterial({ color: '#f2f2f2', roughness: 0.5 })));
+          const red = new THREE.MeshStandardMaterial({ color: '#e02424', emissive: '#e02424', emissiveIntensity: 0.6 });
+          const a = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.09, 0.38), red), b = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.3, 0.38), red);
+          m.add(a, b);
+        } else if (kind === 'ammo') {
+          m.add(new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.34, 0.38), new THREE.MeshStandardMaterial({ color: '#4d5a32', roughness: 0.8 })));
+          const band = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.08, 0.4), new THREE.MeshStandardMaterial({ color: '#ffb020', emissive: '#ffb020', emissiveIntensity: 0.5 }));
+          m.add(band);
+        } else {
+          const gold = new THREE.MeshStandardMaterial({ color: '#ffd23a', emissive: '#ffb020', emissiveIntensity: 1, metalness: 0.6, roughness: 0.25 });
+          m.add(new THREE.Mesh(new THREE.OctahedronGeometry(0.3), gold));
+          const ring = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.03, 6, 32), gold);
+          ring.rotation.x = Math.PI / 2;
+          ring.name = 'ring';
+          m.add(ring);
+        }
+        this.scene.add(m);
+        this.pickupMeshes.set(key, m);
+      }
+      m.position.set(x, y + 0.6 + Math.sin(now * 0.003 + id) * 0.1, z);
+      m.rotation.y = now * 0.0015 + id;
+      const ring = m.getObjectByName('ring');
+      if (ring) ring.scale.setScalar(1 + Math.sin(now * 0.005) * 0.15);
+    }
+    for (const [key, m] of this.pickupMeshes) {
+      if (want.has(key)) continue;
+      this.scene.remove(m);
+      m.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+      this.pickupMeshes.delete(key);
+    }
   }
 
   // Kill Confirmed dog tags: spinning, bobbing tags in the dropping team's color.

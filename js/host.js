@@ -86,10 +86,21 @@ export function defaultSettings(mode = 'ffa', map = 'warehouse') {
   return {
     mode, map, rotate: true,
     scoreLimit: MODES[mode].score, timeLimit: MODES[mode].time,
-    health: 100, respawn: 3, infiniteAmmo: false, headshotsOnly: false, friendlyFire: false,
+    health: 100, respawn: 3, infiniteAmmo: false, headshotsOnly: false, friendlyFire: false, pickups: true,
     ...PHYS_DEFAULTS, ...MODES[mode].preset,
   };
 }
+
+// Map pickups (on in the standard modes; the host can turn them off). Placed on the map's hills:
+// the power weapon on the main one, health and ammo on the others.
+const PICKUP_MODES = ['ffa', 'tdm', 'koth', 'ctf', 'dom', 'hardpoint', 'killconfirmed', 'bounty', 'lms'];
+export const POWER_WEAPONS = ['railgun', 'minigun', 'rocket', 'amr'];
+const PICKUP = {
+  hp: { respawn: 20000, first: 0 },
+  ammo: { respawn: 25000, first: 0 },
+  power: { respawn: 90000, first: 30000 },
+};
+const PICKUP_HEAL = 50;
 
 // Authoritative game state that runs inside the lobby creator's browser.
 // Movement and aiming are client-side; health, kills, spawns, modes and bots live here.
@@ -143,6 +154,7 @@ export class HostLogic {
     this.hillIdx = 0;
     this.hillUntil = Date.now() + HILL_SECONDS * 1000;
     this.hillState = 0; // 0 neutral, 1 held, 2 contested
+    this.setupPickups();
     this.hillHolder = null;
     this.infectAt = this.s.mode === 'infection' ? Date.now() + INFECT_DELAY_MS : 0;
     this.infected = false;
@@ -744,6 +756,45 @@ export class HostLogic {
     else this.sendTo(p.id, { t: 'ammo', add: n });
   }
 
+  // ---------- Map pickups ----------
+  pickupsOn() { return this.s.pickups !== false && PICKUP_MODES.includes(this.s.mode) && this.s.map !== 'range'; }
+
+  setupPickups() {
+    this.pickups = [];
+    const hills = (MAPS[this.s.map] && MAPS[this.s.map].hills) || [];
+    const now = Date.now();
+    hills.slice(0, 5).forEach(([x, y, z], i) => {
+      const kind = i === 0 ? 'power' : i % 2 ? 'hp' : 'ammo';
+      // Off-center pickups sit a little to the side of the hill so they don't block it.
+      this.pickups.push({ id: i, kind, x: i ? x + 1.5 : x, y, z, readyAt: now + PICKUP[kind].first, w: null });
+    });
+  }
+
+  tickPickups(now) {
+    if (this.phase !== 'playing' || !this.pickupsOn()) return;
+    for (const k of this.pickups) {
+      if (now < k.readyAt) continue;
+      if (k.kind === 'power' && !k.w) {
+        k.w = POWER_WEAPONS[(Math.random() * POWER_WEAPONS.length) | 0];
+        this.broadcast({ t: 'notice', text: `POWER WEAPON: ${(WEAPONS[k.w] || {}).name || k.w} at the center` });
+      }
+      for (const p of this.players.values()) {
+        if (!p.alive || Math.hypot(p.st[0] - k.x, p.st[2] - k.z) > 1.3 || Math.abs(p.st[1] - k.y) > 2) continue;
+        if (k.kind === 'hp') {
+          const max = this.maxHp(p);
+          if (p.hp >= max) continue; // full health: leave it for someone who needs it
+          p.hp = Math.min(max, p.hp + PICKUP_HEAL);
+        }
+        if (k.kind === 'power' && p.bot) p.bot.setLoadout([k.w, ...((p.bot.loadout || []).slice(1))]);
+        if (!p.bot) this.sendTo(p.id, { t: 'pickup', k: k.kind, w: k.w });
+        if (k.kind === 'power') this.broadcast({ t: 'notice', text: `${p.name} has the ${(WEAPONS[k.w] || {}).name || k.w}` }, p.id);
+        k.readyAt = now + PICKUP[k.kind].respawn;
+        k.w = null;
+        break;
+      }
+    }
+  }
+
   // Kill Confirmed: walking over a tag scores it (enemy tag) or denies it (your team's).
   tickTags(now) {
     this.tags = this.tags.filter((t) => t.until > now);
@@ -1010,6 +1061,7 @@ export class HostLogic {
       if (this.s.mode === 'infection' && !this.infected && this.infectAt && now >= this.infectAt) this.startInfection();
       if (this.mode.hill) this.tickHill(rdt, now);
       if (this.s.mode === 'killconfirmed') this.tickTags(now);
+      this.tickPickups(now);
       if (this.s.mode === 'rotation') this.tickRotation(now);
       if (this.flags) this.tickFlags(now);
       if (this.dom && this.phase === 'playing') this.tickDom(rdt);
@@ -1030,6 +1082,8 @@ export class HostLogic {
     if (this.mode.redBlue) msg.ts = [Math.floor(this.teamScore[1]), Math.floor(this.teamScore[2])];
     if (this.s.mode === 'infection') msg.inf = this.infected ? 0 : Math.max(0, Math.ceil((this.infectAt - now) / 1000));
     if (this.s.mode === 'killconfirmed') msg.tg = this.tags.map((t) => [t.id, r2(t.x), r2(t.y), r2(t.z), t.team]);
+    // Pickups that are ready: [id, kind, x, y, z, power weapon]
+    if (this.pickupsOn()) msg.pk = this.pickups.filter((k) => now >= k.readyAt && (k.kind !== 'power' || k.w)).map((k) => [k.id, k.kind, r2(k.x), r2(k.y), r2(k.z), k.w || 0]);
     if (this.s.mode === 'rotation') msg.rot = [this.rotW, Math.max(0, Math.ceil((this.rotUntil - now) / 1000))];
     // CTF: [team, x, y, z, carrierId, state (0 home / 1 carried / 2 dropped), homeX, homeY, homeZ]
     if (this.flags) msg.fl = [1, 2].map((t) => { const f = this.flags[t]; return [t, r2(f.pos.x), r2(f.pos.y), r2(f.pos.z), f.carrier, f.carrier ? 1 : f.dropped ? 2 : 0, r2(f.home.x), r2(f.home.y), r2(f.home.z)]; });

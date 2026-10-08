@@ -58,6 +58,14 @@ If the relay is down you can still create servers and join with codes.
 | Bounty Hunter | The leader carries a bounty (gold). Killing them is worth 3 points, anyone else 1. First to 30 |
 | Domination | Red vs Blue over three zones A, B, C. Stand in a zone with only your team to capture it; each zone you own scores a point per second. First to 200 |
 
+## Map pickups
+
+In Free For All, Team Deathmatch, King of the Hill, Capture the Flag, Domination, Hardpoint, Kill Confirmed, Bounty
+Hunter and Last Man Standing, every map has **health packs** (+50 health, back after 20 s), **ammo crates** (full mags
+and grenades, back after 25 s) and a **power weapon** in the middle (Railgun, Minigun, Rocket Launcher or Heavy
+Sniper Rifle) that appears 30 s into the match and 90 s after someone takes it; everyone is told who has it. The
+host can turn pickups off in the host panel.
+
 ## Host panel
 
 The lobby creator gets a **Host panel** button in the pause menu (Esc):
