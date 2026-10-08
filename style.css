@@ -1513,3 +1513,22 @@ body.mobile .sp-track { grid-template-columns: repeat(10, minmax(0, 1fr)); }
 .inv-ic { font-size: 28px; }
 .inv-row { display: flex; gap: 8px; margin-top: 10px; }
 .inv-row input { flex: 1; min-width: 0; font-size: 12px; }
+/* Player profiles */
+.pf-link { cursor: pointer; }
+.pf-link:hover { color: var(--accent-hi); text-decoration: underline; }
+.profile-panel { width: 460px; position: relative; }
+.pf-x { position: absolute; top: 8px; right: 8px; padding: 4px 9px; z-index: 2; }
+.pf-loading { text-align: center; color: var(--muted); padding: 40px 10px; }
+.pf-loading b { color: var(--text); font-size: 18px; }
+.pf-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 14px 0 10px; }
+.pf-stats div { background: rgba(255,255,255,0.03); border: 1px solid var(--line); border-radius: 6px; padding: 7px 6px; text-align: center; }
+.pf-stats b { display: block; font-size: 17px; font-variant-numeric: tabular-nums; }
+.pf-stats small { font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+.pf-fav { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; }
+.pf-fav i { width: 34px; height: 22px; border-radius: 4px; background: linear-gradient(135deg, #4a5058, #26292e); border: 1px solid var(--line-2); }
+.pf-fav span { flex: 1; display: flex; flex-direction: column; }
+.pf-fav small, .pf-badges small, .pf-foot small { font-size: 11px; color: var(--muted); }
+.pf-fav em { font-style: normal; color: var(--accent); font-size: 13px; }
+.pf-badges { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.pf-sb { padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; background: var(--accent); color: #0b0d10; }
+.pf-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; min-height: 30px; }

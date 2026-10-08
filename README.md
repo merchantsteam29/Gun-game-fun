@@ -213,6 +213,12 @@ the Servers screen (or in the menu sidebar). On iPhone / iPad: Safari → Share 
 - The owner sets the schedule (days, start time, length, time zone) in **Mod Panel → Announce**. Until then it's every
   day at 7 PM New York time for 2 hours.
 
+## Player profiles
+
+Click a gamertag (your own in **Friends**, a friend, or anyone on the **Leaderboard**) to see their profile: banner,
+level and rank, kills, K/D, wins, win rate, matches, headshots, best streak, favorite gun (with its wrap) and season
+badges, with an **Add friend** button. Players with a gamertag post their profile automatically.
+
 ## Invite friends
 
 **Friends → Invite friends** gives you a link with your gamertag (the pause menu's **Copy invite** includes it too).

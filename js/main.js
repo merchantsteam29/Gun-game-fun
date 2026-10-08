@@ -24,11 +24,12 @@ import { Voice } from './voice.js';
 import { Showroom } from './showroom.js';
 import { isBound, keysLabel } from './binds.js';
 import { CAMOS, camoSwatch, camoOf } from './camos.js';
-import { myLevel, levelBadge, RANKS, loginState, claimLogin, LOGIN_REWARDS, STREAK_WRAP, dailyChallenges, ALL_DAILY_BONUS, fmtDuration, onProgress, setXpBoost, featuredMode, featuredEnds, FEATURED_XP, FEATURED_TOKENS, claimFeatured, featuredClaimed } from './progress.js';
+import { myLevel, levelBadge, RANKS, loginState, claimLogin, LOGIN_REWARDS, STREAK_WRAP, dailyChallenges, ALL_DAILY_BONUS, fmtDuration, onProgress, setXpBoost, rankOf as rankOfLevel, featuredMode, featuredEnds, FEATURED_XP, FEATURED_TOKENS, claimFeatured, featuredClaimed } from './progress.js';
 import { gameNight, GN_NAME, GN_XP, describe as describeGn } from './gamenight.js';
-import { grantWrap, COSMETICS } from './missions.js';
+import { grantWrap, COSMETICS, allStats } from './missions.js';
+import { profiles } from './profiles.js';
 import { seasons, TIERS, TIER_XP, tierTokens } from './seasons.js';
-import { bannerOf } from './banners.js';
+import { bannerOf, bannerHtml } from './banners.js';
 import { invites, INVITE_TOKENS, MAX_INVITES } from './invites.js';
 import { leaderboard, BOARDS, weekEnds, CHAMP_TOKENS } from './leaderboard.js';
 import { MODS, MOD_SLOTS, MOD_SLOT_NAMES, modOptions, hasMods, cleanMods, cleanModMap, statsFor } from './mods.js';
@@ -314,7 +315,7 @@ function renderLeaderboard() {
         <small>${lbWhich === 'cur' ? `Resets in ${fmtDuration(weekEnds() - Date.now())} (Monday, ${new Date(weekEnds()).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} your time)` : 'Final results'}</small>
       </div>
       <div class="lb-tabs">${BOARDS.map((x) => `<button data-board="${x.id}" class="${x.id === lbBoard ? 'sel' : ''}">${x.icon} ${x.name}</button>`).join('')}</div>
-      <table class="lb-table"><tbody>${top.length ? top.map((r) => `<tr class="${r.me ? 'me' : ''} ${r.rank <= 3 ? 'top' + r.rank : ''}"><td class="rk">${r.rank <= 3 ? ['🥇', '🥈', '🥉'][r.rank - 1] : r.rank}</td><td>${esc(r.tag)}${leaderboard.isChamp(r.tag) ? ' <span class="trophy" title="#1 last week">🏆</span>' : ''}</td><td class="sc">${fmt(r.value)} <small>${esc(b.name)}</small></td></tr>`).join('')
+      <table class="lb-table"><tbody>${top.length ? top.map((r) => `<tr class="${r.me ? 'me' : ''} ${r.rank <= 3 ? 'top' + r.rank : ''}"><td class="rk">${r.rank <= 3 ? ['🥇', '🥈', '🥉'][r.rank - 1] : r.rank}</td><td class="pf-link" data-profile="${esc(r.tag)}">${esc(r.tag)}${leaderboard.isChamp(r.tag) ? ' <span class="trophy" title="#1 last week">🏆</span>' : ''}</td><td class="sc">${fmt(r.value)} <small>${esc(b.name)}</small></td></tr>`).join('')
         : `<tr><td class="lb-empty">${lbWhich === 'cur' ? 'Nobody on the board yet this week. Play a match to be first!' : 'No results from last week.'}</td></tr>`}</tbody></table>
       ${me && me.rank > 50 ? `<div class="lb-you">You: #${me.rank} · ${fmt(me.value)} ${esc(b.name)}</div>` : ''}
     </div>
@@ -354,6 +355,7 @@ function renderChip() {
   $('chip-name').insertAdjacentHTML('afterbegin', levelBadge(myLevel().level));
   renderHome();
   updateMissionCount();
+  if (profiles.social) profiles.publish(myProfile());
 }
 
 // Loadout picker: one tab per slot, a grid of weapons for the open slot, and a stat card
@@ -603,6 +605,53 @@ $('tag-form').onsubmit = async (e) => {
 };
 $('tag-later').onclick = () => { $('tag-pop').classList.add('hidden'); sessionStorage.setItem('tagLater', '1'); };
 
+// ---------- Player profiles ----------
+if (!store.get('firstPlayed', 0)) store.set('firstPlayed', Date.now());
+function myProfile() {
+  const st = allStats();
+  let fav = '', favKills = 0;
+  for (const [k, v] of Object.entries(st)) if (k.startsWith('w_') && WEAPONS[k.slice(2)] && v > favKills) { fav = k.slice(2); favKills = v; }
+  const m = fav && settings.mods[fav];
+  return {
+    name: settings.name || 'Player', color: settings.color, level: myLevel().level, kills: st.kills || 0, deaths: st.deaths || 0,
+    wins: st.wins || 0, matches: st.matches || 0, heads: st.headshots || 0, streak: st.bestStreak || 0, fav, favKills,
+    banner: getCos().banner, wrap: (m && m.camo) || '', seasons: seasons.badges(), since: store.get('firstPlayed', 0),
+  };
+}
+async function openProfile(tag) {
+  if (!tag) return;
+  const pop = $('profile-pop'), body = $('pf-body');
+  pop.classList.remove('hidden');
+  const mine = social.tag && tag.toLowerCase() === social.tag.toLowerCase();
+  body.innerHTML = '<div class="pf-loading">Loading profile…</div>';
+  const p = mine ? { ...myProfile(), tag: social.tag } : await profiles.fetch(tag);
+  if (pop.classList.contains('hidden')) return;
+  if (!p) { body.innerHTML = `<div class="pf-loading"><b>${esc(tag)}</b><br>No profile yet. It shows up after they play with a recent version of the game.</div>`; return; }
+  const lv = { level: p.level || 1, rank: rankOfLevel(p.level || 1) };
+  const kd = (p.kills / Math.max(1, p.deaths)).toFixed(2), wr = p.matches ? Math.round((p.wins / p.matches) * 100) + '%' : '–';
+  const role = roles.roleOfTag(p.tag), champ = leaderboard.isChamp(p.tag);
+  const W = WEAPONS[p.fav], camo = p.wrap && camoOf(p.wrap);
+  const isFriend = [...social.friends.values()].some((f) => f.tag.toLowerCase() === p.tag.toLowerCase());
+  body.innerHTML = `
+    ${bannerHtml(p.banner || 'standard', p.name || p.tag, p.color, `${esc(lv.rank.name.toUpperCase())} · LEVEL ${lv.level}`, `${badge(role)}${champ ? '<span class="chip">🏆 Weekly champion</span>' : ''}<span class="chip">@${esc(p.tag)}</span>`)}
+    <div class="pf-stats">
+      ${[['Kills', p.kills.toLocaleString()], ['K/D', kd], ['Wins', p.wins.toLocaleString()], ['Win rate', wr], ['Matches', p.matches.toLocaleString()], ['Headshots', p.heads.toLocaleString()], ['Best streak', p.streak]].map(([n, v]) => `<div><b>${v}</b><small>${n}</small></div>`).join('')}
+    </div>
+    ${W ? `<div class="pf-fav">${camo && camo.id !== 'default' ? `<i style="background:${camoSwatch(camo)}" title="${esc(camo.name)} wrap"></i>` : '<i></i>'}<span><small>Favorite gun</small><b>${esc(W.name)}</b></span><em>${p.favKills.toLocaleString()} kills</em></div>` : ''}
+    ${p.seasons.length ? `<div class="pf-badges"><small>Season badges</small>${p.seasons.map((n) => `<span class="pf-sb">S${n}</span>`).join('')}</div>` : ''}
+    <div class="pf-foot"><small>${p.since ? 'Playing since ' + new Date(p.since).toLocaleDateString([], { month: 'short', year: 'numeric' }) : ''}</small>
+      ${!mine && social.tag && !isFriend ? '<button class="primary" id="pf-add">Add friend</button>' : ''}</div>`;
+  const add = $('pf-add');
+  if (add) add.onclick = async () => { try { const r = await social.addFriend(p.tag); add.textContent = r === 'accepted' ? 'Friends!' : 'Request sent'; add.disabled = true; } catch (e) { toast(e.message || 'Could not send the request'); } };
+}
+$('pf-close').onclick = () => $('profile-pop').classList.add('hidden');
+$('profile-pop').addEventListener('click', (e) => { if (e.target.id === 'profile-pop') $('profile-pop').classList.add('hidden'); });
+// Any gamertag marked data-profile opens its profile.
+document.addEventListener('click', (e) => {
+  const el = e.target.closest && e.target.closest('[data-profile]');
+  if (el && el.dataset.profile) { e.preventDefault(); openProfile(el.dataset.profile); }
+});
+
 function renderInvite() {
   const el = $('invite-card');
   const n = invites.count(), base = location.origin + location.pathname;
@@ -623,7 +672,7 @@ function renderFriends() {
   const n = social.pendingCount;
   $('nav-friends-count').textContent = n ? String(n) : '';
   $('fr-me').innerHTML = social.tag
-    ? `Your gamertag: <b>${esc(social.tag)}</b>${badge(roles.myRole(), true)} <span class="sv-status ${social.status}">${social.status === 'online' ? '● Online' : social.status === 'connecting' ? 'Connecting…' : 'Offline'}</span>`
+    ? `Your gamertag: <b class="pf-link" data-profile="${esc(social.tag)}" title="View your profile">${esc(social.tag)}</b>${badge(roles.myRole(), true)} <span class="sv-status ${social.status}">${social.status === 'online' ? '● Online' : social.status === 'connecting' ? 'Connecting…' : 'Offline'}</span>`
     : 'Pick a gamertag so friends can find you. <button id="fr-pick" class="primary">Choose gamertag</button>';
   if ($('fr-pick')) $('fr-pick').onclick = openTagPop;
   $('fr-add').classList.toggle('hidden', !social.tag);
@@ -645,7 +694,7 @@ function renderFriends() {
     const where = !on ? 'Offline' : p.mode === 'lobby' ? 'In a match' : 'In the menu';
     const canInvite = on && !inParty(f.tag) && (!social.party || social.isLeader);
     const canJoin = on && p.lobby && !net;
-    return `<div class="fr-row"><i class="fr-dot ${on ? 'on' : ''}"></i><span class="fr-name">${esc(f.tag)}${badge(roles.roleOfTag(f.tag), true)}${inParty(f.tag) ? ' <em>party</em>' : ''}</span><small>${where}</small>
+    return `<div class="fr-row"><i class="fr-dot ${on ? 'on' : ''}"></i><span class="fr-name pf-link" data-profile="${esc(f.tag)}">${esc(f.tag)}${badge(roles.roleOfTag(f.tag), true)}${inParty(f.tag) ? ' <em>party</em>' : ''}</span><small>${where}</small>
       ${canJoin ? `<button class="primary" data-joingame="${p.lobby}">Join game</button>` : ''}
       ${canInvite ? `<button data-inv="${k}">Invite to party</button>` : ''}
       <button class="ghost fr-x" data-rm="${k}" title="Remove friend">✕</button></div>`;
@@ -1084,6 +1133,7 @@ seasons.onTier = (e) => {
   if (game.active) game.hud.mission(`Season tier ${e.tier}`, `+${e.tokens} tokens${e.item ? ' · new ' + (e.item.kind === 'wrap' ? 'wrap' : 'banner') + '!' : ''}`, `SEASON ${e.season.n}`);
   else toast(`Season tier ${e.tier}: 🪙 ${e.tokens}${what}`);
 };
+profiles.init(social);
 invites.init(social);
 invites.onReward = (e) => {
   const msg = e.kind === 'joined' ? `Thanks for joining through ${e.name}'s invite! 🪙 ${e.tokens} for you both.` : `${e.name} joined through your invite: 🪙 ${e.tokens}!`;

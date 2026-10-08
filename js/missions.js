@@ -176,6 +176,7 @@ const earnedWrap = (k) => (k.startsWith('wrap:') ? !!camoOf(k.slice(5)).reward :
 export const getStat = (k) => (k === 'modesPlayed' ? modes.size : k === 'mapsPlayed' ? maps.size : k === 'bought' ? [...owned].filter((x) => !earnedWrap(x)).length : stats[k] || 0);
 export const missionDone = (m) => getStat(m.stat) >= m.goal;
 export const getTokens = () => tokens;
+export const allStats = () => ({ ...stats });
 
 function save() {
   store.set('tokens', tokens);
@@ -303,6 +304,7 @@ export const track = {
   kill({ weapon, weaponType, head, secondary, explosive, juggernaut, mode, multi = 1, dist = 0, revenge, air, silent, lowHp }) {
     streak++;
     const u = { kills: 1, bestStreak: streak };
+    if (weapon) u['w_' + weapon] = 1; // per-gun kills (favorite gun on your profile)
     if (head) u.headshots = 1;
     if (weaponType === 'melee') u.melee = 1;
     if (secondary) u.secondary = 1;
@@ -321,7 +323,7 @@ export const track = {
     if (lowHp) u.clutchKills = 1;
     bump(u);
   },
-  died() { streak = 0; },
+  died() { streak = 0; bump({ deaths: 1 }); },
   tag() { bump({ tags: 1 }); },
   matchEnd({ mode, map, won, survived, hillPoints, teams }) {
     streak = 0;
