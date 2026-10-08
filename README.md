@@ -213,6 +213,12 @@ the Servers screen (or in the menu sidebar). On iPhone / iPad: Safari → Share 
 - The owner sets the schedule (days, start time, length, time zone) in **Mod Panel → Announce**. Until then it's every
   day at 7 PM New York time for 2 hours.
 
+## Season pass
+
+A free 30-tier pass every 6 weeks (Season 1 **Ignition** started Monday 5 October 2026, then Season 2 **Frostbite**).
+All XP you earn fills it, 1,000 XP a tier. Every tier pays tokens; tiers 5, 10, 15, 20, 25 and 30 give season-only
+wraps and banners that can't be bought, and tier 30 earns the season badge. See it at the top of **Missions**.
+
 ## Featured mode of the day
 
 Every day one mode is featured (the same for everyone): it gives **1.5x XP** (stacks with Game Night) and

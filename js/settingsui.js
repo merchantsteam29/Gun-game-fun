@@ -310,7 +310,8 @@ export class SettingsUI {
         const item = COSMETICS[t.slot].find((c) => c.id === t.id), price = priceOf(t.slot, t.id), have = getTokens();
         const bar = el.querySelector('.cz-buy');
         bar.classList.remove('hidden');
-        bar.innerHTML = have >= price
+        bar.innerHTML = item.reward ? `<span>Previewing <b>${esc(item.name)}</b> · 🔒 can't be bought. Earn it: ${esc(item.how)}.</span><button data-cancel>OK</button>`
+          : have >= price
           ? `<span>Previewing <b>${esc(item.name)}</b></span><button class="primary" data-buy>Buy & wear · 🪙 ${price}</button><button data-cancel>Cancel</button>`
           : `<span>Previewing <b>${esc(item.name)}</b> · 🪙 ${price}. You need <b>${price - have}</b> more tokens. Complete missions to earn them.</span><button data-cancel>OK</button>`;
         const b = bar.querySelector('[data-buy]');
@@ -326,7 +327,7 @@ export class SettingsUI {
             <div class="cz-bnr-preview">${bannerHtml(shown.banner, this.getName(), this.getColor(), 'KILLED YOU', '<span class="chip">Assault Rifle</span>')}</div>
             <div class="cz-banners">${COSMETICS.banner.map((c) => {
               const have = isOwned(slot, c.id), trying = t && t.slot === slot && t.id === c.id, b = bannerOf(c.id);
-              return `<button class="${cos.banner === c.id && !t ? 'sel' : ''} ${trying ? 'trying' : ''} ${have ? '' : 'locked'}" data-id="${c.id}" style="--bg:${b.bg}" title="${esc(c.name)}"><em>${b.emblem}</em><span>${esc(c.name)}</span>${have ? '' : `<small>🪙 ${c.price}</small>`}</button>`;
+              return `<button class="${cos.banner === c.id && !t ? 'sel' : ''} ${trying ? 'trying' : ''} ${have ? '' : 'locked'}" data-id="${c.id}" style="--bg:${b.bg}" title="${esc(c.name)}"><em>${b.emblem}</em><span>${esc(c.name)}</span>${have ? '' : c.reward ? '<small>🔒 Earn</small>' : `<small>🪙 ${c.price}</small>`}</button>`;
             }).join('')}</div>`;
         } else
         row.innerHTML = `<div class="set-label">${SLOT_LABELS[slot]}</div><div class="cz-items">${COSMETICS[slot].map((c) => {

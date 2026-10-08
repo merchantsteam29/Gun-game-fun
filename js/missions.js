@@ -87,6 +87,11 @@ export const COSMETICS = {
     { id: 'rainbow', name: 'Rainbow', price: 450 },
     { id: 'gold', name: 'Solid Gold', price: 600 },
     { id: 'diamond', name: 'Diamond', price: 800 },
+    // Season pass (can't be bought)
+    { id: 's1', name: 'Ignition (S1)', reward: true, how: 'Season 1, tier 10' },
+    { id: 's1elite', name: 'Ignition Elite (S1)', reward: true, how: 'Season 1, tier 25' },
+    { id: 's2', name: 'Frostbite (S2)', reward: true, how: 'Season 2, tier 10' },
+    { id: 's2elite', name: 'Frostbite Elite (S2)', reward: true, how: 'Season 2, tier 25' },
   ],
 };
 export const SLOT_LABELS = { hat: 'Hat', hair: 'Hair', face: 'Face', back: 'Back', banner: 'Banner' };
@@ -167,7 +172,7 @@ const claimed = new Set(store.get('claimed', []));
 let tokens = store.get('tokens', 0);
 let streak = 0;
 
-const earnedWrap = (k) => k.startsWith('wrap:') && camoOf(k.slice(5)).reward;
+const earnedWrap = (k) => (k.startsWith('wrap:') ? !!camoOf(k.slice(5)).reward : !!(findItem(k.split(':')[0], k.split(':')[1]) || {}).reward);
 export const getStat = (k) => (k === 'modesPlayed' ? modes.size : k === 'mapsPlayed' ? maps.size : k === 'bought' ? [...owned].filter((x) => !earnedWrap(x)).length : stats[k] || 0);
 export const missionDone = (m) => getStat(m.stat) >= m.goal;
 export const getTokens = () => tokens;
@@ -200,7 +205,7 @@ export function claimMissions() {
 }
 claimMissions();
 
-const findItem = (slot, id) => COSMETICS[slot] && COSMETICS[slot].find((c) => c.id === id);
+function findItem(slot, id) { return COSMETICS[slot] && COSMETICS[slot].find((c) => c.id === id); }
 export function isOwned(slot, id) {
   const item = findItem(slot, id);
   return !!item && (item.free || owned.has(slot + ':' + id));
@@ -210,8 +215,8 @@ export const priceOf = (slot, id) => { const it = findItem(slot, id); return it 
 // Spends tokens on an item. Returns true if it's now owned.
 export function buy(slot, id) {
   if (isOwned(slot, id)) return true;
-  const price = priceOf(slot, id);
-  if (!findItem(slot, id) || tokens < price) return false;
+  const price = priceOf(slot, id), item = findItem(slot, id);
+  if (!item || item.reward || tokens < price) return false;
   tokens -= price;
   owned.add(slot + ':' + id);
   save();
@@ -234,6 +239,13 @@ export function buyWrap(id) {
 
 // Rewards from progress.js (levels, daily login, challenges, game night, leaderboard).
 export function addTokens(n) { if (n > 0) { tokens += Math.round(n); save(); } }
+// Gives an earned cosmetic (e.g. a season banner). Returns true if it's new.
+export function grantItem(slot, id) {
+  if (!findItem(slot, id) || owned.has(slot + ':' + id)) return false;
+  owned.add(slot + ':' + id);
+  save();
+  return true;
+}
 // Gives an earned wrap. Returns true if it's new.
 export function grantWrap(id) {
   if (owned.has('wrap:' + id) || camoOf(id).id !== id) return false;

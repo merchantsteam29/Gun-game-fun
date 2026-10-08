@@ -66,6 +66,14 @@ export const BANNER_STYLE = {
   },
 };
 
+// Season pass banners (seasons.js)
+Object.assign(BANNER_STYLE, {
+  s1: { bg: 'radial-gradient(circle at 85% 50%, #ffb02055 0 20%, transparent 45%), linear-gradient(100deg, #1a0d06, #5a1e08 60%, #ff7a2a)', accent: '#ffb020', emblem: '🔥' },
+  s1elite: { bg: 'repeating-linear-gradient(120deg, transparent 0 18px, #ffd23a22 18px 22px), linear-gradient(100deg, #2a0a04, #b8360a 50%, #ffd23a)', accent: '#fff0b0', emblem: '🏅', anim: 'shine' },
+  s2: { bg: 'radial-gradient(circle at 85% 50%, #bfefff55 0 20%, transparent 45%), linear-gradient(100deg, #06101a, #0a3a5a 60%, #6fd8ff)', accent: '#bfefff', emblem: '❄' },
+  s2elite: { bg: 'repeating-linear-gradient(60deg, transparent 0 18px, #ffffff22 18px 22px), linear-gradient(100deg, #0a0a2a, #3a5ad8 50%, #c9a8ff)', accent: '#ffffff', emblem: '💠', anim: 'shine' },
+});
+
 export const bannerOf = (id) => BANNER_STYLE[id] || BANNER_STYLE.standard;
 
 // Banner card markup. `top` is a small label above the name, `sub` a line of chips under it.

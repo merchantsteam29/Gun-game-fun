@@ -1489,3 +1489,19 @@ body.mobile .home-strip > .hs-install { grid-column: 1 / -1; }
 .tile.feat { border-color: var(--accent); }
 .tile.feat small { color: var(--accent); }
 body.mobile .home-strip > .hs-feat { grid-column: 1 / -1; }
+
+/* Season pass */
+.sp { border-color: color-mix(in srgb, var(--sp) 45%, transparent); background: linear-gradient(135deg, color-mix(in srgb, var(--sp) 14%, transparent), rgba(255,255,255,0.02)); }
+.sp h3 { color: var(--sp); }
+.sp .dl-head span { color: var(--text); }
+.sp-bar i { background: linear-gradient(90deg, var(--sp), var(--accent-hi)); }
+.sp-sub { display: block; color: var(--muted); font-size: 12px; margin: -6px 0 10px; }
+.sp-track { display: grid; grid-template-columns: repeat(15, minmax(0, 1fr)); gap: 4px; }
+.sp-cell { border: 1px solid var(--line); border-radius: 5px; padding: 4px 2px; text-align: center; min-height: 46px; display: flex; flex-direction: column; align-items: center; gap: 3px; opacity: 0.55; }
+.sp-cell small { font-size: 9px; color: var(--muted); }
+.sp-cell b { font-size: 9px; font-weight: 600; white-space: nowrap; }
+.sp-cell i { width: 22px; height: 18px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.3); }
+.sp-cell.item { border-color: color-mix(in srgb, var(--sp) 60%, transparent); opacity: 0.8; }
+.sp-cell.got { opacity: 1; background: rgba(77,255,154,0.07); border-color: rgba(77,255,154,0.4); }
+.sp-cell.next { opacity: 1; border-color: var(--sp); box-shadow: inset 0 0 0 1px var(--sp); }
+body.mobile .sp-track { grid-template-columns: repeat(10, minmax(0, 1fr)); }

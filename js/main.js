@@ -26,7 +26,9 @@ import { isBound, keysLabel } from './binds.js';
 import { CAMOS, camoSwatch, camoOf } from './camos.js';
 import { myLevel, levelBadge, RANKS, loginState, claimLogin, LOGIN_REWARDS, STREAK_WRAP, dailyChallenges, ALL_DAILY_BONUS, fmtDuration, onProgress, setXpBoost, featuredMode, featuredEnds, FEATURED_XP, FEATURED_TOKENS, claimFeatured, featuredClaimed } from './progress.js';
 import { gameNight, GN_NAME, GN_XP, describe as describeGn } from './gamenight.js';
-import { grantWrap } from './missions.js';
+import { grantWrap, COSMETICS } from './missions.js';
+import { seasons, TIERS, TIER_XP, tierTokens } from './seasons.js';
+import { bannerOf } from './banners.js';
 import { leaderboard, BOARDS, weekEnds, CHAMP_TOKENS } from './leaderboard.js';
 import { MODS, MOD_SLOTS, MOD_SLOT_NAMES, modOptions, hasMods, cleanMods, cleanModMap, statsFor } from './mods.js';
 
@@ -169,7 +171,7 @@ function renderHome() {
     </div>
     <button class="hs-tile hs-level" data-go="missions" title="Earn XP from kills, headshots, matches, wins and daily challenges">
       ${levelBadge(lv.level, false).replace('lvl-badge', 'lvl-badge big')}
-      <span class="hs-txt"><b>${esc(lv.rank.name)} · Level ${lv.level}</b><span class="hs-bar"><i style="width:${lv.pct * 100}%"></i></span><small>${lv.need ? `${lv.into.toLocaleString()} / ${lv.need.toLocaleString()} XP` : 'Max level'}</small></span>
+      <span class="hs-txt"><b>${esc(lv.rank.name)} · Level ${lv.level}</b><span class="hs-bar"><i style="width:${lv.pct * 100}%"></i></span><small>${lv.need ? `${lv.into.toLocaleString()} / ${lv.need.toLocaleString()} XP` : 'Max level'} · Season tier ${seasons.info().tier}</small></span>
     </button>
     <div class="hs-tile hs-daily ${login.claimed ? '' : 'ready'}">
       <span class="hs-ic">🎁</span>
@@ -246,6 +248,25 @@ function doClaim() {
   renderChip();
   if (menuPane === 'missions') renderMissions();
 }
+// Season pass track (top of Missions).
+const seasonItemName = (it) => (it.kind === 'wrap' ? camoOf(it.id).name + ' wrap' : ((COSMETICS[it.kind] || []).find((c) => c.id === it.id) || {}).name + ' banner');
+const seasonItemBg = (it) => (it.kind === 'wrap' ? camoSwatch(camoOf(it.id)) : bannerOf(it.id).bg);
+function seasonHtml() {
+  const s = seasons.info();
+  const cells = Array.from({ length: TIERS }, (_, i) => {
+    const tier = i + 1, it = s.items[tier], got = tier <= s.tier, next = tier === s.tier + 1;
+    return `<div class="sp-cell ${got ? 'got' : ''} ${next ? 'next' : ''} ${it ? 'item' : ''}" title="Tier ${tier}: ${it ? esc(seasonItemName(it)) + ' + ' : ''}${tierTokens(tier)} tokens">
+      <small>${tier}</small>${it ? `<i style="background:${seasonItemBg(it)}"></i>` : `<b>🪙${tierTokens(tier)}</b>`}</div>`;
+  }).join('');
+  const nextItem = Object.keys(s.items).map(Number).find((x) => x > s.tier);
+  return `<div class="card sp" style="--sp:${s.color}">
+    <div class="dl-head"><h3>Season ${s.n}: ${esc(s.name)}</h3><span>Tier ${s.tier} / ${TIERS}</span><small>Ends in ${fmtDuration(s.end - Date.now())}</small></div>
+    <span class="hs-bar big sp-bar"><i style="width:${s.done ? 100 : (s.into / TIER_XP) * 100}%"></i></span>
+    <small class="sp-sub">${s.done ? '✓ Season complete! You earned the season badge.' : `${(TIER_XP - s.into).toLocaleString()} XP to tier ${s.tier + 1}${nextItem ? ` · next item at tier ${nextItem}: ${esc(seasonItemName(s.items[nextItem]))}` : ''}`}</small>
+    <div class="sp-track">${cells}</div>
+    <p class="note">Free for everyone. All XP you earn this season fills it (${TIER_XP.toLocaleString()} XP a tier). Every tier pays tokens; season wraps and banners can't be bought and won't come back. Tier ${TIERS} earns the Season ${s.n} badge.</p>
+  </div>`;
+}
 function dailyHtml() {
   const lv = myLevel(), login = loginState(), daily = dailyChallenges();
   const days = LOGIN_REWARDS.map((r, i) => {
@@ -259,6 +280,7 @@ function dailyHtml() {
       <div class="ms-reward">🪙 ${c.tokens}</div></div>`).join('');
   const ladder = RANKS.map((r) => `<div class="dl-rank ${lv.rank.id === r.id ? 'cur' : lv.level >= r.min ? 'got' : ''}" style="--rk:${r.color}"><b>${esc(r.name)}</b><small>Level ${r.min}+</small>${r.wrap ? `<em>${esc(camoOf(r.wrap).name)} wrap</em>` : '<em>Start</em>'}</div>`).join('');
   return `<div class="daily">
+    ${seasonHtml()}
     <div class="card dl-login"><div class="dl-head"><h3>Daily login</h3><span>🔥 ${login.claimed || login.streak > 1 ? login.streak : 0}-day streak</span>${login.claimed ? '<small>Claimed today · come back tomorrow</small>' : '<button class="primary" data-claim>Claim today\'s reward</button>'}</div>
       <div class="dl-days">${days}</div><p class="note">Log in every day to grow your streak. Miss a day and it starts over at day 1.</p></div>
     <div class="card dl-chal"><div class="dl-head"><h3>Daily challenges</h3><small>New ones in ${fmtDuration(daily.resetsIn)} · same for everyone today</small></div>
@@ -834,7 +856,7 @@ const PANE_INFO = {
   play: ['Servers', 'Join friends with a code, browse public servers, or start your own.'],
   loadout: ['Loadout', 'One weapon per slot. Changes apply the next time you spawn.'],
   character: ['Character', 'Your callsign, color and cosmetics. Earn tokens from missions to unlock more.'],
-  missions: ['Missions', 'Daily rewards, daily challenges, your level and missions. All of them pay tokens.'],
+  missions: ['Missions', 'The season pass, daily rewards and challenges, your level and missions. All of them pay tokens.'],
   leaderboard: ['Leaderboard', 'This week\'s top players by XP, kills, wins and headshots. Resets every Monday.'],
   friends: ['Friends', 'Add friends by gamertag, see who\'s online, party up and chat.'],
   mod: ['Mod Panel', 'Staff only: warn, ban or force a new gamertag. Every action is signed with your key.'],
@@ -1039,6 +1061,11 @@ function renderModNav() {
   if (!staff && menuPane === 'mod') showPane('play');
 }
 moderation.init(social);
+seasons.onTier = (e) => {
+  const what = e.item ? ` + ${seasonItemName(e.item)}` : '';
+  if (game.active) game.hud.mission(`Season tier ${e.tier}`, `+${e.tokens} tokens${e.item ? ' · new ' + (e.item.kind === 'wrap' ? 'wrap' : 'banner') + '!' : ''}`, `SEASON ${e.season.n}`);
+  else toast(`Season tier ${e.tier}: 🪙 ${e.tokens}${what}`);
+};
 gameNight.init(social);
 leaderboard.init(social);
 leaderboard.onChange = () => {
