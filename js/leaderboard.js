@@ -124,7 +124,7 @@ class Leaderboard {
   // Sorted rows for a board: [{ tag, value, rank, me }]
   rows(board, which = 'cur') {
     const me = this.social && low(this.social.tag);
-    const list = [...this.entries[which].values()].filter((e) => e[board] > 0 && !this.hidden.has(low(e.tag))).sort((a, b) => b[board] - a[board] || a.tag.localeCompare(b.tag));
+    const list = [...this.entries[which].values()].filter((e) => e[board] > 0 && !this.hidden.has(low(e.tag)) && !moderation.isGone(e.tag)).sort((a, b) => b[board] - a[board] || a.tag.localeCompare(b.tag));
     return list.map((e, i) => ({ tag: e.tag, value: e[board], rank: i + 1, me: low(e.tag) === me }));
   }
 

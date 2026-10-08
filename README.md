@@ -417,6 +417,12 @@ becomes free again.
   **Anti-spam:** the host's game auto-mutes anyone who sends 6 messages in 8 seconds or the same message 3 times in a
   row (for that match), and files an auto-report when it can.
 
+  **Permanent bans remove the player:** they disappear from the weekly and clan leaderboards (and can't win the
+  trophy), their profile can't be opened, they're dropped from clans (a clan they lead is gone), they vanish from
+  friend lists and the Mod Panel's directory and recent players (type their exact name to find them), and their gamertag
+  becomes free for a new player (the ban is tied to their key, so they can't just take it back). Temporary bans don't do
+  this. Unbanning undoes it.
+
   **Anti-cheat:** the host's game drops shots fired faster than a gun can fire, refuses hits right after a teleport or
   impossible speed, refuses melee hits from out of reach, and counts gun hits that went through solid walls. Repeat
   offenders (3 strikes, or 10+ wall hits making up 30% of their hits) are auto-reported to the Mod Panel, and the host

@@ -138,6 +138,7 @@ export class Social {
           const c = JSON.parse(payload.toString());
           if (!c || low(c.tag) !== k || !c.pub || !c.pub.x || !c.pub.y) return;
           if (Date.now() - (Number(c.seen) || 0) > CLAIM_EXPIRE) return; // abandoned
+          if (this.isGoneClaim && this.isGoneClaim(k, c)) return; // permanently banned: the name is free
           if (!best || (Number(c.since) || 0) < (Number(best.since) || 0)) best = c; // first claim wins
         } catch { /* ignore */ }
       });
@@ -150,6 +151,7 @@ export class Social {
 
   publishClaim() {
     if (!this.tag) return;
+    if (this.isGoneClaim && this.isGoneClaim(this.me, { pub: this.pub })) return; // permanently banned: stop holding the name
     const claim = { tag: this.tag, pub: { x: this.pub.x, y: this.pub.y }, since: this.since, seen: Date.now() };
     this.relay.publish(P + 'tag/' + this.me, JSON.stringify(claim), { retain: true });
   }

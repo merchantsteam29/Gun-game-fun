@@ -1,7 +1,8 @@
 {
-  "version": "2026.10.08.41",
+  "version": "2026.10.08.42",
   "notes": [
-    "Small fixes and polish"
+    "Permanently banned players are removed: off the leaderboards, profile and clan gone, dropped from friend lists",
+    "Their gamertag is freed for a new player; temporary bans are unchanged"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",

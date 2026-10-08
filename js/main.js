@@ -682,6 +682,7 @@ async function openProfile(tag) {
   pop.classList.remove('hidden');
   const mine = social.tag && tag.toLowerCase() === social.tag.toLowerCase();
   body.innerHTML = '<div class="pf-loading">Loading profile…</div>';
+  if (!mine && moderation.isGone(tag)) { body.innerHTML = `<div class="pf-loading"><b>${esc(tag)}</b><br>This player was permanently banned.</div>`; return; }
   const p = mine ? { ...myProfile(), tag: social.tag } : await profiles.fetch(tag);
   if (pop.classList.contains('hidden')) return;
   if (!p) { body.innerHTML = `<div class="pf-loading"><b>${esc(tag)}</b><br>No profile yet. It shows up after they play with a recent version of the game.</div>`; return; }
@@ -796,7 +797,7 @@ function renderFriends() {
   $('fr-requests-card').classList.toggle('hidden', !rows.length);
 
   // Friends list: online first
-  const friends = [...social.friends.entries()].sort(([, a], [, b]) => social.isOnline(b) - social.isOnline(a) || a.tag.localeCompare(b.tag));
+  const friends = [...social.friends.entries()].filter(([, f]) => !moderation.isGone(f.tag)).sort(([, a], [, b]) => social.isOnline(b) - social.isOnline(a) || a.tag.localeCompare(b.tag));
   const inParty = (t) => social.party && social.party.members.some((m) => m.toLowerCase() === t.toLowerCase());
   $('fr-count').textContent = friends.length ? `(${friends.filter(([, f]) => social.isOnline(f)).length} online)` : '';
   $('fr-list').innerHTML = friends.length ? friends.map(([k, f]) => {
@@ -1303,6 +1304,7 @@ if (invites.pending()) setTimeout(() => toast(`${invites.pending()} invited you:
 game.onRanked = (r) => { if (r.newDiv) game.hud.mission(r.delta >= 0 ? `Promoted to ${r.newDiv.name}` : `Dropped to ${r.newDiv.name}`, `${r.sr} SR`, 'RANKED'); };
 gameNight.init(social);
 leaderboard.init(social);
+moderation.onPerma = () => { leaderboard.updateChamps(); if (leaderboard.onChange) leaderboard.onChange(); if (clans.onChange) clans.onChange(); if (!game.active) renderFriends(); };
 leaderboard.onChange = () => {
   clearTimeout(lbT);
   lbT = setTimeout(() => { if (!game.active && menuPane === 'leaderboard') renderLeaderboard(); updateLbNav(); }, 300);

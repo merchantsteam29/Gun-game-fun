@@ -114,13 +114,21 @@ class Clans {
 
   // Every clan (for the clan leaderboard).
   loadAll() { if (!this.all) { this.all = true; this.social.relay.subscribe(CLAN + '+'); } }
-  list() { return [...this.records.values()]; }
+  list() { return [...this.records.values()].filter((c) => !moderation.isGone(c.leader)).map((c) => ({ ...c, members: c.members.filter((m) => !moderation.isGone(m)) })); }
   color(tag) { const c = this.records.get(low(tag)); return c ? c.color : '#ffb020'; }
 
-  myClan() { return this.mine && !this.mine.pending ? this.records.get(low(this.mine.tag)) || null : null; }
+  myClan() {
+    const c = this.mine && !this.mine.pending ? this.records.get(low(this.mine.tag)) || null : null;
+    if (!c || moderation.isGone(c.leader)) return null;
+    return { ...c, members: c.members.filter((m) => !moderation.isGone(m)) };
+  }
   isLeader() { const c = this.myClan(); return !!c && low(c.leader) === low(this.social.tag); }
   // Verified clan tag of a gamertag (for [TAG] by names), or null. Looks it up in the background.
-  tagOf(gamertag) { return gamertag ? this.memberOf.get(low(gamertag)) || null : null; }
+  tagOf(gamertag) {
+    const t = gamertag && !moderation.isGone(gamertag) ? this.memberOf.get(low(gamertag)) || null : null;
+    const c = t && this.records.get(low(t));
+    return c && !moderation.isGone(c.leader) ? t : null;
+  }
 
   async publishClan(c) {
     const body = { tag: c.tag, name: c.name, color: c.color, leader: c.leader, members: c.members, since: c.since };

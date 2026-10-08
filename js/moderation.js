@@ -16,6 +16,7 @@ import { store } from './util.js';
 // game itself — clearing site data or a new gamertag gets around it.
 
 const V = 'whffa/v1/';
+const PERMA = V + 'permabans'; // staff-signed list of permanently banned players: [{ t: lower tag, x: their key }]
 const P = V + 'modrec/', ANN = V + 'announce', REP = V + 'report/', PRES = V + 'pres/', FILTER = V + 'chatfilter', APPEAL = V + 'appeal/', STAFFCHAT = V + 'staffchat/', TAG = V + 'tag/';
 const STAFFCHAT_KEEP = 3 * 864e5; // staff chat history: 3 days
 const LOG_MAX = 30;
@@ -37,6 +38,8 @@ class Moderation {
     this.raw = new Map(); // lower tag -> latest raw record text (re-checked when the staff list changes)
     this.records = new Map(); // lower tag -> verified record body
     this.announcement = null; // verified announcement body
+    this.perma = new Map(); // lower tag -> key x of a permanently banned player
+    this.onPerma = null;
     this.annRaw = null;
     this.reports = new Map(); // report id -> { id, from, target, lobby, reason, details, ts }
     this.online = new Map(); // lower tag -> { tag, mode, lobby, at }
@@ -63,6 +66,7 @@ class Moderation {
 
   init(social) {
     this.social = social;
+    social.isGoneClaim = (k, c) => this.isGoneClaim(k, c);
     social.relay.onMessage((t, payload, packet) => this.route(t, payload.toString(), packet));
     const prev = social.relay.onConnect;
     social.relay.onConnect = () => { if (prev) prev(); for (const w of this.watching) social.relay.subscribe(w); };
@@ -72,6 +76,7 @@ class Moderation {
   route(t, text, packet) {
     if (t.startsWith(P)) this.receive(t.slice(P.length), text);
     else if (t === ANN) this.receiveAnnouncement(text);
+    else if (t === PERMA) this.receivePerma(text);
     else if (t.startsWith(REP)) this.receiveReport(t.slice(REP.length), text);
     else if (t.startsWith(PRES) && roles.myRole()) this.receivePresence(t.slice(PRES.length), text, packet);
     else if (t === FILTER) this.receiveFilter(text);
@@ -84,7 +89,7 @@ class Moderation {
   sync() {
     const s = this.social;
     if (!s) return;
-    const want = new Set([ANN, FILTER]);
+    const want = new Set([ANN, FILTER, PERMA]);
     if (s.tag) { want.add(P + low(s.tag)); want.add(APPEAL + low(s.tag)); }
     if (roles.myRole()) for (const t of [P + '+', REP + '+', PRES + '+', APPEAL + '+', STAFFCHAT + '+', TAG + '+']) want.add(t);
     for (const w of this.watching) if (!want.has(w)) s.relay.unsubscribe(w);
@@ -93,6 +98,46 @@ class Moderation {
     if (!roles.myRole()) { this.reports.clear(); this.online.clear(); }
     this.reverify();
     if (this.filterRaw) this.receiveFilter(this.filterRaw);
+    if (this.permaRaw) this.receivePerma(this.permaRaw);
+    // Staff: bring the list up to date with the records (bans from before the list existed).
+    if (roles.myRole()) { clearTimeout(this.permaT); this.permaT = setTimeout(() => this.syncPerma(), 8000); }
+  }
+
+  // ---------- Permanent bans: removed from the game for everyone ----------
+  // A permanently banned player is off the leaderboards, their profile and clan are gone, they
+  // drop out of friend lists and staff lists, and their gamertag is free for someone else (the
+  // ban is tied to their key, so only a NEW player can take the name).
+  isGone(tag) { return !!tag && this.perma.has(low(tag)); }
+  isGoneClaim(k, c) { const x = this.perma.get(low(k)); return !!x && !!c && !!c.pub && c.pub.x === x; }
+  async receivePerma(text) {
+    this.permaRaw = text || null;
+    const body = text ? await this.staffSigned(text) : null;
+    if (!body || !Array.isArray(body.bans)) return;
+    if (this.permaTs && Number(body.ts) < this.permaTs) return;
+    this.permaTs = Number(body.ts) || 0;
+    this.perma = new Map(body.bans.filter((b) => b && typeof b.t === 'string' && typeof b.x === 'string').slice(0, 2000).map((b) => [low(b.t), b.x]));
+    if (this.onPerma) this.onPerma();
+    if (this.onChange) this.onChange(null);
+  }
+  async publishPerma(map) {
+    const bans = [...map].map(([t, x]) => ({ t, x }));
+    const signed = await this.social.sign({ bans });
+    this.social.relay.publish(PERMA, signed, { retain: true });
+    await this.receivePerma(signed);
+  }
+  // Staff: make the list match the records (perma bans in, unbans / temp bans out).
+  async syncPerma() {
+    if (!roles.myRole() || !this.social) return;
+    const next = new Map(this.perma);
+    let changed = false;
+    for (const [k, rec] of this.records) {
+      const perm = rec.ban && !rec.ban.until;
+      if (perm && !next.has(k)) {
+        const c = await this.social.lookup(rec.target || k);
+        if (c && c.pub) { next.set(k, c.pub.x); changed = true; }
+      } else if (!perm && next.has(k)) { next.delete(k); changed = true; }
+    }
+    if (changed) await this.publishPerma(next);
   }
 
   // Signed by someone who is staff right now?
@@ -236,6 +281,11 @@ class Moderation {
     s.relay.publish(P + k, text, { retain: true });
     if (act === 'unban' || act === 'denyappeal') this.clearAppeal(k); // the appeal is answered
     await this.receive(k, text);
+    if (act === 'ban' || act === 'unban') {
+      const next = new Map(this.perma);
+      if (act === 'ban' && !until) next.set(k, claim.pub.x); else next.delete(k);
+      await this.publishPerma(next);
+    }
     return this.records.get(k);
   }
 
@@ -445,7 +495,7 @@ class Moderation {
   searchPlayers(q = '') {
     q = low(q).replace(/[^a-z0-9_]/g, '');
     return [...this.directory.values()]
-      .filter((p) => !q || low(p.tag).includes(q))
+      .filter((p) => (!q || low(p.tag).includes(q)) && (!this.isGone(p.tag) || low(p.tag) === q))
       .sort((a, b) => (low(a.tag) === q ? -1 : low(b.tag) === q ? 1 : 0) || b.seen - a.seen);
   }
 
@@ -457,7 +507,7 @@ class Moderation {
     list.unshift({ name: clip(name, 16), gt: gt ? clip(gt, 16) : null, lobby: clip(lobby, 8), ts: Date.now() });
     store.set('recentPlayers', list.slice(0, 60));
   }
-  recentPlayers() { return store.get('recentPlayers', []); }
+  recentPlayers() { return store.get('recentPlayers', []).filter((p) => !this.isGone(p.gt)); }
 
   // ---------- Watchlist (staff, saved on this device) ----------
   isWatched(tag) { return this.watch.has(low(tag)); }
