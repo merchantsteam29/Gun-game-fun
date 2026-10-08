@@ -1,10 +1,11 @@
 {
-  "version": "2026.10.08.21",
+  "version": "2026.10.08.22",
   "notes": [
-    "Damage direction arcs that stay for a moment and follow your view as you turn",
-    "Pulsing red screen edges and a heartbeat when your health is low",
-    "Ragdoll-style deaths: bodies get knocked back (hard by explosions and shotguns), tumble and splay",
-    "Hitmarkers grow with bigger hits"
+    "Sounds behind you are duller, so you can tell front from back; far-away sounds are muffled",
+    "Distant gunshots and explosions echo",
+    "Footsteps sound different on metal, wood, snow, grass and concrete",
+    "Reloads in stages (mag out, mag in, charging handle); shotguns load shell by shell",
+    "You can hear nearby enemies reloading"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",

@@ -18,14 +18,34 @@ export function initAudio() {
   for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
 }
 
-function out(vol, pan) {
+// o.lp: low-pass cutoff (far away / behind you sounds muffled); o.echo: delay in seconds for a
+// quiet repeat (distant shots bouncing off the map).
+function out(vol, pan, o) {
   const g = ctx.createGain();
   g.gain.value = vol;
+  let node = g;
+  if (o && o.lp && o.lp < 16000) {
+    const f = ctx.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.value = o.lp;
+    node = node.connect(f);
+  }
   if (pan && ctx.createStereoPanner) {
     const p = ctx.createStereoPanner();
     p.pan.value = Math.max(-1, Math.min(1, pan));
-    g.connect(p).connect(master);
-  } else g.connect(master);
+    node = node.connect(p);
+  }
+  node.connect(master);
+  if (o && o.echo) {
+    const d = ctx.createDelay(1);
+    d.delayTime.value = Math.min(0.9, o.echo);
+    const eg = ctx.createGain();
+    eg.gain.value = o.echoGain || 0.22;
+    const ef = ctx.createBiquadFilter();
+    ef.type = 'lowpass';
+    ef.frequency.value = 1400;
+    node.connect(d).connect(ef).connect(eg).connect(master);
+  }
   return g;
 }
 
@@ -60,9 +80,9 @@ function tone(dest, { dur, f0, f1 = f0, type = 'sine', gain = 1, delay = 0 }) {
   o.stop(t + dur + 0.05);
 }
 
-const play = (fn) => (vol = 1, pan = 0) => {
+const play = (fn) => (vol = 1, pan = 0, o = null) => {
   if (!ctx || vol < 0.01) return;
-  fn(out(vol, pan));
+  fn(out(vol, pan, o));
 };
 
 export const sfx = {
@@ -117,6 +137,16 @@ export const sfx = {
 };
 // Low health heartbeat: two soft thumps.
 sfx.heartbeat = play((o) => { tone(o, { dur: 0.12, f0: 70, f1: 45, gain: 0.7 }); tone(o, { dur: 0.12, f0: 60, f1: 40, gain: 0.5, delay: 0.22 }); });
+// Footsteps by surface (game.js picks one from the material underfoot).
+sfx.stepMetal = play((o) => { tone(o, { dur: 0.08, f0: 900, f1: 500, type: 'triangle', gain: 0.18 }); nz(o, { dur: 0.06, f0: 3000, f1: 1200, type: 'bandpass', q: 3, gain: 0.35 }); });
+sfx.stepWood = play((o) => { tone(o, { dur: 0.07, f0: 180, f1: 110, type: 'triangle', gain: 0.35 }); nz(o, { dur: 0.06, f0: 900, f1: 300, gain: 0.25 }); });
+sfx.stepSnow = play((o) => { nz(o, { dur: 0.13, f0: 2600, f1: 900, type: 'bandpass', q: 0.6, gain: 0.4, attack: 0.02 }); });
+sfx.stepGrass = play((o) => { nz(o, { dur: 0.1, f0: 1800, f1: 600, type: 'bandpass', q: 0.5, gain: 0.3, attack: 0.015 }); });
+// Reload stages
+sfx.magOut = play((o) => { nz(o, { dur: 0.05, f0: 2600, type: 'highpass', gain: 0.45 }); tone(o, { dur: 0.05, f0: 520, f1: 380, type: 'square', gain: 0.12 }); });
+sfx.magIn = play((o) => { nz(o, { dur: 0.06, f0: 1800, f1: 900, gain: 0.5 }); tone(o, { dur: 0.06, f0: 300, f1: 180, type: 'square', gain: 0.18, delay: 0.01 }); });
+sfx.rack = play((o) => { nz(o, { dur: 0.06, f0: 3200, type: 'highpass', gain: 0.5 }); nz(o, { dur: 0.07, f0: 2200, type: 'highpass', gain: 0.5 }); tone(o, { dur: 0.05, f0: 700, f1: 420, type: 'square', gain: 0.14, delay: 0.09 }); });
+sfx.shell = play((o) => { tone(o, { dur: 0.05, f0: 640, f1: 420, type: 'triangle', gain: 0.25 }); nz(o, { dur: 0.05, f0: 1500, gain: 0.3 }); });
 sfx.slide = play((o) => { nz(o, { dur: 0.55, f0: 900, f1: 300, type: 'bandpass', q: 0.8, gain: 0.5, attack: 0.03 }); });
 // Headshot: a bright metallic "tink" on top of the hit tick.
 sfx.head = play((o) => {

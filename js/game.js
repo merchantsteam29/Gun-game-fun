@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { MAPS, setMapData, buildMapScene } from './maps.js';
+import { MAPS, setMapData, buildMapScene, boxes } from './maps.js';
 import { moveBody, overlap, raycast, rayAABB, PLAYER_R, phys } from './physics.js';
 import { MODES, TEAM_COLORS, ZOMBIE_COLOR, JUGG_COLOR, JUGG_TEAM, defaultSettings } from './host.js';
 import { WEAPONS, DEFAULT_LOADOUT, GUNGAME_LADDER, SLOTS } from './weapons.js';
@@ -981,7 +981,11 @@ export class Game {
 
     for (const r of this.remotes.values()) {
       r.update(dt);
-      if (r.stepped && r.pos.distanceTo(cam.position) < 30) this.posSound(sfx.step, r.pos, r.sprint > 0.5 ? 0.5 : 0.35);
+      if (r.stepped && r.crouch < 0.5 && r.pos.distanceTo(cam.position) < 32) this.posSound(this.stepSound(r.pos.x, r.pos.y, r.pos.z), r.pos, r.sprint > 0.5 ? 0.6 : 0.42);
+      // Enemies reloading nearby can be heard.
+      const rl = !!(r.flags & 1);
+      if (rl && !r.wasReloading && r.alive && r.pos.distanceTo(cam.position) < 18) this.posSound(sfx.magOut, r.pos, 0.5);
+      r.wasReloading = rl;
       if (r.tag.visible && this.fx.smokes.length && this.fx.blocked(cam.position, r.headPos(_c))) r.tag.visible = false;
     }
     this.updateProjectiles(dt);
@@ -1185,7 +1189,7 @@ export class Game {
     const hs = Math.hypot(me.vel.x, me.vel.z);
     if (me.onGround && hs > 1.5 && !me.crouch) {
       this.stepAcc += dt * hs * 0.36;
-      if (this.stepAcc >= 1) { this.stepAcc = 0; sfx.step(this.sprinting ? 0.22 : 0.14); }
+      if (this.stepAcc >= 1) { this.stepAcc = 0; this.stepSound(me.pos.x, me.pos.y, me.pos.z)(this.sprinting ? 0.22 : 0.14); }
     }
     if (me.pos.y < (MAPS[this.mapId].voidY !== undefined ? -60 : -20)) me.pos.set(0, 3, 0); // void maps: the host kills you first
   }
@@ -1238,7 +1242,8 @@ export class Game {
     this.reloadT = w.reload;
     this.burstLeft = 0;
     this.vm.cancelInspect();
-    sfx.reload(0.6);
+    this.reloadStage = 0;
+    sfx.magOut(0.55);
   }
 
   quickThrow() {
@@ -1269,6 +1274,14 @@ export class Game {
 
     if (this.reloadT > 0) {
       this.reloadT -= dt;
+      // Reload sounds in stages: mag out (on start), mag in, then the charging handle / bolt.
+      // Shotguns and break-actions load shell by shell instead.
+      const p = 1 - this.reloadT / (w.reload || 1), shells = (w.pellets > 1 || id === 'gl') && w.mag > 2;
+      if (shells) {
+        const n = Math.min(w.mag, 6), k = Math.floor(p * (n + 1));
+        if (k > (this.reloadStage || 0) && k <= n) { this.reloadStage = k; sfx.shell(0.5); }
+      } else if (p > 0.55 && (this.reloadStage || 0) < 1) { this.reloadStage = 1; sfx.magIn(0.6); }
+      else if (p > 0.82 && this.reloadStage < 2) { this.reloadStage = 2; sfx.rack(0.55); }
       if (this.reloadT <= 0) { this.reloadT = 0; this.ammo[id] = w.mag; }
     }
     if (this.autoSwitchT > 0) {
@@ -1753,13 +1766,35 @@ export class Game {
     }
   }
 
+  // Sounds in the world: quieter and duller with distance, duller still behind you (so you can tell
+  // front from back), and loud ones far away get a short echo.
   posSound(fn, pos, base = 1) {
     const cam = this.camera;
     const d = cam.position.distanceTo(pos);
-    const vol = base / (1 + d * 0.09);
+    let vol = base / (1 + d * 0.09);
     _c.subVectors(pos, cam.position).normalize();
     _r.set(1, 0, 0).applyQuaternion(cam.quaternion);
-    fn(vol, d < 1 ? 0 : _c.dot(_r) * 0.8);
+    const side = _r.x * _c.x + _r.y * _c.y + _r.z * _c.z;
+    _r.set(0, 0, -1).applyQuaternion(cam.quaternion);
+    const front = _r.x * _c.x + _r.y * _c.y + _r.z * _c.z;
+    let lp = 16000 / (1 + d * 0.05);
+    if (d > 2 && front < -0.25) { lp *= 0.45; vol *= 0.85; }
+    fn(vol, d < 1 ? 0 : side * 0.8, { lp: Math.max(700, lp), echo: base >= 0.9 && d > 22 ? 0.07 + d * 0.0025 : 0 });
+  }
+
+  // Footstep sound for whatever is underfoot at (x, y, z).
+  stepSound(x, y, z) {
+    let mat = null, top = -Infinity;
+    for (const b of boxes) {
+      if (x < b.x0 || x > b.x1 || z < b.z0 || z > b.z1 || b.y1 > y + 0.15 || b.y1 < y - 0.6 || b.y1 <= top) continue;
+      top = b.y1; mat = b.mat;
+    }
+    if (!mat) return sfx.step;
+    if (/grate|stairs|metal|steel|rail|ac|escalator|container|car|hull|hatch|pipe|tank|mast|planeBody/.test(mat)) return sfx.stepMetal;
+    if (/wood|deck|dock|roof|palisade|crate|plank|bench|desk|counter|bark|hay/.test(mat)) return sfx.stepWood;
+    if (/snow|ice/.test(mat)) return sfx.stepSnow;
+    if (/grass|moss|hedge|sand|dirt|jungle|leaf/.test(mat)) return sfx.stepGrass;
+    return sfx.step;
   }
 
   updateZone(now) {
