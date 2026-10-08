@@ -1,8 +1,8 @@
 {
-  "version": "2026.10.08.35",
+  "version": "2026.10.08.36",
   "notes": [
-    "In-game HUD, scoreboard and results screen restyled to match the new look",
-    "Results screen: cleaner XP / rating lines and map vote cards"
+    "Phones: the lobby chat no longer covers the pause menu",
+    "Final pass of the new look on phone, tablet and desktop"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",

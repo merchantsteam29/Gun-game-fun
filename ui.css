@@ -337,3 +337,5 @@ body:not(.mobile) .pause-panel { width: min(1000px, calc(100vw - 430px - max(24p
 .hl-card { border-radius: 14px; }
 #death .bnr, .bnr { border-radius: 12px; }
 #tutorial { border-radius: 14px; }
+/* Phones: the pause menu fills the screen, so the lobby chat hides behind it (the chat button is in the game HUD). */
+body.mobile:not(.tablet):has(#pause:not(.hidden)) #chat { display: none !important; }
