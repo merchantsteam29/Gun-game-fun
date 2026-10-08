@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import { RemotePlayer } from './remote.js';
 import { WEAPONS, SLOT_NAMES } from './weapons.js';
-import { getCos } from './missions.js';
+import { getCos, COSMETICS, SLOT_LABELS, HAIR_COLORS, isOwned, ownsWrap, setCos } from './missions.js';
+import { CAMOS, camoOf, camoSwatch } from './camos.js';
+import { bannerOf } from './banners.js';
 import { bannerHtml } from './banners.js';
 import { opts, setOpt } from './settings.js';
 import { esc } from './util.js';
@@ -26,13 +28,17 @@ const BACKDROPS = {
   sunset: { name: 'Sunset', top: '#ff8a4a', bottom: '#3a1446', floor: '#3a2430', grid: false },
   neon: { name: 'Neon', top: '#2a0a4a', bottom: '#05010c', floor: '#120620', grid: true, neon: true },
   snow: { name: 'Snow', top: '#e8f0f8', bottom: '#9fb2c6', floor: '#dfe7ef', grid: false },
+  sky: { name: 'Sky Islands', top: '#5aa8e8', bottom: '#cfe8ff', floor: '#4f7a3a', grid: false },
+  arctic: { name: 'Arctic', top: '#b8d4ec', bottom: '#eef5fb', floor: '#e4edf5', grid: false },
+  city: { name: 'Neon City', top: '#161b33', bottom: '#05060d', floor: '#1a1d2a', grid: true, neon: true },
+  gold: { name: 'Champion', top: '#5a3a08', bottom: '#120a02', floor: '#2a1c08', grid: false, gold: true },
   green: { name: 'Green screen', top: '#00b140', bottom: '#00b140', floor: '#00b140', grid: false, flat: true },
 };
 
 const POSES = [
-  ['idle', 'Idle'], ['walk', 'Walk'], ['sprint', 'Sprint'], ['crouch', 'Crouch'], ['reload', 'Reload'], ['jump', 'Jump'],
+  ['idle', 'Idle'], ['walk', 'Walk'], ['sprint', 'Sprint'], ['strafe', 'Strafe'], ['crouch', 'Crouch'], ['crouchwalk', 'Crouch walk'], ['reload', 'Reload'], ['jump', 'Jump & land'],
 ];
-const ACTIONS = [['fire', 'Fire'], ['swing', 'Melee swing'], ['throw', 'Throw'], ['headshot', 'Headshot!']];
+const ACTIONS = [['fire', 'Fire'], ['burst', 'Full auto'], ['swing', 'Melee swing'], ['throw', 'Throw'], ['headshot', 'Headshot!'], ['boom', 'Explosion ragdoll']];
 
 const $ = (id) => document.getElementById(id);
 
@@ -49,7 +55,10 @@ function gradientTex(top, bottom) {
 }
 
 export class Showroom {
-  constructor({ game, mobile, getColor, getName, getLoadout, getMods }) {
+  constructor({ game, mobile, getColor, getName, getLoadout, getMods, getExtras }) {
+    this.getExtras = getExtras || (() => ({}));
+    this.tryCos = null; // Wardrobe: an outfit being tried on (not saved)
+    this.tryWrap = null;
     this.game = game;
     this.mobile = mobile;
     this.getColor = getColor;
@@ -96,7 +105,7 @@ export class Showroom {
           <div class="sr-top-btns"><button id="sr-photo" title="Save a PNG (P)">📷 Photo</button><button id="sr-close" class="primary">✕ Close <kbd>Esc</kbd></button></div>
         </div>
         <div class="sr-panel">
-          <div class="sr-tabs"><button data-tab="view">Model</button><button data-tab="scene">Scene</button><button data-tab="pc">PC settings</button></div>
+          <div class="sr-tabs"><button data-tab="view">Model</button><button data-tab="fit">Wardrobe</button><button data-tab="scene">Scene</button><button data-tab="pc" title="PC-only settings">PC</button></div>
           <div class="sr-body"></div>
         </div>
         <div class="sr-banner"></div>
@@ -145,7 +154,7 @@ export class Showroom {
   // (Re)builds the avatar with your current color, cosmetics and attachments.
   makePlayer() {
     if (this.player) this.player.dispose();
-    const r = new RemotePlayer(this.scene, 'showroom', this.getName(), this.getColor(), getCos(), this.getMods());
+    const r = new RemotePlayer(this.scene, 'showroom', this.getName(), this.getColor(), this.outfit(), this.previewMods());
     r.hasState = true;
     r.alive = true;
     r.pos.set(0, 0, 0); r.tpos.set(0, 0, 0); r.prev.set(0, 0, 0);
@@ -156,6 +165,21 @@ export class Showroom {
     const lo = this.getLoadout();
     r.setWeapon(this.state.weapon && WEAPONS[this.state.weapon] ? this.state.weapon : lo[0]);
     r.swapT = 0;
+  }
+
+  // The outfit shown: what you're trying on in the Wardrobe, or what you wear.
+  outfit() { return this.tryCos ? { ...getCos(), ...this.tryCos } : getCos(); }
+  previewMods() {
+    const m = { ...this.getMods() };
+    const id = this.state.weapon || this.getLoadout()[0];
+    if (this.tryWrap && id) m[id] = { ...(m[id] || {}), camo: this.tryWrap === 'default' ? undefined : this.tryWrap };
+    return m;
+  }
+  refreshLook() {
+    if (!this.player) return;
+    this.player.setCosmetics(this.outfit());
+    this.player.setMods(this.previewMods());
+    this.renderBanner();
   }
 
   // ---------- Open / close ----------
@@ -185,6 +209,7 @@ export class Showroom {
     cancelAnimationFrame(this.raf);
     this.el.classList.add('hidden');
     this.el.classList.remove('bare');
+    this.tryCos = null; this.tryWrap = null; // trying on never sticks
     if (this.player) { this.player.dispose(); this.player = null; }
   }
 
@@ -241,6 +266,33 @@ export class Showroom {
       body.querySelectorAll('[data-pose]').forEach((b) => { b.onclick = () => { this.setPose(b.dataset.pose); this.renderPanel(); }; });
       body.querySelectorAll('[data-act]').forEach((b) => { b.onclick = () => this.action(b.dataset.act); });
       $('sr-pitch').oninput = (e) => { s.pitch = +e.target.value; };
+    } else if (s.tab === 'fit') {
+      // Try anything on, owned or not (it's only a preview). Owned items can be worn for real.
+      const cur = this.outfit(), wid = this.state.weapon || this.getLoadout()[0];
+      const curWrap = this.tryWrap || (this.getMods()[wid] && this.getMods()[wid].camo) || 'default';
+      const mark = (slot, c) => (isOwned(slot, c.id) ? '✓ ' : c.reward ? '🔒 ' : '🪙 ');
+      const slots = Object.keys(COSMETICS).map((slot) => `<div class="sr-label">${SLOT_LABELS[slot]}</div>
+        <select data-slot="${slot}">${COSMETICS[slot].map((c) => `<option value="${c.id}" ${cur[slot] === c.id ? 'selected' : ''}>${mark(slot, c)}${esc(c.name)}${!isOwned(slot, c.id) && !c.reward ? ` (${c.price})` : ''}</option>`).join('')}</select>`).join('');
+      const unowned = Object.keys(COSMETICS).filter((slot) => !isOwned(slot, cur[slot]));
+      body.innerHTML = `<p class="sr-note">Try on anything, even items you don't own yet (✓ owned · 🪙 price · 🔒 earned). Nothing is saved until you press Wear.</p>
+        ${slots}
+        <div class="sr-label">Hair color</div>
+        <div class="sr-swatches">${HAIR_COLORS.map((c) => `<button data-hc="${c}" style="background:${c}" class="${cur.hairColor === c ? 'sel' : ''}"></button>`).join('')}</div>
+        <div class="sr-label">Wrap on the ${esc(WEAPONS[wid] ? WEAPONS[wid].name : 'gun')}</div>
+        <div class="sr-wraps">${CAMOS.map((c) => `<button data-wrap="${c.id}" class="${curWrap === c.id ? 'sel' : ''} ${ownsWrap(c.id) ? '' : 'locked'}" title="${esc(c.name)}${ownsWrap(c.id) ? '' : c.reward ? ' (earned)' : ` (🪙 ${c.price})`}" style="background:${camoSwatch(c)}"></button>`).join('')}</div>
+        <div class="sr-chips sr-fit-btns">
+          <button id="sr-wear" class="primary" ${this.tryCos && !unowned.length ? '' : 'disabled'}>Wear this outfit</button>
+          <button id="sr-mine" ${this.tryCos || this.tryWrap ? '' : 'disabled'}>Back to my outfit</button>
+        </div>
+        ${this.tryCos && unowned.length ? `<p class="sr-note">You don't own: ${unowned.map((x) => esc(COSMETICS[x].find((c) => c.id === cur[x]).name)).join(', ')}. Get them in Character.</p>` : ''}`;
+      body.querySelectorAll('[data-slot]').forEach((sel) => {
+        sel.onchange = () => { this.tryCos = { ...(this.tryCos || {}), [sel.dataset.slot]: sel.value }; this.refreshLook(); this.renderPanel(); };
+        sel.addEventListener('keydown', (e) => e.stopPropagation());
+      });
+      body.querySelectorAll('[data-hc]').forEach((b) => { b.onclick = () => { this.tryCos = { ...(this.tryCos || {}), hairColor: b.dataset.hc }; this.refreshLook(); this.renderPanel(); }; });
+      body.querySelectorAll('[data-wrap]').forEach((b) => { b.onclick = () => { this.tryWrap = b.dataset.wrap; this.refreshLook(); this.renderPanel(); }; });
+      $('sr-wear').onclick = () => { const next = this.outfit(); setCos(next); if (this.onCos) this.onCos(next); this.tryCos = null; this.refreshLook(); this.renderPanel(); };
+      $('sr-mine').onclick = () => { this.tryCos = null; this.tryWrap = null; this.refreshLook(); this.renderPanel(); };
     } else if (s.tab === 'scene') {
       body.innerHTML = `
         <div class="sr-label">Backdrop</div>
@@ -287,10 +339,17 @@ export class Showroom {
   }
 
   renderBanner() {
-    const cos = getCos();
+    const cos = this.outfit(), x = this.getExtras();
     const lo = this.getLoadout();
-    this.el.querySelector('.sr-banner').innerHTML = bannerHtml(cos.banner, this.getName(), this.getColor(), 'YOUR BANNER',
-      lo.map((id, i) => `<span class="chip" title="${SLOT_NAMES[i]}">${esc(WEAPONS[id].name)}</span>`).slice(0, 2).join(''));
+    const name = (x.clan ? `[${x.clan}] ` : '') + this.getName();
+    const top = x.level ? `${esc(x.rankName || '').toUpperCase()} · LEVEL ${x.level}` : 'YOUR BANNER';
+    const chips = [
+      x.champ ? '<span class="chip">🏆 Weekly champion</span>' : '',
+      x.division ? `<span class="chip" style="color:${x.divColor}">${esc(x.division)}${x.sr ? ' · ' + x.sr + ' SR' : ''}</span>` : '',
+      ...(x.seasons || []).map((n) => `<span class="chip">S${n}</span>`),
+      ...lo.map((id, i) => `<span class="chip" title="${SLOT_NAMES[i]}">${esc(WEAPONS[id].name)}</span>`).slice(0, 2),
+    ].filter(Boolean).slice(0, 5).join('');
+    this.el.querySelector('.sr-banner').innerHTML = bannerHtml(cos.banner, name, this.getColor(), top, chips);
   }
 
   // ---------- Model control ----------
@@ -299,31 +358,39 @@ export class Showroom {
     if (!this.player || !WEAPONS[id]) return;
     this.state.weapon = id;
     this.player.setWeapon(id);
+    if (this.tryWrap) this.player.setMods(this.previewMods());
   }
 
   setPose(p) {
     const r = this.player;
     this.state.pose = p;
-    r.tcrouch = p === 'crouch' ? 1 : 0;
-    r.flags = (p === 'sprint' ? 2 : 0) | (p === 'reload' ? 1 : 0) | (p === 'jump' ? 4 : 0);
-    if (p !== 'walk' && p !== 'sprint') { r.tpos.set(0, 0, 0); }
+    r.tcrouch = p === 'crouch' || p === 'crouchwalk' ? 1 : 0;
+    r.flags = (p === 'sprint' ? 2 : 0) | (p === 'reload' ? 1 : 0);
+    this.jumpT = 0;
+    if (!['walk', 'sprint', 'strafe', 'crouchwalk'].includes(p)) { for (const v of [r.pos, r.tpos, r.prev]) v.set(0, 0, 0); }
   }
 
   action(a) {
     const r = this.player;
     if (!r) return;
     if (a === 'fire') r.fire();
+    else if (a === 'burst') { let n = 0; clearInterval(this.burstI); this.burstI = setInterval(() => { if (!this.player || ++n > 10) { clearInterval(this.burstI); return; } this.player.fire(); }, 90); }
     else if (a === 'swing') r.melee(Math.random() < 0.5 ? 'slash' : 'chop');
     else if (a === 'throw') r.throwAnim();
-    else if (a === 'headshot') {
-      r.die(null, true); // knocks the hat off too
+    else if (a === 'headshot' || a === 'boom') {
+      // Shot from in front of the camera: the body falls away from you (explosions throw it).
+      const from = this.camera.position.clone();
+      r.die(from, a === 'headshot', a === 'boom' ? 8 : 3); // a headshot knocks the hat off too
       clearTimeout(this.reviveT);
       this.reviveT = setTimeout(() => {
         if (!this.player) return;
         r.deathT = 0;
+        r.deathVel.set(0, 0, 0);
+        for (const v of [r.pos, r.tpos, r.prev]) v.set(0, 0, 0); // back on the spot (the ragdoll moved it)
         r.root.quaternion.identity();
         r.restoreHat();
-      }, 2600);
+        this.setPose(this.state.pose);
+      }, 2800);
     }
   }
 
@@ -335,7 +402,7 @@ export class Showroom {
     this.floor.material.color.set(b.floor);
     this.grid.visible = this.state.grid && b.grid;
     this.ring.visible = !b.flat;
-    this.ring.material.color.set(b.neon ? '#ff2fd8' : '#ffb020');
+    this.ring.material.color.set(b.neon ? '#ff2fd8' : b.gold ? '#ffe08a' : '#ffb020');
     this.rim.color.set(b.neon ? '#2fe6ff' : this.state.bg === 'sunset' ? '#ffb070' : '#9fd0ff');
     this.scene.fog = b.flat ? null : new THREE.Fog(b.bottom, 18, 60);
     this.showTag();
@@ -395,15 +462,26 @@ export class Showroom {
     if (!r) return;
     // Walk / sprint on the spot: the avatar moves forward and is pulled back every few meters,
     // so the real walk cycle plays.
-    if (s.pose === 'walk' || s.pose === 'sprint') {
-      r.tpos.z -= (s.pose === 'sprint' ? 6.5 : 3) * dt;
+    if (r.deathT === 0 && ['walk', 'sprint', 'crouchwalk'].includes(s.pose)) {
+      r.tpos.z -= (s.pose === 'sprint' ? 6.5 : s.pose === 'crouchwalk' ? 1.8 : 3) * dt;
       if (r.pos.z < -6) for (const v of [r.pos, r.tpos, r.prev]) v.z += 6;
+    }
+    if (r.deathT === 0 && s.pose === 'strafe') {
+      r.tpos.x += 3 * dt;
+      if (r.pos.x > 6) for (const v of [r.pos, r.tpos, r.prev]) v.x -= 6;
+    }
+    // Jump & land: 0.6 s in the air (rising then falling), then a landing squash, then again.
+    if (s.pose === 'jump' && r.deathT === 0) {
+      this.jumpT = ((this.jumpT || 0) + dt) % 1.5;
+      const air = this.jumpT < 0.6;
+      r.flags = air ? 4 : 0;
+      const h = air ? Math.sin((this.jumpT / 0.6) * Math.PI) * 0.7 : 0;
+      for (const v of [r.pos, r.tpos]) v.y = h;
     }
     if (s.pose === 'reload') r.flags |= 1;
     r.tyaw = 0;
     r.tpitch = s.pitch;
     r.update(dt);
-    if (s.pose === 'jump') r.hips.position.y += Math.abs(Math.sin(now * 0.004)) * 0.25;
 
     const c = this.cam;
     if (s.spin && !s.spinPaused) c.theta += dt * 0.35;

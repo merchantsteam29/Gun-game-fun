@@ -401,3 +401,22 @@ button:active { transform: translateY(1px) scale(0.985); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-delay: 0s !important; transition-duration: 0.01ms !important; }
 }
+
+/* ---------- Showroom (secret) in the v2 style ---------- */
+#showroom .sr-panel { border-radius: var(--r-lg); background: rgba(12,15,21,0.9); border: 1px solid var(--line-2); box-shadow: 0 24px 70px rgba(0,0,0,0.5); backdrop-filter: blur(12px); }
+#showroom .sr-tabs { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--line); }
+#showroom .sr-tabs button { flex: 1; padding: 7px 8px; font-size: 11px; border: 0; background: transparent; color: var(--muted); border-radius: 9px; }
+#showroom .sr-tabs button.sel { background: var(--accent-soft); color: var(--accent); }
+#showroom .sr-chips button { border-radius: 9px; }
+#showroom select { border-radius: 10px; width: 100%; }
+#showroom .sr-top-btns button { border-radius: 10px; }
+#showroom .sr-help { border-radius: 10px; }
+#showroom .sr-swatches { display: flex; gap: 6px; flex-wrap: wrap; }
+#showroom .sr-swatches button { width: 24px; height: 24px; padding: 0; border-radius: 50%; border: 2px solid transparent; }
+#showroom .sr-swatches button.sel { border-color: #fff; }
+#showroom .sr-wraps { display: grid; grid-template-columns: repeat(auto-fill, minmax(30px, 1fr)); gap: 5px; }
+#showroom .sr-wraps button { height: 30px; padding: 0; border-radius: 8px; border: 2px solid transparent; }
+#showroom .sr-wraps button.sel { border-color: var(--accent); }
+#showroom .sr-wraps button.locked { opacity: 0.65; }
+#showroom .sr-fit-btns { margin-top: 12px; }
+#showroom .sr-fit-btns button { flex: 1; }

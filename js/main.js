@@ -1705,7 +1705,13 @@ new Showroom({
   getName: () => settings.name || 'Player',
   getLoadout: () => settings.loadout,
   getMods: () => settings.mods,
-});
+  // Level, rank, ranked division, clan, weekly trophy and season badges for the banner card.
+  getExtras: () => {
+    const lv = myLevel(), rk = myRanked(), c = clans.myClan();
+    return { level: lv.level, rankName: lv.rank.name, division: rk.played ? rk.div.name : null, divColor: rk.div.color, sr: rk.placing ? 0 : rk.sr,
+      clan: c ? c.tag : null, champ: social.tag ? leaderboard.isChamp(social.tag) : false, seasons: seasons.badges() };
+  },
+}).onCos = (c) => { game.myBanner = c.banner; if (net) net.send({ t: 'cos', c: { ...myCos(), ...c } }); renderChip(); };
 settingsUI = new SettingsUI({
   game, mobile, uiMode, uiFromUrl: !!uiFromUrl,
   editLayout: (done) => touch.edit(done),

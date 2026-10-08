@@ -1,9 +1,7 @@
 {
-  "version": "2026.10.08.40",
+  "version": "2026.10.08.41",
   "notes": [
-    "New menu animations: screens slide in with their cards one after another, cards lift when you hover",
-    "Pop-ups, toasts and the scoreboard pop in; the results screen reveals the title, XP, podium and rows in sequence",
-    "Turns animations down automatically if your device is set to reduce motion"
+    "Small fixes and polish"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",
