@@ -1,8 +1,9 @@
 {
-  "version": "2026.10.08.29",
+  "version": "2026.10.08.30",
   "notes": [
-    "Highlight clips are now off by default (Settings > Video > Record highlight clips to turn them on)",
-    "The game never uses your camera: clips record only the game screen, but some browsers show a recording icon while they run"
+    "Phones: the Servers screen tiles are now one swipeable row, so Join and the server list fit on screen",
+    "Phones: the season pass is one swipeable row and Missions shows less text",
+    "Phones: Friends shows your gamertag and friends first; invite and clan cards appear once you have a gamertag"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",

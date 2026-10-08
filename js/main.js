@@ -689,6 +689,7 @@ document.addEventListener('click', (e) => {
 
 function renderInvite() {
   const el = $('invite-card');
+  el.classList.toggle('hidden', !social.tag); // needs a gamertag; the gamertag card below says so
   const n = invites.count(), base = location.origin + location.pathname;
   el.innerHTML = `<div class="inv-head"><span class="inv-ic">🎁</span><div><h3>Invite friends</h3>
       <p class="note">Send your link. When a new player opens it and finishes their first match, you <b>both</b> get 🪙 ${INVITE_TOKENS}. (${n} / ${MAX_INVITES} friends so far)</p></div></div>
@@ -706,6 +707,7 @@ function renderInvite() {
 let clanForm = 'create';
 function renderClan() {
   const el = $('clan-card');
+  el.classList.toggle('hidden', !social.tag);
   const c = clans.myClan(), pend = clans.mine && clans.mine.pending ? clans.mine.tag : null;
   const keep = (sel) => { const i = el.querySelector(sel); return i ? i.value : ''; };
   const draft = { tag: keep('#cl-tag'), name: keep('#cl-name'), join: keep('#cl-join'), say: keep('#cl-say') };

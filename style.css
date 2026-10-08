@@ -1619,3 +1619,46 @@ body.mobile #tutorial b { font-size: 16px; }
 .hl-side b { font-size: 17px; }
 .hl-btn { padding: 6px 12px; font-size: 12px; border: 1px solid var(--accent); border-radius: 6px; color: var(--accent); background: var(--accent-soft); text-decoration: none; font-family: inherit; cursor: pointer; }
 body.mobile .hl-card video { width: 150px; }
+
+/* ---------- Phones (landscape): less crammed menus ---------- */
+/* Servers: the home tiles become one row of compact chips you swipe, so Join and the server list are on screen. */
+body.mobile:not(.tablet) .home-strip { display: flex; overflow-x: auto; gap: 6px; margin-bottom: 8px; padding-bottom: 4px;
+  scroll-snap-type: x proximity; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+body.mobile:not(.tablet) .home-strip::-webkit-scrollbar { display: none; }
+body.mobile:not(.tablet) .home-strip > * { flex: 0 0 auto; width: auto; min-width: 0; max-width: 210px; grid-column: auto !important;
+  padding: 6px 10px !important; gap: 8px; scroll-snap-align: start; animation: none; }
+body.mobile:not(.tablet) .home-strip > .hs-quick { max-width: 170px; }
+body.mobile:not(.tablet) .hs-ic { font-size: 16px; }
+body.mobile:not(.tablet) .hs-txt { gap: 1px; }
+body.mobile:not(.tablet) .hs-txt b, body.mobile:not(.tablet) .hs-quick b, body.mobile:not(.tablet) .hs-ranked b { font-size: 12px; letter-spacing: 0.3px; }
+body.mobile:not(.tablet) .hs-txt small { font-size: 10px; max-width: 150px; }
+body.mobile:not(.tablet) .hs-tile button { padding: 4px 8px; font-size: 11px; }
+body.mobile:not(.tablet) .hs-bar, body.mobile:not(.tablet) .hs-minis { display: none; }
+body.mobile:not(.tablet) .lvl-badge.big { min-width: 28px; height: 22px; font-size: 12px; }
+body.mobile:not(.tablet) .join-card { padding: 8px 12px; }
+body.mobile:not(.tablet) .join-card .note { display: none; }
+body.mobile:not(.tablet) .join-card h3 { margin: 0; }
+/* Missions: season pass in one swipeable row, login days in one row, fewer explanations. */
+body.mobile:not(.tablet) .sp-track { display: flex; overflow-x: auto; gap: 4px; scrollbar-width: none; }
+body.mobile:not(.tablet) .sp-cell { flex: 0 0 40px; min-height: 40px; }
+body.mobile:not(.tablet) .dl-days { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+body.mobile:not(.tablet) .dl-day { padding: 4px 2px; }
+body.mobile:not(.tablet) .dl-day b { font-size: 11px; }
+body.mobile:not(.tablet) .dl-ranks { display: flex; overflow-x: auto; }
+body.mobile:not(.tablet) .dl-rank { flex: 0 0 96px; }
+body.mobile:not(.tablet) .daily .note, body.mobile:not(.tablet) .sp .note { display: none; }
+body.mobile:not(.tablet) .daily { gap: 8px; }
+body.mobile:not(.tablet) .daily .card { padding: 10px 12px; }
+/* Friends: your gamertag and friends first; invite / clan after. */
+body.mobile:not(.tablet) .menu-pane[data-pane="friends"]:not(.hidden) { display: flex; flex-direction: column; }
+body.mobile:not(.tablet) #menu-friends { order: -1; margin-bottom: 8px; }
+body.mobile:not(.tablet) .invite-card .note { font-size: 11px; }
+/* Leaderboard: just the table and your week. */
+body.mobile:not(.tablet) .lb-side > .note, body.mobile:not(.tablet) .lb-side .card:last-of-type .note { display: none; }
+body.mobile:not(.tablet) .lb-table td { padding: 5px 6px; font-size: 13px; }
+body.mobile:not(.tablet) .home-strip > .hs-gn, body.mobile:not(.tablet) .home-strip > .hs-feat { max-width: 250px; }
+body.mobile:not(.tablet) .hs-gn .hs-txt { min-width: 110px; }
+body.mobile:not(.tablet) .hs-remind { max-width: 30px; overflow: hidden; white-space: nowrap; padding: 4px 6px !important; }
+/* Scroll rows mustn't stretch their cards wider than the screen. */
+.daily { grid-template-columns: minmax(0, 1fr); }
+.daily > *, .lb > *, .home-strip > * { min-width: 0; }
