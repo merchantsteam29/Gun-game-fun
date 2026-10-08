@@ -33,6 +33,7 @@ const INTERP_MS = 110, EXTRAP_MS = 120;
 // Estimated (local clock − host clock), kept up to date by Game from snapshot timestamps.
 export const netClock = { off: 0 };
 const YAXIS = new THREE.Vector3(0, 1, 0);
+const XAXIS = new THREE.Vector3(1, 0, 0);
 
 function mesh(geo, mat, x, y, z, parent) {
   const m = new THREE.Mesh(geo, mat);
@@ -417,13 +418,32 @@ export class RemotePlayer {
       this.root.quaternion.setFromAxisAngle(YAXIS, this.yaw);
     }
 
-    // Hips: crouch lowers, walking bobs.
-    const bob = Math.abs(Math.sin(this.phase)) * 0.04 * moving;
+    // Body: the hips dip on every footstep and sway side to side, the torso counter-rotates
+    // against the hips, leans into the run and into strafes, breathes when idle, leans back in
+    // the air and squashes on landing; firing kicks the shoulders back a little.
+    const wasAir = this.airLast || 0;
+    this.airLast = this.air;
+    if (wasAir > 0.6 && this.air < 0.4 && this.alive) this.landT = Math.min(1, wasAir);
+    this.landT = Math.max(0, (this.landT || 0) - dt * 4);
+    this.tBreath = (this.tBreath || 0) + dt;
+    const runK = Math.min(1, speed / 7);
+    const stepBob = (1 - Math.cos(this.phase * 2)) * 0.022 * moving * (1 + this.sprint * 0.6);
     const dying = this.deathT > 0 ? Math.min(1, this.deathT / 0.4) : 0;
-    this.hips.position.y = HIP_Y - this.crouch * 0.32 - bob + this.air * 0.05 - dying * 0.25;
-    this.spine.rotation.x = -this.sprint * 0.25 + this.pitch * 0.2 - this.crouch * 0.15;
-    this.neck.rotation.x = this.pitch * 0.5 + this.sprint * 0.2;
-    this.spine.rotation.y = Math.sin(this.phase) * 0.06 * moving;
+    const land = Math.sin(this.landT * Math.PI) * 0.09;
+    // Sideways speed in the body's frame (for leaning into strafes).
+    const cyb = Math.cos(this.yaw), syb = Math.sin(this.yaw);
+    const side = (this.vel.x * cyb - this.vel.z * syb) / Math.max(1, speed);
+    this.lean = (this.lean || 0) + (side * moving - (this.lean || 0)) * Math.min(1, dt * 8);
+    this.hips.position.y = HIP_Y - this.crouch * 0.32 - stepBob + this.air * 0.05 - dying * 0.25 - land;
+    this.hips.position.x = Math.sin(this.phase) * 0.025 * moving;
+    this.hips.rotation.y = Math.sin(this.phase) * 0.12 * moving;
+    this.hips.rotation.z = Math.sin(this.phase) * 0.035 * moving;
+    this.spine.rotation.x = -this.sprint * 0.25 + this.pitch * 0.2 - this.crouch * 0.15 - runK * 0.08 * moving
+      + Math.sin(this.tBreath * 1.7) * 0.015 * (1 - moving) + this.air * 0.1 - land * 0.6 + this.recoil * 0.07;
+    this.spine.rotation.y = -Math.sin(this.phase) * 0.1 * moving;
+    this.spine.rotation.z = -this.lean * 0.12;
+    this.neck.rotation.x = this.pitch * 0.5 + this.sprint * 0.2 + runK * 0.06 * moving;
+    this.neck.rotation.y = Math.sin(this.phase) * 0.04 * moving;
 
     // Gun pose
     const w = WEAPONS[this.weapon] || WEAPONS.ar;
@@ -437,7 +457,8 @@ export class RemotePlayer {
     gh.rotation.set(melee ? 0.9 : 0, 0, 0);
     this.aim.rotation.set(this.pitch * (1 - this.sprint * 0.6) - this.sprint * 0.5, this.sprint * 0.5, 0);
     gh.position.z += this.recoil * 0.08;
-    gh.rotation.x += this.recoil * 0.25;
+    gh.rotation.x += this.recoil * 0.25 + this.air * 0.12 - land * 0.8;
+    gh.position.y += Math.sin(this.phase * 2) * 0.012 * moving;
     if (this.swapT > 0) { // newly drawn weapon comes up from the hip
       const e = this.swapT * this.swapT;
       gh.position.y -= 0.3 * e; gh.rotation.x -= 0.9 * e;
@@ -475,8 +496,8 @@ export class RemotePlayer {
     let lx = dirX * cy - dirZ * sy, lz = dirX * sy + dirZ * cy;
     const ll = Math.hypot(lx, lz) || 1;
     lx /= ll; lz /= ll;
-    const stride = Math.min(0.42, speed * 0.07) * moving;
-    const lift = Math.min(0.22, speed * 0.04) * moving;
+    const stride = Math.min(0.46, speed * 0.075) * moving * (1 - this.crouch * 0.35);
+    const lift = Math.min(0.26, speed * 0.045) * moving * (1 + this.sprint * 0.3);
     for (const leg of this.legs) {
       const ph = this.phase + (leg.side > 0 ? Math.PI : 0);
       const fx = leg.side * (0.13 + this.crouch * 0.08), fz = -this.crouch * 0.12;
@@ -495,6 +516,7 @@ export class RemotePlayer {
       leg.foot.position.copy(_e);
       leg.foot.position.y -= 0.02;
       leg.foot.quaternion.copy(this.root.quaternion);
+      if (moving > 0.05 && this.alive) leg.foot.quaternion.multiply(_q.setFromAxisAngle(XAXIS, -Math.sin(ph) * 0.35 * moving)); // toe up as the foot swings forward
     }
 
     // Arms: right hand on the grip, left hand on the fore anchor (or relaxed at the side).

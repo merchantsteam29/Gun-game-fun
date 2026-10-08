@@ -1,9 +1,8 @@
 {
-  "version": "2026.10.08.38",
+  "version": "2026.10.08.39",
   "notes": [
-    "New first-person animations: weighty spring recoil that differs per weapon type (pistol snap, shotgun punch, sniper kick)",
-    "Your gun now trails and rolls when you turn, lifts when you jump and bounces when you land",
-    "Smoother walk/run bob and breathing, crouch and slide tilt, a better draw, reload, inspect and melee follow-through"
+    "New player animations: hips dip on each step and sway, the body leans into runs and strafes, feet roll heel to toe",
+    "Players breathe when standing still, lean back when jumping, squash on landing and kick back when firing"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",
