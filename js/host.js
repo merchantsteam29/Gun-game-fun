@@ -1,5 +1,5 @@
 import { spawns, setMapData, MAP_ORDER, MAPS } from './maps.js';
-import { phys } from './physics.js';
+import { phys, raycast } from './physics.js';
 import { WEAPONS, GUNGAME_LADDER, SLOTS } from './weapons.js';
 import { WEAPON_RULES, ruleLoadout, cleanRules } from './rulesets.js';
 import { NavGrid } from './nav.js';
@@ -65,6 +65,25 @@ function maxHitDmg(w) {
   if (w.type === 'melee') return Math.max(w.dmg, w.backstab || 0) + 1;
   return Math.ceil(Math.max((w.directDmg || 0) * head, w.splash || 0)) + 1;
 }
+// ---------- Anti-cheat (host side) ----------
+// Movement and aim are client-side, so the host can't stop every cheat, but it can refuse what's
+// clearly impossible and tell staff. Generous limits (lag bunches messages up) so nobody normal
+// gets caught: shooting faster than the gun can, moving faster than the fastest slide, melee
+// from across the room, and a pattern of hits through solid walls.
+const AC = {
+  rateSlack: 0.55,     // allow shots this much closer together than the gun's fire rate (lag, attachments)
+  speedMax: 24,        // m/s horizontal over a second (times move speed and game speed rules)
+  teleport: 16,        // m in a single position update
+  meleeExtra: 2.5,     // m beyond a melee weapon's reach
+  strikes: 3,          // strikes before staff get a report
+};
+function rayBlocked(ax, ay, az, bx, by, bz) {
+  const dx = bx - ax, dy = by - ay, dz = bz - az, len = Math.hypot(dx, dy, dz);
+  if (len < 0.5) return false;
+  const hit = raycast(ax, ay, az, dx / len, dy / len, dz / len, len - 0.4);
+  return !!hit && hit.mat !== 'invisible'; // invisible walls (stop you falling off docks) don't block shots
+}
+
 const ROTATION_SECONDS = 40;
 // Weapon Rotation picks from every primary/secondary gun and launcher.
 const ROTATION_POOL = [...SLOTS[0], ...SLOTS[1]];
@@ -432,6 +451,8 @@ export class HostLogic {
     p.hp = this.maxHp(p);
     p.st[0] = s.x; p.st[1] = s.y; p.st[2] = s.z;
     p.protectUntil = Date.now() + PROTECT_MS;
+    p.spawnedAt = Date.now(); // anti-cheat: the jump to the spawn point isn't a teleport
+    p.acPos = null;
     const l = this.loadoutFor(p);
     const start = this.mode.ammoStart; // One in the Chamber: a single bullet per life
     if (p.bot) { p.bot.spawn(s, l); if (start) p.bot.ammo = start; }
@@ -452,9 +473,13 @@ export class HostLogic {
       case 'st':
         // q is a counter: the position channel is unordered, so ignore anything older than we have.
         if (typeof m.q === 'number') { if (m.q <= (p.lastQ || 0)) break; p.lastQ = m.q; }
-        if (p.alive && Array.isArray(m.p)) p.st = [m.p[0], m.p[1], m.p[2], m.y, m.pi, m.w, m.c ? 1 : 0, m.a | 0];
+        if (p.alive && Array.isArray(m.p)) { this.checkMove(p, m.p); p.st = [m.p[0], m.p[1], m.p[2], m.y, m.pi, m.w, m.c ? 1 : 0, m.a | 0]; }
         break;
-      case 'shot': case 'proj': case 'boom': case 'fx':
+      case 'shot':
+        if (!this.checkRate(p, m.w)) break; // faster than the gun can fire: dropped
+        this.broadcast({ ...m, id }, id);
+        break;
+      case 'proj': case 'boom': case 'fx':
         this.broadcast({ ...m, id }, id);
         break;
       case 'hit':
@@ -584,6 +609,7 @@ export class HostLogic {
     if (this.s.headshotsOnly && w && w.type === 'gun' && !m.head && v !== attacker) return;
     const now = Date.now();
     if (now < v.protectUntil && v !== attacker) return;
+    if (!this.checkHit(attacker, v, w, m, explosive, now)) return;
     // Never accept more than the weapon can deal in one hit (keeps modded clients in line).
     let dmg = Math.max(0, Math.min(maxHitDmg(w), Number(m.dmg) || 0));
     if (!dmg) return;
@@ -650,6 +676,74 @@ export class HostLogic {
       const x = p.home.x + Math.sin(now / 1000 * p.speed + p.phase) * p.sway;
       p.st = [x, p.home.y, p.home.z, p.home.yaw, 0, 'pan', 0, 2]; // flag 2: running pose
     }
+  }
+
+  // ---------- Anti-cheat ----------
+  strike(p, why) {
+    if (p.bot || p.dummy || this.s.mode === 'practice') return;
+    p.acStrikes = (p.acStrikes || 0) + 1;
+    p.acWhy = why;
+    if (p.acStrikes >= AC.strikes && !p.acFlagged) {
+      p.acFlagged = true;
+      if (this.onFlag) this.onFlag(p, `Anti-cheat: ${why} (${p.acStrikes} times) · ${MODES[this.s.mode].name} on ${MAPS[this.s.map].name}`);
+    }
+  }
+
+  // Position updates: teleports and impossible speed (checked over about a second).
+  checkMove(p, pos) {
+    if (p.bot) return;
+    const now = Date.now();
+    const last = p.acPos;
+    p.acPos = { x: pos[0], z: pos[2], t: now };
+    if (!last || now - (p.spawnedAt || 0) < 1500) { p.acWin = null; return; }
+    const step = Math.hypot(pos[0] - last.x, pos[2] - last.z);
+    if (step > AC.teleport) { this.strike(p, `teleported ${Math.round(step)} m`); p.acBlockUntil = now + 2000; return; }
+    const win = p.acWin || (p.acWin = { x: last.x, z: last.z, t: last.t });
+    const dt = (now - win.t) / 1000;
+    if (dt < 1) return;
+    const speed = Math.hypot(pos[0] - win.x, pos[2] - win.z) / dt;
+    const max = AC.speedMax * Math.max(1, this.s.moveSpeed || 1) * Math.max(1, this.s.gameSpeed || 1);
+    if (speed > max) { this.strike(p, `moving ${Math.round(speed)} m/s`); p.acBlockUntil = now + 1500; }
+    p.acWin = { x: pos[0], z: pos[2], t: now };
+  }
+
+  // Shots: no faster than the gun's fire rate (burst guns: their burst gap), with slack.
+  checkRate(p, wid) {
+    const w = WEAPONS[wid];
+    if (p.bot || !w || w.type !== 'gun' || !w.rate) return true;
+    const now = Date.now();
+    const gap = Math.min(w.rate, w.burstGap || w.rate) * AC.rateSlack;
+    p.acShots = (p.acShots || []).filter((t) => now - t < 2000);
+    p.acShots.push(now);
+    if (p.acShots.length > 2000 / (gap * 1000) + 3) {
+      if (!p.acRateT || now - p.acRateT > 2000) { p.acRateT = now; this.strike(p, `firing the ${w.name} too fast`); }
+      p.acBlockUntil = now + 1000;
+      return false;
+    }
+    return true;
+  }
+
+  // Hits: refused while blocked (just teleported / over the fire rate) and for melee from too far.
+  // Gun hits through solid walls are only counted (lag makes corners messy) and reported in bulk.
+  checkHit(a, v, w, m, explosive, now) {
+    if (a.bot || a === v || this.s.mode === 'practice') return true;
+    if (now < (a.acBlockUntil || 0)) return false;
+    if (!w) return true;
+    const d = Math.hypot(a.st[0] - v.st[0], a.st[1] - v.st[1], a.st[2] - v.st[2]);
+    if (w.type === 'melee' && d > (w.range || 2.5) + AC.meleeExtra) { this.strike(a, `melee hit from ${d.toFixed(1)} m`); return false; }
+    if (w.type === 'gun' && !explosive) {
+      a.acGunHits = (a.acGunHits || 0) + 1;
+      const ey = a.st[1] + (a.st[6] ? 1.1 : 1.55);
+      const walls = rayBlocked(a.st[0], ey, a.st[2], v.st[0], v.st[1] + 1.1, v.st[2]) && rayBlocked(a.st[0], ey, a.st[2], v.st[0], v.st[1] + 1.6, v.st[2]);
+      if (walls) {
+        a.acWallHits = (a.acWallHits || 0) + 1;
+        if (a.acWallHits >= 10 && a.acWallHits / a.acGunHits > 0.3 && !a.acWallFlagged) {
+          a.acWallFlagged = true;
+          if (this.onFlag) this.onFlag(a, `Anti-cheat: ${a.acWallHits} of ${a.acGunHits} hits went through walls · ${MODES[this.s.mode].name} on ${MAPS[this.s.map].name}`);
+        }
+      }
+    }
+    return true;
   }
 
   // Suspicious stats → an automatic report for staff (once per player per lobby). Only gun kills

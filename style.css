@@ -1608,3 +1608,4 @@ body.mobile #tutorial b { font-size: 16px; }
 .slow-tip { position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%); z-index: 40; display: flex; gap: 8px; align-items: center;
   padding: 10px 14px; background: rgba(8,10,14,0.92); border: 1px solid var(--accent); border-radius: 10px; font-size: 13px; max-width: 94vw; flex-wrap: wrap; }
 .slow-tip button { padding: 6px 12px; }
+.ac-flag { color: var(--danger); font-style: normal; font-size: 11px; font-weight: 700; }

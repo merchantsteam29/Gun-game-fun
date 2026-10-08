@@ -411,6 +411,11 @@ becomes free again.
   **Anti-spam:** the host's game auto-mutes anyone who sends 6 messages in 8 seconds or the same message 3 times in a
   row (for that match), and files an auto-report when it can.
 
+  **Anti-cheat:** the host's game drops shots fired faster than a gun can fire, refuses hits right after a teleport or
+  impossible speed, refuses melee hits from out of reach, and counts gun hits that went through solid walls. Repeat
+  offenders (3 strikes, or 10+ wall hits making up 30% of their hits) are auto-reported to the Mod Panel, and the host
+  panel shows a ⚠ next to them. Limits are generous so lag never gets normal players flagged.
+
   **Gamertag filter:** gamertags containing filtered words can't be claimed, even hidden inside a name ("xX_Sh1t_Xx").
 
   Auto-flags: when you host, your game reports players with impossible-looking stats (80%+ headshot kills over 15+ gun

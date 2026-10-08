@@ -1,10 +1,10 @@
 {
-  "version": "2026.10.08.24",
+  "version": "2026.10.08.25",
   "notes": [
-    "Low-end graphics mode for school laptops and old phones (Settings > Video)",
-    "Auto resolution keeps matches smooth by lowering the resolution a little when frames drop",
-    "If a match runs very slowly, the game suggests Low-end mode",
-    "Faster loading: the game files download in parallel"
+    "Anti-cheat: shots faster than a gun can fire are dropped",
+    "Teleporting / speed hacks: hits don't count, and melee from out of reach is refused",
+    "Hits through solid walls are counted; repeat cheaters get auto-reported to staff",
+    "Hosts see a warning next to flagged players in the host panel"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",
