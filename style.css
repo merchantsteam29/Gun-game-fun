@@ -1379,9 +1379,9 @@ body.mobile:not(.tablet) .lo-presets button { padding: 4px 7px; font-size: 11px;
 .lvl-diamond { background: linear-gradient(135deg, #b8e0ff, #7ab8ff 50%, #c9a8ff); }
 .lvl-platinum { background: linear-gradient(135deg, #d8fff8, #6fe6dc); }
 .trophy { margin: 0 2px 0 4px; font-size: 0.9em; }
-.home-strip { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
-.home-strip > * { grid-column: span 2; }
-.home-strip > .hs-quick, .home-strip > .hs-gn { grid-column: span 3; padding: 12px 14px; }
+.home-strip { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+.home-strip > * { grid-column: span 4; }
+.home-strip > .hs-quick, .home-strip > .hs-gn, .home-strip > .hs-feat { padding: 12px 14px; }
 .hs-tile { display: flex; align-items: center; gap: 10px; text-align: left; padding: 10px 12px; background: var(--panel-2); border: 1px solid var(--line);
   border-radius: var(--radius); color: var(--text); font: inherit; min-width: 0; }
 button.hs-tile { cursor: pointer; }
@@ -1482,3 +1482,10 @@ body.mobile .lb { grid-template-columns: 1fr; }
 body.mobile .install-btn { width: auto; margin: 6px 0; }
 .home-strip > .hs-install { grid-column: 1 / -1; padding: 8px 12px; border-color: rgba(255,176,32,0.4); }
 body.mobile .home-strip > .hs-install { grid-column: 1 / -1; }
+
+/* Featured mode of the day */
+.hs-feat { border-color: rgba(255,210,110,0.35); background: linear-gradient(135deg, rgba(255,210,110,0.12), rgba(255,255,255,0.02)); }
+.hs-feat button { flex: none; padding: 6px 12px; }
+.tile.feat { border-color: var(--accent); }
+.tile.feat small { color: var(--accent); }
+body.mobile .home-strip > .hs-feat { grid-column: 1 / -1; }

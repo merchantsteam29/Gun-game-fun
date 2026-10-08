@@ -1,9 +1,8 @@
 {
-  "version": "2026.10.08.11",
+  "version": "2026.10.08.12",
   "notes": [
-    "Install Gun Game 3D as an app: its own icon, full screen, no browser bar",
-    "Install app button on the Servers screen (iPhone/iPad: Share > Add to Home Screen)",
-    "New app icon and browser tab icon"
+    "Featured mode of the day: 1.5x XP and 100 tokens for your first match in it",
+    "Play it button on the Servers screen; featured servers get a star in the list"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",

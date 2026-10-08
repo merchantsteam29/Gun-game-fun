@@ -213,6 +213,12 @@ the Servers screen (or in the menu sidebar). On iPhone / iPad: Safari → Share 
 - The owner sets the schedule (days, start time, length, time zone) in **Mod Panel → Announce**. Until then it's every
   day at 7 PM New York time for 2 hours.
 
+## Featured mode of the day
+
+Every day one mode is featured (the same for everyone): it gives **1.5x XP** (stacks with Game Night) and
+🪙 100 for the first match you finish in it that day. **Play it** on the Servers screen joins a public server
+playing it, or starts one. Featured servers have a ⭐ in the list.
+
 ## Weekly leaderboard
 
 **Leaderboard** in the menu ranks everyone with a gamertag by **XP, kills, wins and headshots** for the week

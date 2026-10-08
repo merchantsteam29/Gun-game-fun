@@ -186,3 +186,27 @@ export const fmtDuration = (ms) => {
   const m = Math.max(0, Math.round(ms / 60000)), h = Math.floor(m / 60), d = Math.floor(h / 24);
   return d >= 1 ? `${d}d ${h % 24}h` : h >= 1 ? `${h}h ${m % 60}m` : `${m}m`;
 };
+
+// ---------- Featured mode of the day ----------
+// One mode a day (by UTC date, so everyone agrees) gives bonus XP, plus tokens for the first
+// match you finish in it that day.
+export const FEATURED_POOL = ['tdm', 'gungame', 'koth', 'infection', 'ctf', 'dom', 'hardpoint', 'killconfirmed', 'juggernaut', 'bounty', 'lms', 'oitc',
+  'instagib', 'rotation', 'blades', 'boom', 'roulette', 'vampire'];
+export const FEATURED_XP = 1.5;
+export const FEATURED_TOKENS = 100;
+export function featuredMode(t = Date.now()) {
+  const day = new Date(t).toISOString().slice(0, 10);
+  const rnd = seeded('featured:' + day);
+  rnd(); // (first value is a bit lumpy)
+  return FEATURED_POOL[Math.floor(rnd() * FEATURED_POOL.length)];
+}
+export const featuredEnds = (t = Date.now()) => { const d = new Date(t); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1); };
+// First featured match today? Pays once per UTC day; returns the tokens paid (0 if already).
+export function claimFeatured() {
+  const day = new Date().toISOString().slice(0, 10);
+  if (store.get('featDone', '') === day) return 0;
+  store.set('featDone', day);
+  addTokens(FEATURED_TOKENS);
+  return FEATURED_TOKENS;
+}
+export const featuredClaimed = () => store.get('featDone', '') === new Date().toISOString().slice(0, 10);

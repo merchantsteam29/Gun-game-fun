@@ -24,7 +24,7 @@ import { Voice } from './voice.js';
 import { Showroom } from './showroom.js';
 import { isBound, keysLabel } from './binds.js';
 import { CAMOS, camoSwatch, camoOf } from './camos.js';
-import { myLevel, levelBadge, RANKS, loginState, claimLogin, LOGIN_REWARDS, STREAK_WRAP, dailyChallenges, ALL_DAILY_BONUS, fmtDuration, onProgress, setXpBoost } from './progress.js';
+import { myLevel, levelBadge, RANKS, loginState, claimLogin, LOGIN_REWARDS, STREAK_WRAP, dailyChallenges, ALL_DAILY_BONUS, fmtDuration, onProgress, setXpBoost, featuredMode, featuredEnds, FEATURED_XP, FEATURED_TOKENS, claimFeatured, featuredClaimed } from './progress.js';
 import { gameNight, GN_NAME, GN_XP, describe as describeGn } from './gamenight.js';
 import { grantWrap } from './missions.js';
 import { leaderboard, BOARDS, weekEnds, CHAMP_TOKENS } from './leaderboard.js';
@@ -162,6 +162,11 @@ function renderHome() {
       ${gnLive ? '<button class="primary" data-gn>Join game night</button>' : gn ? `<button class="ghost hs-remind" data-remind title="${esc(describeGn(gameNight.schedule))}">${gameNight.remind ? '🔔 On' : '🔕 Remind me'}</button>` : ''}
     </div>
     ${canInstall() ? '<button class="hs-tile hs-install" data-install><span class="hs-ic">📲</span><span class="hs-txt"><b>Install the app</b><small>Gun Game 3D on your home screen</small></span></button>' : ''}
+    <div class="hs-tile hs-feat">
+      <span class="hs-ic">⭐</span>
+      <span class="hs-txt"><b>Today: ${esc(MODES[featuredMode()].name)}</b><small>${FEATURED_XP}x XP${featuredClaimed() ? '' : ` · 🪙 ${FEATURED_TOKENS} first match`} · ${fmtDuration(featuredEnds() - Date.now())} left</small></span>
+      <button class="primary" data-feat>Play it</button>
+    </div>
     <button class="hs-tile hs-level" data-go="missions" title="Earn XP from kills, headshots, matches, wins and daily challenges">
       ${levelBadge(lv.level, false).replace('lvl-badge', 'lvl-badge big')}
       <span class="hs-txt"><b>${esc(lv.rank.name)} · Level ${lv.level}</b><span class="hs-bar"><i style="width:${lv.pct * 100}%"></i></span><small>${lv.need ? `${lv.into.toLocaleString()} / ${lv.need.toLocaleString()} XP` : 'Max level'}</small></span>
@@ -179,6 +184,7 @@ function renderHome() {
   const c = el.querySelector('[data-claim]');
   if (c) c.onclick = doClaim;
   el.querySelector('[data-quick]').onclick = quickPlay;
+  el.querySelector('[data-feat]').onclick = playFeatured;
   const ins = el.querySelector('[data-install]');
   if (ins) ins.onclick = installApp;
   const g = el.querySelector('[data-gn]');
@@ -213,6 +219,16 @@ async function quickPlay() {
   if (best) return joinCode(best.code);
   status('');
   hostLobby({ name: `${settings.name || 'Player'}'s Quick Play`, mode: 'ffa', map: randomMap(), max: 12, bots: 6, rotate: true, vis: 'public' });
+}
+// Today's featured mode: a public server already playing it, or a new one with bots.
+async function playFeatured() {
+  if (busy) return;
+  const mode = featuredMode();
+  status(`Finding a ${MODES[mode].name} server…`);
+  const s = (await freshServers()).filter((x) => x.mode === mode)[0];
+  if (s) return joinCode(s.code);
+  status('');
+  hostLobby({ name: `⭐ ${MODES[mode].name}`, mode, map: randomMap(), max: 12, bots: 6, rotate: true, vis: 'public' });
 }
 // Everyone in one server: join the busiest Game Night server with room, or start it.
 async function joinGameNight() {
@@ -709,7 +725,7 @@ social.ready.then(() => { if (!social.tag && !sessionStorage.getItem('tagLater')
 // Mode and map pickers are tap targets rather than dropdowns (much easier on touch screens).
 function renderModes() {
   $('mode-tiles').innerHTML = MODE_ORDER.map((id) =>
-    `<button class="tile ${id === settings.mode ? 'sel' : ''}" data-mode="${id}">${MODES[id].name}${MODES[id].teams ? '<small>teams</small>' : ''}</button>`).join('');
+    `<button class="tile ${id === settings.mode ? 'sel' : ''} ${id === featuredMode() ? 'feat' : ''}" data-mode="${id}">${id === featuredMode() ? '⭐ ' : ''}${MODES[id].name}${id === featuredMode() ? `<small>featured today · ${FEATURED_XP}x XP</small>` : MODES[id].teams ? '<small>teams</small>' : ''}</button>`).join('');
   $('mode-tiles').querySelectorAll('[data-mode]').forEach((b) => {
     b.onclick = () => { settings.mode = b.dataset.mode; store.set('mode', settings.mode); renderModes(); };
   });
@@ -785,7 +801,7 @@ function renderServers() {
     const mode = MODES[s.mode] ? MODES[s.mode].name : s.mode;
     const map = MAPS[s.map] ? MAPS[s.map].name : s.map;
     return `<div class="sv-row">
-      <div class="sv-main"><b>${esc(s.name)}</b><small>${esc(mode)} · ${esc(map)}</small></div>
+      <div class="sv-main"><b>${s.gn ? '🌙 ' : ''}${esc(s.name)}</b><small>${s.mode === featuredMode() ? '⭐ ' : ''}${esc(mode)} · ${esc(map)}</small></div>
       ${s.region ? `<span class="sv-region">${esc(s.region)}</span>` : '<span></span>'}
       <div class="sv-players ${full ? 'full' : ''}">${s.players}/${s.max}${s.bots ? `<small>+${s.bots} bots</small>` : ''}</div>
       <button class="primary" data-join="${esc(s.code)}" ${full ? 'disabled' : ''}>${full ? 'Full' : 'Join'}</button>
@@ -1036,9 +1052,13 @@ leaderboard.onChampion = (boards) => {
   renderChip();
 };
 // Double XP in Game Night servers while it's live.
-setXpBoost(() => (game.active && game.rules.gn && gameNight.isLive() ? GN_XP : 1));
+setXpBoost(() => !game.active ? 1 : (game.rules.gn && gameNight.isLive() ? GN_XP : 1) * (game.rules.mode === featuredMode() ? FEATURED_XP : 1));
 // Finishing a match in a Game Night server earns the Midnight wrap (once).
 game.onMatchTracked = () => {
+  if (game.rules.mode === featuredMode()) {
+    const paid = claimFeatured();
+    if (paid) game.hud.mission(`Featured mode: ${MODES[game.rules.mode].name}`, `+${paid} tokens`, 'DAILY FEATURED');
+  }
   if (game.rules.gn && gameNight.isLive() && grantWrap('midnight')) game.hud.mission('Midnight wrap unlocked', 'Played Game Night', 'GAME NIGHT');
 };
 gameNight.on((e) => {
