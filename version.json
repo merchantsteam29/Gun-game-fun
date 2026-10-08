@@ -1,9 +1,10 @@
 {
-  "version": "2026.10.08.20",
+  "version": "2026.10.08.21",
   "notes": [
-    "Ranked: Play Ranked finds a match near your skill rating (SR) or starts one",
-    "Divisions from Rookie to Legend, 5 placement matches, rating change on the results screen",
-    "Ranked servers use standard rules; your division shows on your profile"
+    "Damage direction arcs that stay for a moment and follow your view as you turn",
+    "Pulsing red screen edges and a heartbeat when your health is low",
+    "Ragdoll-style deaths: bodies get knocked back (hard by explosions and shotguns), tumble and splay",
+    "Hitmarkers grow with bigger hits"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",

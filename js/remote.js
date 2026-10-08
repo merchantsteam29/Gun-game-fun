@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { overlap } from './physics.js';
 import { RoundedBoxGeometry as RoundedBox } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { buildGun, modelQuality, mergeStatic } from './models.js';
 import { buildCosmetics } from './cosmetics.js';
@@ -101,6 +102,9 @@ export class RemotePlayer {
     this.swapT = 0;
     this.deathT = 0;
     this.fallDir = new THREE.Vector3(0, 0, 1);
+    this.deathVel = new THREE.Vector3();
+    this.deathTwist = 0;
+    this.deathFloor = 0;
 
     const bodyMat = new THREE.MeshStandardMaterial({ color, roughness: 0.75 });
     this.bodyMat = bodyMat;
@@ -303,14 +307,20 @@ export class RemotePlayer {
   melee(style) { this.swingT = 1; this.swingStyle = style || 'slash'; }
   throwAnim() { this.throwT = 1; }
 
-  // Fall away from `from` (a world position) if known. A headshot also knocks the hat off.
-  die(from, head = false) {
+  // Fall away from `from` (a world position) if known, thrown harder by big hits (force: ~2 normal,
+  // 4–5 shotguns / snipers, 7+ explosives). A headshot also knocks the hat off.
+  die(from, head = false, force = 2) {
     if (this.deathT > 0) return;
     this.deathT = 0.001;
     if (from) this.fallDir.set(this.pos.x - from.x, 0, this.pos.z - from.z);
     else this.fallDir.set(Math.sin(this.yaw), 0, Math.cos(this.yaw));
     if (this.fallDir.lengthSq() < 1e-4) this.fallDir.set(0, 0, 1);
     this.fallDir.normalize();
+    // Knocked back (and up, for explosions), with a random twist so no two deaths look the same.
+    this.deathVel.set(this.fallDir.x * force, force >= 6 ? force * 0.75 : force * 0.25, this.fallDir.z * force);
+    this.deathTwist = (Math.random() - 0.5) * (force >= 6 ? 3 : 1.2);
+    this.deathFloor = this.pos.y;
+    this.deathSplay = 0.6 + Math.random() * 0.4;
     if (head) this.popHat();
   }
 
@@ -380,14 +390,27 @@ export class RemotePlayer {
     this.phase += dt * (speed * 2.1 + 0.001);
     if (Math.floor(lastPhase / Math.PI) !== Math.floor(this.phase / Math.PI) && moving > 0.5 && this.alive) this.stepped = true;
 
-    // Root
+    // Root (dead bodies fly back, bounce and slide to a stop)
+    if (this.deathT > 0 && this.deathT < 3) {
+      const v = this.deathVel;
+      v.y -= 18 * dt;
+      const ox = this.pos.x, oz = this.pos.z;
+      this.pos.addScaledVector(v, dt);
+      if (overlap(this.pos.x, this.pos.y + 0.6, this.pos.z, 0.25, 0.5)) { this.pos.x = ox; this.pos.z = oz; v.x = 0; v.z = 0; } // hit a wall
+      if (this.pos.y < this.deathFloor) {
+        this.pos.y = this.deathFloor;
+        v.y = v.y < -2 ? -v.y * 0.3 : 0;
+        v.x *= 0.55; v.z *= 0.55;
+      }
+      v.x *= Math.exp(-dt * 1.5); v.z *= Math.exp(-dt * 1.5);
+    }
     this.root.position.copy(this.pos);
     if (this.deathT > 0) {
       this.deathT += dt;
-      const f = Math.min(1, this.deathT / 0.55);
+      const f = Math.min(1, this.deathT / 0.5);
       _axis.crossVectors(YAXIS, this.fallDir).normalize();
-      this.root.quaternion.setFromAxisAngle(YAXIS, this.yaw);
-      _q.setFromAxisAngle(_axis, f * f * Math.PI / 2);
+      this.root.quaternion.setFromAxisAngle(YAXIS, this.yaw + this.deathTwist * f);
+      _q.setFromAxisAngle(_axis, (f * f * (3 - 2 * f)) * Math.PI / 2 * (1 + Math.max(0, Math.sin(Math.min(1, this.deathT / 0.7) * Math.PI)) * 0.08));
       this.root.quaternion.premultiply(_q);
       if (this.deathT > 3) this.root.position.y -= (this.deathT - 3) * 0.6;
     } else {
@@ -461,7 +484,7 @@ export class RemotePlayer {
       let ty = Math.max(0, Math.cos(ph)) * lift + 0.06;
       let tx = fx + lx * sw, tz = fz + lz * sw;
       if (this.air > 0.01) { ty += this.air * (leg.side > 0 ? 0.35 : 0.2); tz += this.air * (leg.side > 0 ? -0.15 : 0.12); }
-      if (this.deathT > 0) ty += dying * 0.2;
+      if (this.deathT > 0) { ty += dying * 0.2; tx += leg.side * dying * 0.22 * (this.deathSplay || 1); tz += dying * (leg.side > 0 ? 0.15 : -0.1); }
       this.root.localToWorld(_b.set(tx, ty, tz));
       leg.hip.getWorldPosition(_a);
       // Knee points forward (root -Z).
@@ -477,9 +500,12 @@ export class RemotePlayer {
     // Arms: right hand on the grip, left hand on the fore anchor (or relaxed at the side).
     const gun = this.guns[this.weapon];
     const parts = gun ? gun.userData.parts : {};
-    if (gun) gun.localToWorld(_b.set(0, -0.02, 0.03)); else this.root.localToWorld(_b.set(0.3, 0.9, -0.2));
+    const flop = this.deathT > 0 ? Math.min(1, this.deathT / 0.45) : 0;
+    if (flop) this.root.localToWorld(_b.set(0.62 * (this.deathSplay || 1), 1.05 - flop * 0.15, 0.1));
+    else if (gun) gun.localToWorld(_b.set(0, -0.02, 0.03)); else this.root.localToWorld(_b.set(0.3, 0.9, -0.2));
     this.placeArm(this.armsR, _b, 1);
-    if (parts.fore && !this.reload) parts.fore.getWorldPosition(_b);
+    if (flop) this.root.localToWorld(_b.set(-0.6 * (this.deathSplay || 1), 1.15 - flop * 0.2, -0.05));
+    else if (parts.fore && !this.reload) parts.fore.getWorldPosition(_b);
     else if (gun && this.reload > 0.01) gun.localToWorld(_b.set(0, -0.15 - Math.abs(Math.sin(this.phase * 2 + performance.now() / 300)) * 0.05, -0.1));
     else this.root.localToWorld(_b.set(-0.33, 0.78 - this.crouch * 0.3, -0.05 + Math.sin(this.phase) * 0.12 * moving));
     this.placeArm(this.armsL, _b, -1);

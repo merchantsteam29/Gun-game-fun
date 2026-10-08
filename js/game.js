@@ -741,7 +741,15 @@ export class Game {
       angle = -(ang - me.yaw);
     }
     this.flinch = Math.min(1, this.flinch + 0.6);
-    this.hud.damage(angle);
+    // Damage arcs remember where the hit came from and follow your view as you turn.
+    const taken = Math.max(0, (this.lastHp ?? 100) - m.hp);
+    this.lastHp = m.hp;
+    if (src) {
+      this.dmgArcs = (this.dmgArcs || []).filter((a) => a.id !== m.from);
+      this.dmgArcs.push({ id: m.from, x: src.pos.x, z: src.pos.z, t: performance.now(), k: Math.min(1, 0.35 + taken / 60) });
+      if (this.dmgArcs.length > 4) this.dmgArcs.shift();
+    }
+    this.hud.damage(angle, taken);
     sfx.hurt(0.7);
   }
 
@@ -803,7 +811,9 @@ export class Game {
       const r = this.remotes.get(m.v);
       if (r) {
         if (m.head) { r.headPos(_c); this.fx.blood(_c); this.fx.blood(_c); } else this.fx.blood(r.center(_c));
-        r.die(killerPos && killerPos !== r.pos ? killerPos : null, !!m.head);
+        const DW = WEAPONS[m.w] || {};
+        const force = ['gl', 'rocket', 'flare', 'frag', 'sticky', 'vortex'].includes(m.w) ? 8 : DW.pellets > 1 ? 4.5 : ['sniper', 'amr', 'railgun', 'dmr', 'handcannon', 'revolver'].includes(m.w) ? 4 : DW.type === 'melee' ? 2.6 : 2;
+        r.die(killerPos && killerPos !== r.pos ? killerPos : null, !!m.head, force);
         if (m.head) r.popHat(); // in case a snapshot already started the death
       }
     }
@@ -1392,7 +1402,7 @@ export class Game {
     for (const [vid, h] of hits) {
       this.net.send({ t: 'hit', v: vid, dmg: Math.round(h.dmg), w: id, head: h.head });
       this.showHit(vid, Math.round(h.dmg), h.head);
-      this.hud.hit(h.head ? 'head' : null);
+      this.hud.hit(h.head ? 'head' : null, !!h.head, h.dmg);
       (h.head ? sfx.head : sfx.hit)(0.8);
     }
     this.net.send({ t: 'shot', w: id, o: arr(muzzle), e: ends, q: w.quiet ? 1 : 0 });
@@ -2059,6 +2069,15 @@ export class Game {
     const me = this.me, hud = this.hud;
     const id = this.curW, w = this.W(id);
     hud.health(me.alive ? me.hp : 0, this.maxHp);
+    if (!me.alive) this.lastHp = this.maxHp;
+    // Damage direction arcs (fade over 1.5 s), angles relative to where you're looking now.
+    const arcs = (this.dmgArcs || []).filter((a) => now - a.t < 1500 && me.alive);
+    this.dmgArcs = arcs;
+    hud.arcs(arcs.map((a) => {
+      const ang = Math.atan2(-(a.x - me.pos.x), -(a.z - me.pos.z));
+      return { angle: -(ang - me.yaw), alpha: a.k * (1 - (now - a.t) / 1500) };
+    }));
+    hud.lowPulse(me.alive && me.hp > 0 && me.hp <= this.maxHp * 0.3);
     hud.ammo(id, this.ammo[id] ?? 0, w.mag || 0, this.util);
     hud.slots(this.loadout, this.slot, this.util, this.ammo);
     hud.reloading(this.reloadT > 0 && me.alive, w.reload ? 1 - this.reloadT / w.reload : 0);

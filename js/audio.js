@@ -115,6 +115,8 @@ export const sfx = {
   vortex: play((o) => { tone(o, { dur: 0.6, f0: 900, f1: 60, type: 'sawtooth', gain: 0.3 }); nz(o, { dur: 0.5, f0: 3000, f1: 200, type: 'bandpass', q: 3, gain: 0.6 }); }),
   cycle: play((o) => { nz(o, { dur: 0.05, f0: 2500, type: 'highpass', gain: 0.4 }); nz(o, { dur: 0.05, f0: 1800, type: 'highpass', gain: 0.4 }); }),
 };
+// Low health heartbeat: two soft thumps.
+sfx.heartbeat = play((o) => { tone(o, { dur: 0.12, f0: 70, f1: 45, gain: 0.7 }); tone(o, { dur: 0.12, f0: 60, f1: 40, gain: 0.5, delay: 0.22 }); });
 sfx.slide = play((o) => { nz(o, { dur: 0.55, f0: 900, f1: 300, type: 'bandpass', q: 0.8, gain: 0.5, attack: 0.03 }); });
 // Headshot: a bright metallic "tink" on top of the hit tick.
 sfx.head = play((o) => {

@@ -243,8 +243,9 @@ export class Hud {
   }
 
   // kind: null (body), 'head' or 'kill'; `head` marks a headshot kill too.
-  hit(kind, head = kind === 'head') {
+  hit(kind, head = kind === 'head', dmg = 0) {
     const h = this.hitmarker;
+    h.style.setProperty('--hm', (1 + Math.min(0.6, dmg / 120)).toFixed(2));
     h.classList.remove('kill', 'head', 'show');
     void h.offsetWidth; // restart the pop animation
     if (kind) h.classList.add(kind);
@@ -265,8 +266,8 @@ export class Hud {
     this.timers.hs = setTimeout(() => el.classList.remove('show'), 1100);
   }
 
-  damage(angle) {
-    this.vignette.style.opacity = 1;
+  damage(angle, amount = 20) {
+    this.vignette.style.opacity = Math.min(1, 0.45 + amount / 50);
     clearTimeout(this.timers.vig);
     this.timers.vig = setTimeout(() => { this.vignette.style.opacity = 0; }, 150);
     if (angle != null) {
@@ -275,6 +276,29 @@ export class Hud {
       clearTimeout(this.timers.dir);
       this.timers.dir = setTimeout(() => this.dmgDir.classList.remove('show'), 120);
     }
+  }
+
+  // Up to 4 red arcs around the crosshair pointing at recent attackers: [{ angle, alpha }]
+  arcs(list) {
+    if (!this.arcEls) {
+      const box = $('dmg-arcs');
+      this.arcEls = [0, 1, 2, 3].map(() => { const e = document.createElement('i'); box.appendChild(e); return e; });
+    }
+    this.arcEls.forEach((e, i) => {
+      const a = list[i];
+      if (!a) { if (e.style.opacity !== '0') e.style.opacity = '0'; return; }
+      e.style.opacity = a.alpha.toFixed(2);
+      e.style.transform = `rotate(${a.angle}rad)`;
+    });
+  }
+
+  // Red pulsing edges (and a heartbeat) at low health.
+  lowPulse(on) {
+    if (on === this.pulsing) return;
+    this.pulsing = on;
+    $('low-hp').classList.toggle('on', on);
+    clearInterval(this.timers.beat);
+    if (on) { sfx.heartbeat(0.6); this.timers.beat = setInterval(() => sfx.heartbeat(0.6), 900); }
   }
 
   lowHealth(hp) { if (hp > 0 && hp < 35) this.vignette.style.opacity = 0.5; }
