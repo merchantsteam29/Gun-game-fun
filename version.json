@@ -1,9 +1,8 @@
 {
-  "version": "2026.10.08.32",
+  "version": "2026.10.08.33",
   "notes": [
-    "New Character screen: tabs for hats, hair, face, back, banners and weapon wraps",
-    "Every item card shows your character wearing it, with Equipped / Owned / price",
-    "Big preview, tokens, callsign and color in one column on the left"
+    "Missions screen split into tabs: Daily, Season & level, and Missions",
+    "Missions list in two columns; refreshed look for Leaderboard, Friends and Loadout"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",

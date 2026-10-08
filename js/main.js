@@ -132,16 +132,28 @@ function renderCharacter() {
   const side = document.querySelector('[data-pane="character"] .field.two') || document.querySelector('.cz-side .field.two');
   el.replaceChildren(settingsUI.special('customize', { side, rerender: () => { renderCharacter(); renderChip(); } }));
 }
+// Missions screen: three tabs (daily rewards + challenges, season pass + level, missions).
+let msTab = null;
 function renderMissions() {
   if (!settingsUI) return;
-  const daily = document.createElement('div');
-  daily.innerHTML = dailyHtml();
-  const c = daily.querySelector('[data-claim]');
-  if (c) c.onclick = doClaim;
-  const head = document.createElement('h3');
-  head.className = 'ms-title';
-  head.textContent = 'Missions';
-  $('menu-missions').replaceChildren(daily, head, settingsUI.special('missions', { goCustomize: () => showPane('character') }));
+  const login = loginState(), done = MISSIONS.filter(missionDone).length;
+  if (!msTab) msTab = login.claimed ? 'season' : 'daily';
+  const bar = document.createElement('div');
+  bar.className = 'seg-tabs';
+  const tabs = [['daily', `Daily${login.claimed ? '' : ' 🎁'}`], ['season', 'Season & level'], ['missions', `Missions ${done}/${MISSIONS.length}`]];
+  bar.innerHTML = tabs.map(([k, n]) => `<button data-mt="${k}" class="${k === msTab ? 'sel' : ''}">${n}</button>`).join('');
+  bar.querySelectorAll('[data-mt]').forEach((b) => { b.onclick = () => { msTab = b.dataset.mt; renderMissions(); }; });
+  let body;
+  if (msTab === 'missions') body = settingsUI.special('missions', { goCustomize: () => showPane('character') });
+  else {
+    body = document.createElement('div');
+    body.innerHTML = dailyHtml();
+    const keep = msTab === 'daily' ? ['.dl-login', '.dl-chal'] : ['.sp', '.dl-level'];
+    body.querySelectorAll('.daily > *').forEach((x) => { if (!keep.some((k) => x.matches(k))) x.remove(); });
+    const c = body.querySelector('[data-claim]');
+    if (c) c.onclick = doClaim;
+  }
+  $('menu-missions').replaceChildren(bar, body);
   updateMissionCount();
 }
 function updateMissionCount() {

@@ -233,3 +233,39 @@ body.mobile:not(.tablet) .cz-tabs button { padding: 6px 8px; font-size: 11px; }
 .cz-bnr-preview { overflow: hidden; }
 .cz-bnr-preview .bnr { max-width: 100%; }
 .cz-card.bnr { overflow: hidden; }
+
+/* ---------- Shared: segmented tabs ---------- */
+.seg-tabs { display: flex; gap: 4px; padding: 4px; margin-bottom: 14px; border-radius: 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--line); width: fit-content; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.seg-tabs button { padding: 8px 16px; font-size: 12px; border: 0; background: transparent; color: var(--muted); white-space: nowrap; }
+.seg-tabs button.sel { background: var(--accent-soft); color: var(--accent); }
+
+/* ---------- Missions ---------- */
+.daily .card, .dl-login, .dl-chal, .dl-level, .sp { border-radius: var(--r-lg); }
+.dl-day { border-radius: 10px; }
+.missions .ms-head { padding: 10px 12px; margin-bottom: 10px; border-radius: 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--line); }
+#menu-missions > .missions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+#menu-missions > .missions .ms-head { grid-column: 1 / -1; }
+#menu-missions > .missions .ms { padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,0.025); }
+#menu-missions > .missions .ms.done { background: rgba(69,224,143,0.05); border-color: rgba(69,224,143,0.25); }
+.ms-bar, .hs-bar { border-radius: 999px; }
+.ms-bar i, .hs-bar i { border-radius: 999px; }
+body.mobile:not(.tablet) #menu-missions > .missions { grid-template-columns: 1fr; gap: 6px; }
+
+/* ---------- Leaderboard ---------- */
+.lb-main, .lb-side .card { border-radius: var(--r-lg); }
+.lb-table tr td:first-child { border-radius: 10px 0 0 10px; }
+.lb-table tr td:last-child { border-radius: 0 10px 10px 0; }
+.lb-table tr.top1 td { background: rgba(255,210,58,0.08); }
+.lb-table tr.top2 td { background: rgba(200,210,220,0.05); }
+.lb-table tr.top3 td { background: rgba(208,138,82,0.06); }
+.lb-tabs button, .lb-week button { border-radius: 9px; }
+
+/* ---------- Friends ---------- */
+.menu-pane[data-pane="friends"] .card { border-radius: var(--r-lg); }
+.fr-row { border-radius: 10px; }
+.invite-card { background: linear-gradient(90deg, rgba(255,176,32,0.12), var(--surface-1) 60%); }
+
+/* ---------- Loadout ---------- */
+.lo-tab, .lo-weapon, .lo-list button, .lo-preset, .lo-custom button, .lo-custom-empty { border-radius: 10px; }
+.lo-presets { border-radius: 12px; }
+.menu-main .menu-pane[data-pane="loadout"] { padding: 16px; }
