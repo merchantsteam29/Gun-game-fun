@@ -34,6 +34,9 @@ import { bannerOf, bannerHtml } from './banners.js';
 import { invites, INVITE_TOKENS, MAX_INVITES } from './invites.js';
 import { RULE_PRESETS, presetRules, savedPresets, WEAPON_RULES } from './rulesets.js';
 import { myRanked, srBadge, RANKED_MATCH, PLACEMENTS, divisionOf } from './ranked.js';
+import { tutorial, tutorialDone, TUTORIAL_TOKENS } from './tutorial.js';
+import { addTokens } from './missions.js';
+import { addXp } from './progress.js';
 import { leaderboard, BOARDS, weekEnds, CHAMP_TOKENS } from './leaderboard.js';
 import { MODS, MOD_SLOTS, MOD_SLOT_NAMES, modOptions, hasMods, cleanMods, cleanModMap, statsFor } from './mods.js';
 
@@ -170,6 +173,7 @@ function renderHome() {
         : `Starts in ${fmtDuration(gn.start - Date.now())} · ${new Date(gn.start).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })}`}</small></span>
       ${gnLive ? '<button class="primary" data-gn>Join game night</button>' : gn ? `<button class="ghost hs-remind" data-remind title="${esc(describeGn(gameNight.schedule))}">${gameNight.remind ? '🔔 On' : '🔕 Remind me'}</button>` : ''}
     </div>
+    ${!tutorialDone() ? '<button class="hs-tile hs-tutorial" data-tutorial><span class="hs-ic">🎓</span><span class="hs-txt"><b>New here? Take the 1-minute tutorial</b><small>Learn the controls in the Practice Range · 🪙 ' + TUTORIAL_TOKENS + '</small></span></button>' : ''}
     ${canInstall() ? '<button class="hs-tile hs-install" data-install><span class="hs-ic">📲</span><span class="hs-txt"><b>Install the app</b><small>Gun Game 3D on your home screen</small></span></button>' : ''}
     <div class="hs-tile hs-feat">
       <span class="hs-ic">⭐</span>
@@ -193,6 +197,8 @@ function renderHome() {
   const c = el.querySelector('[data-claim]');
   if (c) c.onclick = doClaim;
   el.querySelector('[data-quick]').onclick = quickPlay;
+  const tu = el.querySelector('[data-tutorial]');
+  if (tu) tu.onclick = () => startPractice(true);
   el.querySelector('[data-ranked]').onclick = playRanked;
   el.querySelector('[data-feat]').onclick = playFeatured;
   const ins = el.querySelector('[data-install]');
@@ -1451,17 +1457,26 @@ const PRACTICE_TARGETS = [
   ['Mover · 25 m', 0, -3, 7, 1.1], ['Mover · 40 m', 0, -18, 9, 0.8], ['Fast · 15 m', 0, 7, 5, 2.2],
 ];
 
-async function startPractice() {
+// tut: start the first-time tutorial in the range.
+async function startPractice(tut = false) {
   if (busy || net) return;
   if (moderation.myBan()) { moderation.lastBan = null; moderation.applyMine(); return; }
   initAudio();
   net = newNet();
   await net.offline(settings.name || 'Player', settings.color, { mode: 'practice', map: 'range' }, myCos());
-  net.logic.applySettings({ infiniteAmmo: store.get('practiceInf', true), respawn: 1 });
+  net.logic.applySettings({ infiniteAmmo: tut ? false : store.get('practiceInf', true), respawn: 1 });
   net.logic.addDummies(PRACTICE_TARGETS);
   enterGame();
+  if (tut) tutorial.start(game);
 }
 $('btn-practice').onclick = () => startPractice();
+$('tu-replay').onclick = (e) => { e.preventDefault(); startPractice(true); };
+game.onTick = (dt) => tutorial.tick(dt);
+tutorial.onDone = (first) => {
+  if (first) { addTokens(TUTORIAL_TOKENS); addXp(300); }
+  if (document.pointerLockElement) document.exitPointerLock();
+};
+tutorial.onPlay = () => { leave(); quickPlay(); };
 
 // Pause menu in practice: every weapon, equipped (and refilled) as soon as you pick it.
 function renderPractice() {
@@ -1552,6 +1567,7 @@ async function joinLobby(spectateArg = false) {
 }
 
 function leave(reason) {
+  if (tutorial.active || !$('tutorial').classList.contains('hidden')) tutorial.stop();
   if (hosting) { announcer.stop(); hosting = null; }
   if (net) { net.destroy(); net = null; }
   chat.setLobby(false);

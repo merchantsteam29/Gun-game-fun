@@ -1584,3 +1584,22 @@ body.mobile .sp-track { grid-template-columns: repeat(10, minmax(0, 1fr)); }
 @keyframes low-pulse { 0%, 100% { opacity: 0.35; } 30% { opacity: 0.9; } }
 #hitmarker { scale: var(--hm, 1); }
 body.mobile #dmg-arcs i { left: -80px; top: -80px; width: 160px; height: 160px; }
+
+/* Tutorial */
+#tutorial { position: absolute; left: 50%; top: 100px; transform: translateX(-50%); min-width: 300px; max-width: 92vw; padding: 10px 16px 12px;
+  background: rgba(8,10,14,0.82); border: 1px solid var(--accent); border-radius: 10px; text-align: center; z-index: 6; pointer-events: auto; }
+#tutorial.pop { animation: tu-pop 0.3s ease-out; }
+@keyframes tu-pop { from { transform: translateX(-50%) scale(1.08); border-color: var(--ok); } to { transform: translateX(-50%) scale(1); } }
+#tutorial .tu-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+#tutorial small { font-size: 10px; letter-spacing: 2px; color: var(--accent); font-weight: 700; }
+#tutorial .tu-top button { padding: 2px 8px; font-size: 11px; }
+#tutorial b { display: block; font-size: 22px; letter-spacing: 1px; margin: 2px 0; }
+#tutorial .tu-how { display: block; font-size: 14px; color: var(--muted); }
+#tutorial .tu-dots { display: flex; gap: 4px; justify-content: center; margin-top: 8px; }
+#tutorial .tu-dots i { width: 14px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.15); }
+#tutorial .tu-dots i.done { background: var(--ok); }
+#tutorial .tu-dots i.now { background: var(--accent); }
+#tutorial .tu-actions { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
+.home-strip > .hs-tutorial { grid-column: 1 / -1; border-color: var(--accent); background: var(--accent-soft); animation: hs-pulse 1.8s ease-in-out infinite; }
+body.mobile #tutorial { top: 46px; min-width: 240px; padding: 6px 10px 8px; }
+body.mobile #tutorial b { font-size: 16px; }

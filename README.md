@@ -34,6 +34,13 @@ With rotation off, the same map comes back.
 The server list uses a free public relay (no account needed), so public server names are visible to anyone.
 If the relay is down you can still create servers and join with codes.
 
+## Tutorial
+
+New players see **New here? Take the 1-minute tutorial** on the Servers screen. It runs in the Practice Range and walks
+through looking, moving, sprinting, jumping, crouching, shooting, aiming down sights, reloading, switching weapons,
+quick melee and grenades (with the right buttons for keyboard, controller or touch), then pays 🪙 150 and offers a
+real match. Replay it any time from **Keyboard & mouse → Play the tutorial** in the menu.
+
 ## Game modes
 
 | Mode | Rules |

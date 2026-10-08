@@ -921,6 +921,7 @@ export class Game {
   }
 
   update(dt, now) {
+    if (this.onTick) this.onTick(dt);
     const me = this.me;
     const cam = this.camera;
     const w = this.W(this.curW);
