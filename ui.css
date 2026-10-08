@@ -182,3 +182,54 @@ body.mobile:not(.tablet) #create-card.dialog:not(.hidden) { width: 96vw; max-hei
 }
 body.mobile:not(.tablet) .hq-kicker, body.mobile:not(.tablet) .hq-go { white-space: nowrap; }
 body.mobile:not(.tablet) .home-strip > .play-hero .hero-quick { max-width: 230px !important; }
+
+/* ---------- Character ---------- */
+.menu-main .menu-pane[data-pane="character"] { padding: 16px; }
+.customize.cz2 { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 18px; align-items: start; }
+.cz-side { position: sticky; top: 0; display: flex; flex-direction: column; gap: 10px; }
+.cz-stage { display: flex; justify-content: center; padding: 14px 0 6px; border-radius: var(--r-lg); border: 1px solid var(--line);
+  background: radial-gradient(circle at 50% 40%, rgba(255,176,32,0.16), rgba(0,0,0,0.25) 70%); }
+.cz-wallet { display: flex; align-items: baseline; gap: 8px; padding: 8px 12px; border-radius: 12px; background: var(--accent-soft); border: 1px solid rgba(255,176,32,0.3); }
+.cz-wallet span { font-family: var(--font-display); font-weight: 700; font-size: 18px; color: var(--accent); }
+.cz-wallet small { color: var(--muted); font-size: 11px; }
+.cz-side .field.two { display: flex; flex-direction: column; gap: 8px; margin: 0; }
+.cz-side .field { margin: 0; }
+.cz-main { min-width: 0; }
+.cz-tabs { display: flex; gap: 4px; flex-wrap: wrap; padding: 4px; margin-bottom: 12px; border-radius: 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--line); }
+.cz-tabs button { flex: 1 1 auto; padding: 8px 12px; font-size: 12px; border: 0; background: transparent; color: var(--muted); }
+.cz-tabs button.sel { background: var(--accent-soft); color: var(--accent); }
+.cz-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px; }
+.cz-card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 6px 9px; text-transform: none; letter-spacing: 0;
+  border-radius: 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--line); position: relative; }
+.cz-card canvas { width: 76px; height: 100px; }
+.cz-card b { font-family: var(--font-ui); font-size: 12px; font-weight: 600; text-align: center; line-height: 1.2; }
+.cz-card:hover { background: rgba(255,255,255,0.07); border-color: var(--line-2); }
+.cz-card.sel { border-color: var(--accent); background: var(--accent-soft); }
+.cz-card.trying { border-color: var(--info); box-shadow: 0 0 0 2px rgba(58,209,255,0.25); }
+.cz-card.locked canvas { opacity: 0.75; }
+.cz-tag { font-style: normal; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; padding: 1px 7px; border-radius: 999px; background: rgba(255,255,255,0.06); color: var(--muted); }
+.cz-tag.on { background: var(--accent); color: #17120a; }
+.cz-tag.price { color: var(--accent); background: var(--accent-soft); }
+.cz-tag.lock { color: #c9a8ff; background: rgba(160,120,255,0.14); }
+.cz-bnr-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.cz-card.bnr { align-items: stretch; }
+.cz-bnr-swatch { display: flex; align-items: center; justify-content: center; height: 46px; border-radius: 8px; background: var(--bg); background: var(--bg, #222); }
+.cz-bnr-swatch { background: var(--bg); }
+.cz-bnr-swatch em { font-style: normal; font-size: 20px; }
+.cz-card.bnr b { text-align: left; }
+.cz-hint { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+.cz-bnr-preview { margin-bottom: 12px; }
+.cz-colors { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+.cz-buy { position: sticky; top: 0; z-index: 2; margin-bottom: 10px; border-radius: 12px; background: rgba(30,24,10,0.95); }
+.cz-panel .cz-wraps { margin: 0; padding: 0; border: 0; }
+body.mobile:not(.tablet) .customize.cz2 { grid-template-columns: 150px minmax(0, 1fr); gap: 10px; }
+body.mobile:not(.tablet) .cz-stage canvas { width: 120px; height: 157px; }
+body.mobile:not(.tablet) .cz-wallet small { display: none; }
+body.mobile:not(.tablet) .cz-grid { grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 6px; }
+body.mobile:not(.tablet) .cz-card canvas { width: 54px; height: 71px; }
+body.mobile:not(.tablet) .cz-tabs button { padding: 6px 8px; font-size: 11px; }
+@media (max-width: 1000px) { .customize.cz2 { grid-template-columns: 200px minmax(0, 1fr); } }
+.cz-panel, .cz-main { overflow-x: hidden; }
+.cz-bnr-preview { overflow: hidden; }
+.cz-bnr-preview .bnr { max-width: 100%; }
+.cz-card.bnr { overflow: hidden; }

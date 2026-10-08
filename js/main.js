@@ -129,7 +129,8 @@ const chat = new Chat({
 function renderCharacter() {
   if (!settingsUI) return;
   const el = $('menu-customize');
-  el.replaceChildren(settingsUI.special('customize', { rerender: () => { renderCharacter(); renderChip(); } }));
+  const side = document.querySelector('[data-pane="character"] .field.two') || document.querySelector('.cz-side .field.two');
+  el.replaceChildren(settingsUI.special('customize', { side, rerender: () => { renderCharacter(); renderChip(); } }));
 }
 function renderMissions() {
   if (!settingsUI) return;

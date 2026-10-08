@@ -297,65 +297,72 @@ export class SettingsUI {
           }).join('');
       el.querySelector('[data-go]').onclick = (e) => { e.preventDefault(); goCustomize(); };
     } else if (kind === 'customize') {
-      el.className = 'customize';
+      // Character: a preview column, then a tab per slot with item cards that each show you
+      // wearing that item. Tapping one you don't own tries it on until you buy it or pick another.
+      el.className = 'customize cz2';
       const cos = getCos();
-      // Tapping an item you don't own previews it ("try on") until you buy it or pick something else.
       const t = this.tryOn;
       const shown = t ? { ...cos, [t.slot]: t.id } : cos;
-      el.innerHTML = `<div class="cz-preview"><canvas width="160" height="210"></canvas><div class="tok-pill big">🪙 ${getTokens()}</div></div>
-        <div class="cz-slots"><div class="cz-buy hidden"></div></div>`;
-      drawAvatar(el.querySelector('canvas'), shown, this.getColor());
-      const slots = el.querySelector('.cz-slots');
+      const TABS = [['hat', 'Hats'], ['hair', 'Hair'], ['face', 'Face'], ['back', 'Back'], ['banner', 'Banners'], ['wraps', 'Weapon wraps']];
+      if (!TABS.some(([k]) => k === this.czTab)) this.czTab = t ? t.slot : 'hat';
+      const tab = this.czTab;
+      el.innerHTML = `<aside class="cz-side">
+          <div class="cz-stage"><canvas width="200" height="262"></canvas></div>
+          <div class="cz-wallet"><span>🪙 ${getTokens()}</span><small>Earn more in Missions</small></div>
+          <div class="cz-side-slot"></div>
+        </aside>
+        <div class="cz-main">
+          <div class="cz-tabs">${TABS.map(([k, n]) => `<button data-tab="${k}" class="${k === tab ? 'sel' : ''}">${n}</button>`).join('')}</div>
+          <div class="cz-buy hidden"></div>
+          <div class="cz-panel"></div>
+        </div>`;
+      drawAvatar(el.querySelector('.cz-stage canvas'), shown, this.getColor());
+      el.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => { this.czTab = b.dataset.tab; rerender(); }; });
+      if (ctx.side) el.querySelector('.cz-side-slot').appendChild(ctx.side); // callsign + color (main.js)
       const equip = (next) => { this.tryOn = null; setCos(next); if (this.onCos) this.onCos(next); rerender(); };
       if (t) {
         const item = COSMETICS[t.slot].find((c) => c.id === t.id), price = priceOf(t.slot, t.id), have = getTokens();
         const bar = el.querySelector('.cz-buy');
         bar.classList.remove('hidden');
-        bar.innerHTML = item.reward ? `<span>Previewing <b>${esc(item.name)}</b> · 🔒 can't be bought. Earn it: ${esc(item.how)}.</span><button data-cancel>OK</button>`
+        bar.innerHTML = item.reward ? `<span>Trying on <b>${esc(item.name)}</b> · 🔒 can't be bought. Earn it: ${esc(item.how)}.</span><button data-cancel>OK</button>`
           : have >= price
-          ? `<span>Previewing <b>${esc(item.name)}</b></span><button class="primary" data-buy>Buy & wear · 🪙 ${price}</button><button data-cancel>Cancel</button>`
-          : `<span>Previewing <b>${esc(item.name)}</b> · 🪙 ${price}. You need <b>${price - have}</b> more tokens. Complete missions to earn them.</span><button data-cancel>OK</button>`;
+          ? `<span>Trying on <b>${esc(item.name)}</b></span><button class="primary" data-buy>Buy & wear · 🪙 ${price}</button><button data-cancel>Cancel</button>`
+          : `<span>Trying on <b>${esc(item.name)}</b> · 🪙 ${price}. You need <b>${price - have}</b> more tokens.</span><button data-cancel>OK</button>`;
         const b = bar.querySelector('[data-buy]');
         if (b) b.onclick = () => { if (buy(t.slot, t.id)) equip({ ...cos, [t.slot]: t.id }); };
         bar.querySelector('[data-cancel]').onclick = () => { this.tryOn = null; rerender(); };
       }
-      for (const slot of Object.keys(COSMETICS)) {
-        const row = document.createElement('div');
-        row.className = 'cz-row';
-        if (slot === 'banner') {
-          // Banners are picked from real previews; the big one shows how your kills will see you.
-          row.innerHTML = `<div class="set-label">Banner<small>Shown behind your name on the death screen of everyone you kill</small></div>
-            <div class="cz-bnr-preview">${bannerHtml(shown.banner, this.getName(), this.getColor(), 'KILLED YOU', '<span class="chip">Assault Rifle</span>')}</div>
-            <div class="cz-banners">${COSMETICS.banner.map((c) => {
-              const have = isOwned(slot, c.id), trying = t && t.slot === slot && t.id === c.id, b = bannerOf(c.id);
-              return `<button class="${cos.banner === c.id && !t ? 'sel' : ''} ${trying ? 'trying' : ''} ${have ? '' : 'locked'}" data-id="${c.id}" style="--bg:${b.bg}" title="${esc(c.name)}"><em>${b.emblem}</em><span>${esc(c.name)}</span>${have ? '' : c.reward ? '<small>🔒 Earn</small>' : `<small>🪙 ${c.price}</small>`}</button>`;
-            }).join('')}</div>`;
-        } else
-        row.innerHTML = `<div class="set-label">${SLOT_LABELS[slot]}</div><div class="cz-items">${COSMETICS[slot].map((c) => {
-          const have = isOwned(slot, c.id), trying = t && t.slot === slot && t.id === c.id;
-          return `<button class="${cos[slot] === c.id && !t ? 'sel' : ''} ${trying ? 'trying' : ''} ${have ? '' : 'locked'}" data-id="${c.id}">${esc(c.name)}${have ? '' : `<small>🪙 ${c.price}</small>`}</button>`;
-        }).join('')}</div>`;
-        row.querySelectorAll('[data-id]').forEach((b) => {
-          b.onclick = () => {
-            const id = b.dataset.id;
-            if (isOwned(slot, id)) equip({ ...cos, [slot]: id });
-            else { this.tryOn = { slot, id }; rerender(); }
-          };
+      const panel = el.querySelector('.cz-panel');
+      const pick = (slot, id) => { if (isOwned(slot, id)) equip({ ...cos, [slot]: id }); else { this.tryOn = { slot, id }; rerender(); } };
+      const state = (slot, c) => {
+        const have = isOwned(slot, c.id), on = cos[slot] === c.id && !t, trying = t && t.slot === slot && t.id === c.id;
+        return { have, on, trying, tag: on ? '<em class="cz-tag on">Equipped</em>' : have ? '<em class="cz-tag">Owned</em>' : c.reward ? '<em class="cz-tag lock">🔒 Earn</em>' : `<em class="cz-tag price">🪙 ${c.price}</em>` };
+      };
+      if (tab === 'wraps') {
+        panel.appendChild(this.wrapsView(rerender));
+      } else if (tab === 'banner') {
+        panel.innerHTML = `<div class="cz-hint">Shown behind your name on the death screen of everyone you kill.</div>
+          <div class="cz-bnr-preview">${bannerHtml(shown.banner, this.getName(), this.getColor(), 'KILLED YOU', '<span class="chip">Assault Rifle</span>')}</div>
+          <div class="cz-grid cz-bnr-grid">${COSMETICS.banner.map((c) => {
+            const st = state('banner', c), b = bannerOf(c.id);
+            return `<button class="cz-card bnr ${st.on ? 'sel' : ''} ${st.trying ? 'trying' : ''} ${st.have ? '' : 'locked'}" data-id="${c.id}" title="${esc(c.name)}">
+              <span class="cz-bnr-swatch" style="--bg:${b.bg}"><em>${b.emblem}</em></span><b>${esc(c.name)}</b>${st.tag}</button>`;
+          }).join('')}</div>`;
+        panel.querySelectorAll('[data-id]').forEach((b) => { b.onclick = () => pick('banner', b.dataset.id); });
+      } else {
+        panel.innerHTML = `${tab === 'hair' ? `<div class="cz-colors"><span>Hair color</span><div class="swatches">${HAIR_COLORS.map((c) => `<button style="background:${c}" class="${cos.hairColor === c ? 'sel' : ''}" data-c="${c}"></button>`).join('')}</div></div>` : ''}
+          <div class="cz-grid">${COSMETICS[tab].map((c) => {
+            const st = state(tab, c);
+            return `<button class="cz-card ${st.on ? 'sel' : ''} ${st.trying ? 'trying' : ''} ${st.have ? '' : 'locked'}" data-id="${c.id}" title="${esc(c.name)}">
+              <canvas width="76" height="100"></canvas><b>${esc(c.name)}</b>${st.tag}</button>`;
+          }).join('')}</div>`;
+        // Each card: your character wearing that item.
+        panel.querySelectorAll('.cz-card').forEach((b) => {
+          drawAvatar(b.querySelector('canvas'), { ...cos, [tab]: b.dataset.id }, this.getColor());
+          b.onclick = () => pick(tab, b.dataset.id);
         });
-        slots.appendChild(row);
-        if (slot === 'hair') {
-          const hc = document.createElement('div');
-          hc.className = 'cz-row';
-          hc.innerHTML = `<div class="set-label">Hair color</div><div class="swatches">${HAIR_COLORS.map((c) => `<button style="background:${c}" class="${cos.hairColor === c ? 'sel' : ''}" data-c="${c}"></button>`).join('')}</div>`;
-          hc.querySelectorAll('[data-c]').forEach((b) => { b.onclick = () => equip({ ...cos, hairColor: b.dataset.c }); });
-          slots.appendChild(hc);
-        }
+        panel.querySelectorAll('[data-c]').forEach((b) => { b.onclick = () => equip({ ...cos, hairColor: b.dataset.c }); });
       }
-      const note = document.createElement('div');
-      note.className = 'cz-note';
-      note.textContent = 'Tap anything to preview it. Earn tokens from Missions and spend them on whatever you like. Other players see what you wear.';
-      slots.appendChild(note);
-      el.appendChild(this.wrapsView(rerender));
     } else if (kind === 'keybinds') {
       // Two keys per action. Click one, then press a key or a mouse button (middle / side
       // buttons); Esc cancels, Backspace clears. A key used elsewhere moves to this action.

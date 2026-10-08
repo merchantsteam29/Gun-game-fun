@@ -1,9 +1,9 @@
 {
-  "version": "2026.10.08.31",
+  "version": "2026.10.08.32",
   "notes": [
-    "New look: top bar with your profile, a cleaner side menu, and a wider layout",
-    "New Play screen: a big Quick Play card, Ranked / Featured / Game Night beside it, and your daily stuff in one row",
-    "Join with code now sits in the server list; Create server opens as a pop-up"
+    "New Character screen: tabs for hats, hair, face, back, banners and weapon wraps",
+    "Every item card shows your character wearing it, with Equipped / Owned / price",
+    "Big preview, tokens, callsign and color in one column on the left"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",
