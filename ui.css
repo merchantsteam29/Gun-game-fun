@@ -269,3 +269,42 @@ body.mobile:not(.tablet) #menu-missions > .missions { grid-template-columns: 1fr
 .lo-tab, .lo-weapon, .lo-list button, .lo-preset, .lo-custom button, .lo-custom-empty { border-radius: 10px; }
 .lo-presets { border-radius: 12px; }
 .menu-main .menu-pane[data-pane="loadout"] { padding: 16px; }
+
+/* ---------- Pause menu: centered, sections as tabs ---------- */
+body:not(.mobile) #pause.overlay { justify-content: center; padding: 3vh 16px; }
+body:not(.mobile) .pause-panel { width: min(1060px, 96vw); max-height: 94vh; padding: 22px 24px; }
+.pause-head { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.pause-head h2 { margin: 0; font-size: 24px; letter-spacing: 3px; }
+.code-chip { margin-left: auto; border-radius: 12px; }
+body:not(.mobile) #pause .resume { width: auto; }
+body:not(.mobile) .pause-panel { display: flex; flex-direction: column; }
+body:not(.mobile) .pause-panel > .resume { order: 1; }
+body:not(.mobile) .pause-panel > .pause-actions { order: 2; }
+body:not(.mobile) .pause-panel > .pause-tabs { order: 3; }
+body:not(.mobile) .pause-panel > details { order: 4; }
+.pause-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin: 10px 0 14px; }
+.pause-actions .hidden { display: none !important; }
+.pause-tabs { margin: 0 0 10px; }
+.pause-tabs.hidden { display: none; }
+details.pause-lo.pt-off { display: none; }
+details.pause-lo { border-radius: var(--r-lg); background: rgba(255,255,255,0.02); }
+details.pause-lo > summary { border-radius: var(--r-lg); }
+#pause .resume { border-radius: 14px; font-size: 18px; letter-spacing: 3px; padding: 16px; }
+
+/* ---------- Dialogs: settings, host panel, popups ---------- */
+.overlay > .panel:not(.menu-panel) { border: 1px solid var(--line-2); box-shadow: 0 30px 90px rgba(0,0,0,0.65); }
+.hp-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.hp-head h2 { margin: 0; font-size: 22px; letter-spacing: 3px; }
+.hp-head button { margin-left: auto; }
+.settings-panel { border-radius: var(--r-lg); }
+.set-tabs button { border-radius: 10px; }
+.set-row { border-radius: 10px; }
+#host-panel .panel, .host-panel { border-radius: var(--r-lg); }
+.hp-grid > div, .hp-grid > section { border-radius: var(--r-lg); }
+.mod-pop, .profile-panel, #tag-pop .panel, #report-pop .panel { border-radius: var(--r-lg); }
+.toast, #toast { border-radius: 12px; backdrop-filter: blur(10px); }
+/* Leave room for the lobby chat (bottom-left) next to the pause panel. */
+body:not(.mobile) #pause.overlay { justify-content: flex-end; padding-right: max(24px, calc(50vw - 520px)); }
+body:not(.mobile) .pause-panel { width: min(1000px, calc(100vw - 460px)); min-width: min(620px, 96vw); }
+body:not(.mobile) #pause.overlay { padding-right: max(24px, calc(50vw - 560px)); }
+body:not(.mobile) .pause-panel { width: min(1000px, calc(100vw - 430px - max(24px, 50vw - 560px))); }

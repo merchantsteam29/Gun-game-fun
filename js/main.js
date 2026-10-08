@@ -1147,7 +1147,20 @@ function showPause() {
   renderModList();
   renderReportList();
   renderLoadout($('pause-loadout')); // shows the server's weapon rule, if any
+  renderPauseTabs();
   $('pause').classList.remove('hidden');
+}
+
+// Pause menu sections (loadout, practice weapons, moderation, report) as tabs: one at a time.
+let pauseTab = null;
+function renderPauseTabs() {
+  const secs = [['pause-lo', 'Loadout'], ['pause-practice', '🎯 Weapons'], ['pause-mod', '🛡 Moderation'], ['pause-report', '🚩 Report']]
+    .filter(([id]) => !$(id).classList.contains('hidden'));
+  if (!secs.some(([id]) => id === pauseTab)) pauseTab = secs.some(([id]) => id === 'pause-practice') ? 'pause-practice' : 'pause-lo';
+  $('pause-tabs').innerHTML = secs.length > 1 ? secs.map(([id, n]) => `<button data-pt="${id}" class="${id === pauseTab ? 'sel' : ''}">${n}</button>`).join('') : '';
+  $('pause-tabs').classList.toggle('hidden', secs.length < 2);
+  for (const [id] of secs) { $(id).classList.toggle('pt-off', id !== pauseTab); $(id).open = true; }
+  $('pause-tabs').querySelectorAll('[data-pt]').forEach((b) => { b.onclick = () => { pauseTab = b.dataset.pt; renderPauseTabs(); }; });
 }
 
 // ---------- Staff ----------

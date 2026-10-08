@@ -1,8 +1,8 @@
 {
-  "version": "2026.10.08.33",
+  "version": "2026.10.08.34",
   "notes": [
-    "Missions screen split into tabs: Daily, Season & level, and Missions",
-    "Missions list in two columns; refreshed look for Leaderboard, Friends and Loadout"
+    "Pause menu: one section at a time with tabs (Loadout, Weapons, Moderation, Report), and it no longer covers the chat",
+    "Settings, host panel and pop-ups restyled to match the new look"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",
