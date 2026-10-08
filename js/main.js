@@ -32,6 +32,7 @@ import { clans, CLAN_COLORS, MAX_MEMBERS } from './clans.js';
 import { seasons, TIERS, TIER_XP, tierTokens } from './seasons.js';
 import { bannerOf, bannerHtml } from './banners.js';
 import { invites, INVITE_TOKENS, MAX_INVITES } from './invites.js';
+import { RULE_PRESETS, presetRules, savedPresets, WEAPON_RULES } from './rulesets.js';
 import { leaderboard, BOARDS, weekEnds, CHAMP_TOKENS } from './leaderboard.js';
 import { MODS, MOD_SLOTS, MOD_SLOT_NAMES, modOptions, hasMods, cleanMods, cleanModMap, statsFor } from './mods.js';
 
@@ -482,7 +483,8 @@ function renderLoadout(el) {
   const list = groups.map(([name, l]) => `<div class="lo-group"><h4>${name}</h4><div class="lo-grid">${l.map((id) =>
     `<button class="${settings.loadout[open] === id ? 'sel' : ''}" data-w="${id}"><b>${WEAPONS[id].name}</b><small>${weaponBlurb(id)}</small></button>`).join('')}</div></div>`).join('');
   const cur = settings.loadout[open];
-  el.innerHTML = `${presetsBar()}<div class="lo-tabs">${tabs}</div><div class="lo-body"><div class="lo-list">${list}</div>
+  const wr = el.id === 'pause-loadout' && net && game.rules.weapons && WEAPON_RULES[game.rules.weapons] && game.rules.weapons !== 'any' ? WEAPON_RULES[game.rules.weapons] : null;
+  el.innerHTML = `${wr ? `<div class="lo-rule">🎯 This server: <b>${esc(wr.name)}</b>. The server picks your weapons; your loadout is used when it's back to Any.</div>` : ''}${presetsBar()}<div class="lo-tabs">${tabs}</div><div class="lo-body"><div class="lo-list">${list}</div>
     <div class="lo-side"><div class="lo-card">${statCard(cur)}</div>${modsPanel(cur)}</div></div>`;
   const card = el.querySelector('.lo-card');
   // Attachments: click to fit; hovering previews the stats and explains the part.
@@ -901,7 +903,13 @@ const saveCfg = () => store.set('serverCfg', serverCfg);
 const announcer = new ServerAnnouncer();
 let hosting = null; // { public, name, max, region } while hosting
 
+function renderRulesPick() {
+  const all = [...RULE_PRESETS, ...savedPresets()];
+  if (!all.some((p) => p.id === serverCfg.rules)) serverCfg.rules = 'classic';
+  $('sv-rules').innerHTML = all.map((p) => `<option value="${esc(p.id)}" ${p.id === serverCfg.rules ? 'selected' : ''}>${p.saved ? '★ ' : ''}${esc(p.name)}</option>`).join('');
+}
 function renderCreateForm() {
+  renderRulesPick();
   $('sv-name').value = serverCfg.name || `${settings.name || 'Player'}'s server`;
   $('sv-max').innerHTML = Array.from({ length: 11 }, (_, i) => i + 2).map((n) => `<option value="${n}" ${n === serverCfg.max ? 'selected' : ''}>${n} players</option>`).join('');
   $('sv-bots').value = String(serverCfg.bots);
@@ -917,6 +925,7 @@ $('sv-max').onchange = () => { serverCfg.max = Number($('sv-max').value); saveCf
 $('sv-bots').onchange = () => { serverCfg.bots = Number($('sv-bots').value); saveCfg(); };
 $('sv-regionpick').onchange = () => { serverCfg.region = $('sv-regionpick').value; saveCfg(); };
 $('sv-rotate').onchange = () => { serverCfg.rotate = $('sv-rotate').checked; saveCfg(); };
+$('sv-rules').onchange = () => { serverCfg.rules = $('sv-rules').value; saveCfg(); };
 document.querySelectorAll('#sv-vis button').forEach((b) => { b.onclick = () => { serverCfg.vis = b.dataset.v; saveCfg(); renderCreateForm(); }; });
 const showCreate = (v) => {
   $('create-card').classList.toggle('hidden', !v);
@@ -949,7 +958,7 @@ function renderServers() {
     const mode = MODES[s.mode] ? MODES[s.mode].name : s.mode;
     const map = MAPS[s.map] ? MAPS[s.map].name : s.map;
     return `<div class="sv-row">
-      <div class="sv-main"><b>${s.gn ? '🌙 ' : ''}${esc(s.name)}</b><small>${s.mode === featuredMode() ? '⭐ ' : ''}${esc(mode)} · ${esc(map)}</small></div>
+      <div class="sv-main"><b>${s.gn ? '🌙 ' : ''}${esc(s.name)}</b><small>${s.mode === featuredMode() ? '⭐ ' : ''}${esc(mode)} · ${esc(map)}${s.rules ? ` · <em class="sv-rules">${esc(s.rules)}</em>` : ''}</small></div>
       ${s.region ? `<span class="sv-region">${esc(s.region)}</span>` : '<span></span>'}
       <div class="sv-players ${full ? 'full' : ''}">${s.players}/${s.max}${s.bots ? `<small>+${s.bots} bots</small>` : ''}</div>
       <button class="primary" data-join="${esc(s.code)}" ${full ? 'disabled' : ''}>${full ? 'Full' : 'Join'}</button>
@@ -964,7 +973,7 @@ function listingInfo() {
   const L = net && net.logic;
   const all = L ? [...L.players.values()] : [];
   return {
-    name: hosting.name, max: hosting.max, region: hosting.region, gn: hosting.gn ? 1 : 0,
+    name: hosting.name, max: hosting.max, region: hosting.region, gn: hosting.gn ? 1 : 0, rules: L ? L.s.rulesName || '' : '',
     mode: L ? L.s.mode : settings.mode, map: L ? L.s.map : settings.map,
     players: all.filter((p) => !p.bot).length, bots: all.filter((p) => p.bot).length,
   };
@@ -1076,6 +1085,7 @@ function showPause() {
   renderPractice();
   renderModList();
   renderReportList();
+  renderLoadout($('pause-loadout')); // shows the server's weapon rule, if any
   $('pause').classList.remove('hidden');
 }
 
@@ -1464,6 +1474,9 @@ async function hostLobby(preset = null) {
   if (moderation.myBan()) { moderation.lastBan = null; moderation.applyMine(); return; }
   initAudio();
   setBusy(true);
+  // Rules preset from the Create form (applied before anyone spawns).
+  const rp = !preset && [...RULE_PRESETS, ...savedPresets()].find((p) => p.id === serverCfg.rules);
+  const rules = rp && rp.id !== 'classic' ? { ...presetRules(rp), rulesName: rp.name } : null;
   for (let attempt = 0; attempt < 3; attempt++) {
     const code = randCode();
     status(`Creating server ${code}…`);
@@ -1471,7 +1484,7 @@ async function hostLobby(preset = null) {
     try {
       await net.host(code, settings.name || 'Player', settings.color,
         preset ? { map: preset.map, mode: preset.mode, maxPlayers: preset.max, botFill: Math.min(preset.bots, preset.max), gn: !!preset.gn }
-          : { map: settings.map, mode: settings.mode, maxPlayers: serverCfg.max, botFill: Math.min(serverCfg.bots, serverCfg.max) }, myCos());
+          : { map: settings.map, mode: settings.mode, maxPlayers: serverCfg.max, botFill: Math.min(serverCfg.bots, serverCfg.max), rules }, myCos());
       net.logic.s.rotate = preset ? preset.rotate : serverCfg.rotate;
       net.logic.onFlag = (p, details) => moderation.autoFlag({ target: p.name, lobby: net.code, details });
       hosting = preset

@@ -1555,3 +1555,11 @@ body.mobile .sp-track { grid-template-columns: repeat(10, minmax(0, 1fr)); }
 .cl-chat div { padding: 2px 0; }
 .cl-chat b { color: var(--accent); margin-right: 4px; }
 .clan-tag { font-weight: 700; margin-right: 4px; }
+
+/* Rule presets */
+.hp-presets { display: grid; gap: 6px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.hp-preset-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.hp-preset-row select { flex: 1; min-width: 0; }
+.hp-preset-row button { padding: 6px 10px; font-size: 12px; }
+.sv-rules { font-style: normal; color: var(--accent); }
+.lo-rule { padding: 8px 12px; margin-bottom: 8px; border: 1px solid var(--accent); background: var(--accent-soft); border-radius: 6px; font-size: 13px; }

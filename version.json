@@ -1,15 +1,15 @@
 {
-  "version": "2026.10.08.17",
+  "version": "2026.10.08.18",
   "notes": [
-    "Map pickups: health packs, ammo crates and a power weapon in the middle of the map",
-    "Power weapon (Railgun, Minigun, Rocket Launcher or Heavy Sniper) spawns every 90 seconds; everyone sees who grabs it",
-    "Hosts can turn pickups off in the host panel"
+    "Custom rules: weapon restrictions (snipers, shotguns, pistols, melee, explosives only, or random) and one shot kills",
+    "12 rule presets like Moon knife fight, Pistol duel and Chaos; pick one when creating a server",
+    "Save your own presets and share them with a code"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",
     "js/audio.js", "js/banners.js", "js/bot.js", "js/chat.js", "js/cosmetics.js", "js/effects.js", "js/game.js", "js/gamepad.js", "js/guns.js", "js/host.js",
     "js/hostpanel.js", "js/hud.js", "js/main.js", "js/maps.js", "js/missions.js", "js/moderation.js", "js/modpanel.js", "js/radar.js", "js/mods.js", "js/modelkit.js", "js/models.js", "js/nav.js",
     "js/net.js", "js/physics.js", "js/relay.js", "js/remote.js", "js/roles.js", "js/rig.js", "js/servers.js", "js/settings.js", "js/settingsui.js", "js/showroom.js", "js/social.js",
-    "js/touch.js", "js/updater.js", "js/util.js", "js/medals.js", "js/camos.js", "js/binds.js", "js/progress.js", "js/gamenight.js", "js/leaderboard.js", "js/seasons.js", "js/invites.js", "js/profiles.js", "js/clans.js", "js/version.js", "js/viewmodel.js", "js/voice.js", "js/weapons.js"
+    "js/touch.js", "js/updater.js", "js/util.js", "js/medals.js", "js/camos.js", "js/binds.js", "js/progress.js", "js/gamenight.js", "js/leaderboard.js", "js/seasons.js", "js/invites.js", "js/profiles.js", "js/clans.js", "js/rulesets.js", "js/version.js", "js/viewmodel.js", "js/voice.js", "js/weapons.js"
   ]
 }

@@ -71,7 +71,13 @@ host can turn pickups off in the host panel.
 The lobby creator gets a **Host panel** button in the pause menu (Esc):
 
 - Change mode / map and restart, toggle map rotation
-- Rules: score limit, time limit, health, respawn delay, infinite ammo, headshots only, friendly fire
+- Rules: score limit, time limit, health, respawn delay, infinite ammo, headshots only, friendly fire, map pickups,
+  one shot kills, and **weapons** (any, snipers / shotguns / rifles / pistols / melee / explosives only, or a random
+  loadout every life)
+- **Rule presets:** Snipers only, One shot one kill, Moon knife fight, Shotgun madness, Pistol duel, Boom boom, Moon
+  gravity, Speed demons, Tanks, Headhunters and Chaos. **Save current…** keeps your own, **Copy share code** gives a
+  code (R-…) anyone can paste with **Use a code…**. Presets can also be picked when creating a server, and the
+  server list shows them.
 - Physics: game speed, move speed, jump height, gravity
 - Bots: add (easy / normal / hard), fill to 8, change difficulty, remove
 - Players: kick, swap teams

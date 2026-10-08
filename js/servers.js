@@ -45,6 +45,7 @@ function clean(code, raw) {
     max,
     region: REGIONS.includes(raw.region) ? raw.region : '',
     gn: raw.gn === 1, // a Game Night server (gamenight.js)
+    rules: str(raw.rules, 24), // custom rules preset name (rulesets.js), '' for normal
     ts: Number(raw.ts) || 0,
   };
 }

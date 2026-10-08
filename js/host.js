@@ -1,6 +1,7 @@
 import { spawns, setMapData, MAP_ORDER, MAPS } from './maps.js';
 import { phys } from './physics.js';
 import { WEAPONS, GUNGAME_LADDER, SLOTS } from './weapons.js';
+import { WEAPON_RULES, ruleLoadout, cleanRules } from './rulesets.js';
 import { NavGrid } from './nav.js';
 import { Bot, BOT_NAMES } from './bot.js';
 import { COLORS } from './util.js';
@@ -86,7 +87,7 @@ export function defaultSettings(mode = 'ffa', map = 'warehouse') {
   return {
     mode, map, rotate: true,
     scoreLimit: MODES[mode].score, timeLimit: MODES[mode].time,
-    health: 100, respawn: 3, infiniteAmmo: false, headshotsOnly: false, friendlyFire: false, pickups: true,
+    health: 100, respawn: 3, infiniteAmmo: false, headshotsOnly: false, friendlyFire: false, pickups: true, oneShot: false, weapons: 'any', rulesName: '',
     ...PHYS_DEFAULTS, ...MODES[mode].preset,
   };
 }
@@ -114,6 +115,7 @@ export class HostLogic {
     this.specs = new Map(); // staff spectating: get every update but aren't players
     this.s = defaultSettings(MODES[opts.mode] ? opts.mode : 'ffa', MAPS[opts.map] ? opts.map : MAP_ORDER[0]);
     if (opts.gn) this.s.gn = true; // Game Night server (double XP for players while it's live)
+    if (opts.rules) Object.assign(this.s, cleanRules(opts.rules), { rulesName: String(opts.rules.rulesName || '').slice(0, 24) }); // custom rules preset
     this.botCount = 0;
     this.botFill = Math.max(0, Math.min(12, opts.botFill || 0)); // keep humans + bots at this many
     this.loadMap(this.s.map);
@@ -389,6 +391,12 @@ export class HostLogic {
     if (this.s.mode === 'juggernaut' && p.id === this.jugg) return JUGG_LOADOUT;
     if (this.s.mode === 'roulette') return SLOTS.map((opts) => opts[(Math.random() * opts.length) | 0]);
     if (this.s.mode === 'rotation') return [this.rotW, 'knife'];
+    // Custom weapon rule (rulesets.js), in modes where players normally pick their own loadout.
+    if (!this.mode.loadout && this.s.weapons && this.s.weapons !== 'any') {
+      if (this.s.weapons === 'random') return SLOTS.map((opts) => opts[(Math.random() * opts.length) | 0]);
+      const l = ruleLoadout(this.s.weapons);
+      if (l) return l;
+    }
     return this.mode.loadout || null;
   }
 
@@ -578,7 +586,7 @@ export class HostLogic {
     // Never accept more than the weapon can deal in one hit (keeps modded clients in line).
     let dmg = Math.max(0, Math.min(maxHitDmg(w), Number(m.dmg) || 0));
     if (!dmg) return;
-    if (this.mode.instakill && v !== attacker) dmg = 999;
+    if ((this.mode.instakill || this.s.oneShot) && v !== attacker) dmg = 999;
     if (this.s.mode === 'vampire' && v !== attacker && attacker.alive) {
       attacker.hp = Math.min(this.maxHp(attacker), attacker.hp + Math.min(dmg, Math.max(0, v.hp)) * 0.5);
     }
@@ -650,7 +658,7 @@ export class HostLogic {
     if (!W || W.type !== 'gun' || p.flagged) return;
     p.gunKills = (p.gunKills || 0) + 1;
     if (head) p.gunHeads = (p.gunHeads || 0) + 1;
-    if (this.mode.instakill || this.s.headshotsOnly || this.mode.bigHead) return;
+    if (this.mode.instakill || this.s.oneShot || this.s.headshotsOnly || this.mode.bigHead) return;
     const mins = Math.max(0.5, (Date.now() - p.joinedAt) / 60000);
     const hsRate = (p.gunHeads || 0) / p.gunKills, kpm = p.kills / mins;
     const why = [];
@@ -1037,7 +1045,11 @@ export class HostLogic {
   }
 
   applySettings(partial) {
+    const weaponsBefore = this.s.weapons;
     Object.assign(this.s, partial);
+    if ('weapons' in partial && partial.weapons !== weaponsBefore) {
+      this.broadcast({ t: 'notice', text: `Weapons: ${(WEAPON_RULES[this.s.weapons] || WEAPON_RULES.any).name} (from your next life)` });
+    }
     if ('timeLimit' in partial && this.phase === 'playing') this.endsAt = Date.now() + this.s.timeLimit * 60000;
     this.broadcast({ t: 'settings', s: this.s });
   }
