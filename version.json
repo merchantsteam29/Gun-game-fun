@@ -1,8 +1,8 @@
 {
-  "version": "2026.10.08.34",
+  "version": "2026.10.08.35",
   "notes": [
-    "Pause menu: one section at a time with tabs (Loadout, Weapons, Moderation, Report), and it no longer covers the chat",
-    "Settings, host panel and pop-ups restyled to match the new look"
+    "In-game HUD, scoreboard and results screen restyled to match the new look",
+    "Results screen: cleaner XP / rating lines and map vote cards"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",

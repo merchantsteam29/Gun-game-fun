@@ -308,3 +308,32 @@ body:not(.mobile) #pause.overlay { justify-content: flex-end; padding-right: max
 body:not(.mobile) .pause-panel { width: min(1000px, calc(100vw - 460px)); min-width: min(620px, 96vw); }
 body:not(.mobile) #pause.overlay { padding-right: max(24px, calc(50vw - 560px)); }
 body:not(.mobile) .pause-panel { width: min(1000px, calc(100vw - 430px - max(24px, 50vw - 560px))); }
+
+/* ---------- In-game HUD (styling only; positions unchanged) ---------- */
+#hud { font-family: var(--font-display); }
+/* (No backdrop blur in the HUD: it would re-blur the moving 3D view every frame.) */
+#health, #weapon-info { border-radius: 14px; }
+#lobby-tag { border-radius: 8px; }
+#killfeed div { border-radius: 8px; }
+#mission-toast { border-radius: 14px; border: 1px solid rgba(255,176,32,0.45); background: rgba(10,12,17,0.82); box-shadow: 0 12px 34px rgba(0,0,0,0.45); }
+#score-strip > * { border-radius: 10px; }
+#slots > div { border-radius: 10px; }
+#minimap, #radar { border-radius: 50%; }
+.scoreboard-panel, #scoreboard { border-radius: 18px; }
+#scoreboard { background: rgba(10,13,18,0.9); border: 1px solid var(--line-2); box-shadow: 0 24px 70px rgba(0,0,0,0.55); }
+#scoreboard tr.me td { background: var(--accent-soft); }
+
+/* Results screen */
+#endscreen { border-radius: 20px; background: rgba(10,13,18,0.92); border: 1px solid var(--line-2); box-shadow: 0 30px 90px rgba(0,0,0,0.6); padding: 22px 26px; }
+#endscreen::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px; border-radius: 20px 20px 0 0; background: linear-gradient(90deg, var(--accent), var(--accent-2), transparent); }
+#end-title { letter-spacing: 6px; text-shadow: 0 0 30px rgba(255,176,32,0.35); }
+#end-xp, #end-sr { padding: 6px 12px; border-radius: 12px; background: rgba(255,255,255,0.03); width: fit-content; max-width: 100%; }
+#end-xp:empty, #end-sr:empty { display: none; }
+.vote-card { border-radius: 14px; }
+.vote-card.mine { box-shadow: 0 0 0 2px var(--accent); }
+.pd { border-radius: 12px 12px 0 0; }
+#end-body tr td:first-child { border-radius: 8px 0 0 8px; }
+#end-body tr td:last-child { border-radius: 0 8px 8px 0; }
+.hl-card { border-radius: 14px; }
+#death .bnr, .bnr { border-radius: 12px; }
+#tutorial { border-radius: 14px; }
