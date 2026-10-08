@@ -74,6 +74,30 @@ window.game = game; // handy for debugging from the console
 let net = null;
 let busy = false;
 const browser = new ServerBrowser(); // public server list (Servers, Quick Play, Game Night)
+
+// ---------- Install as an app ----------
+// Chrome / Edge / Android offer an install prompt; iPhone and iPad need Share → Add to Home Screen.
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+const install = { prompt: null, ios: /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1),
+  standalone: matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || !!navigator.standalone };
+const canInstall = () => !install.standalone && (!!install.prompt || install.ios);
+function showInstall() { $('btn-install').classList.toggle('hidden', !canInstall()); if (!game.active) renderHome(); }
+async function installApp() {
+  if (install.prompt) {
+    const p = install.prompt;
+    install.prompt = null;
+    p.prompt();
+    const r = await p.userChoice.catch(() => null);
+    if (r && r.outcome !== 'accepted') install.prompt = null;
+  } else if (install.ios) toast('Tap the Share button (□↑) in Safari, then "Add to Home Screen".');
+  else toast('Use your browser menu → "Install app" (or "Add to Home screen").');
+  showInstall();
+}
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); install.prompt = e; showInstall(); });
+window.addEventListener('appinstalled', () => { install.standalone = true; showInstall(); toast('Installed! Open Gun Game 3D from your home screen or desktop.'); });
+$('btn-install').onclick = installApp;
+$('btn-install').classList.toggle('hidden', !canInstall());
+
 let settingsUI = null; // created further down; the Character / Missions sections reuse its views
 const chat = new Chat({
   send: (text) => {
@@ -137,6 +161,7 @@ function renderHome() {
         : `Starts in ${fmtDuration(gn.start - Date.now())} · ${new Date(gn.start).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })}`}</small></span>
       ${gnLive ? '<button class="primary" data-gn>Join game night</button>' : gn ? `<button class="ghost hs-remind" data-remind title="${esc(describeGn(gameNight.schedule))}">${gameNight.remind ? '🔔 On' : '🔕 Remind me'}</button>` : ''}
     </div>
+    ${canInstall() ? '<button class="hs-tile hs-install" data-install><span class="hs-ic">📲</span><span class="hs-txt"><b>Install the app</b><small>Gun Game 3D on your home screen</small></span></button>' : ''}
     <button class="hs-tile hs-level" data-go="missions" title="Earn XP from kills, headshots, matches, wins and daily challenges">
       ${levelBadge(lv.level, false).replace('lvl-badge', 'lvl-badge big')}
       <span class="hs-txt"><b>${esc(lv.rank.name)} · Level ${lv.level}</b><span class="hs-bar"><i style="width:${lv.pct * 100}%"></i></span><small>${lv.need ? `${lv.into.toLocaleString()} / ${lv.need.toLocaleString()} XP` : 'Max level'}</small></span>
@@ -154,6 +179,8 @@ function renderHome() {
   const c = el.querySelector('[data-claim]');
   if (c) c.onclick = doClaim;
   el.querySelector('[data-quick]').onclick = quickPlay;
+  const ins = el.querySelector('[data-install]');
+  if (ins) ins.onclick = installApp;
   const g = el.querySelector('[data-gn]');
   if (g) g.onclick = joinGameNight;
   const r = el.querySelector('[data-remind]');

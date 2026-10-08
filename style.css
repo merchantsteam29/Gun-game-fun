@@ -1477,3 +1477,8 @@ body.mobile .home-strip > .hs-quick, body.mobile .home-strip > .hs-gn { grid-col
 .lb-champ small { color: var(--muted); }
 .lb-champ b { color: var(--accent-hi); }
 body.mobile .lb { grid-template-columns: 1fr; }
+/* Install as an app */
+.install-btn { width: 100%; margin: 8px 0 4px; padding: 9px 12px; font-size: 13px; border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+body.mobile .install-btn { width: auto; margin: 6px 0; }
+.home-strip > .hs-install { grid-column: 1 / -1; padding: 8px 12px; border-color: rgba(255,176,32,0.4); }
+body.mobile .home-strip > .hs-install { grid-column: 1 / -1; }

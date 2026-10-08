@@ -1,12 +1,12 @@
 {
-  "version": "2026.10.08.10",
+  "version": "2026.10.08.11",
   "notes": [
-    "Weekly leaderboard: XP, kills, wins and headshots, resets every Monday",
-    "Last week's #1s get a trophy by their name, 500 tokens and the Weekly Champion wrap",
-    "Staff can hide a player from the leaderboard in the Mod Panel"
+    "Install Gun Game 3D as an app: its own icon, full screen, no browser bar",
+    "Install app button on the Servers screen (iPhone/iPad: Share > Add to Home Screen)",
+    "New app icon and browser tab icon"
   ],
   "files": [
-    "./", "index.html", "style.css", "version.json",
+    "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",
     "js/audio.js", "js/banners.js", "js/bot.js", "js/chat.js", "js/cosmetics.js", "js/effects.js", "js/game.js", "js/gamepad.js", "js/guns.js", "js/host.js",
     "js/hostpanel.js", "js/hud.js", "js/main.js", "js/maps.js", "js/missions.js", "js/moderation.js", "js/modpanel.js", "js/radar.js", "js/mods.js", "js/modelkit.js", "js/models.js", "js/nav.js",
     "js/net.js", "js/physics.js", "js/relay.js", "js/remote.js", "js/roles.js", "js/rig.js", "js/servers.js", "js/settings.js", "js/settingsui.js", "js/showroom.js", "js/social.js",

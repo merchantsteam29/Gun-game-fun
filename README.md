@@ -197,6 +197,11 @@ Inferno, Galaxy, Dragon Scale, Rainbow, Solid Gold and Diamond cost tokens (seve
 - **Daily challenges:** 3 a day (easy, medium, hard), the same for everyone on the same date, worth tokens and XP,
   plus a bonus for finishing all 3. They reset at midnight.
 
+## Install as an app
+
+Gun Game 3D can be installed like an app, with its own icon, full screen and no browser bar. Use **Install app** on
+the Servers screen (or in the menu sidebar). On iPhone / iPad: Safari → Share → **Add to Home Screen**.
+
 ## Quick Play & Game Night
 
 - **Quick Play** (top of the Servers screen) drops you into the busiest public server with room, or starts a public
