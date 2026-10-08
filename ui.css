@@ -339,3 +339,65 @@ body:not(.mobile) .pause-panel { width: min(1000px, calc(100vw - 430px - max(24p
 #tutorial { border-radius: 14px; }
 /* Phones: the pause menu fills the screen, so the lobby chat hides behind it (the chat button is in the game HUD). */
 body.mobile:not(.tablet):has(#pause:not(.hidden)) #chat { display: none !important; }
+
+/* ---------- Motion: one set of UI animations (transform / opacity only, so they stay cheap) ---------- */
+:root { --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1); --ease-back: cubic-bezier(0.25, 1.35, 0.4, 1); }
+@keyframes ui-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes ui-pop { from { opacity: 0; transform: scale(0.94) translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes ui-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ui-drop { from { opacity: 0; transform: translateY(-14px) scale(1.06); } to { opacity: 1; transform: none; } }
+@keyframes ui-toast { 0% { opacity: 0; transform: translate(-50%, 16px) scale(0.96); } 100% { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes ui-pop-c { from { opacity: 0; transform: translate(-50%, -50%) scale(0.94); } to { opacity: 1; transform: translate(-50%, -50%); } }
+@keyframes ui-slide-r { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+
+/* Menu: switching screens slides the new one up; cards in it follow one after another. */
+.menu-pane.enter { animation: ui-rise 0.32s var(--ease-out); }
+.menu-pane.enter .play-hero > *, .menu-pane.enter .today-row > *, .menu-pane.enter .banner-row,
+.menu-pane.enter .servers-card, .menu-pane.enter .daily > *, .menu-pane.enter .lb > * { animation: ui-rise 0.4s var(--ease-out) both; }
+.play-hero > *:nth-child(2), .today-row > *:nth-child(1) { animation-delay: 0.05s !important; }
+.today-row > *:nth-child(2), .daily > *:nth-child(2), .lb > *:nth-child(2) { animation-delay: 0.09s !important; }
+.today-row > *:nth-child(3), .daily > *:nth-child(3), .servers-card { animation-delay: 0.13s !important; }
+.menu-pane.enter .cz-grid > .cz-card, .cz-panel.enter .cz-card { animation: ui-pop 0.3s var(--ease-out) both; }
+.cz-grid > .cz-card:nth-child(n+7) { animation-delay: 0.04s; }
+.cz-grid > .cz-card:nth-child(n+13) { animation-delay: 0.08s; }
+.cz-grid > .cz-card:nth-child(n+19) { animation-delay: 0.12s; }
+/* Hover: interactive cards lift a little. */
+.hs-tile, .cz-card, .sv-row, .lo-list button, .vote-card, .tile { transition: transform 0.16s var(--ease-out), background 0.15s, border-color 0.15s, box-shadow 0.16s; }
+button.hs-tile:hover, .cz-card:hover, .sv-row:hover, .lo-list button:hover, .vote-card:not(:disabled):hover, .tile:hover { transform: translateY(-2px); }
+button:active { transform: translateY(1px) scale(0.985); }
+.hero-quick .hq-go { transition: transform 0.18s var(--ease-back), box-shadow 0.18s; }
+.hero-quick:hover .hq-go { transform: translateX(4px); box-shadow: 0 10px 26px rgba(255,160,20,0.4); }
+.menu-nav button .ic { transition: transform 0.18s var(--ease-back); }
+.menu-nav button:hover .ic { transform: scale(1.15); }
+.seg-tabs button, .cz-tabs button { transition: background 0.18s, color 0.18s; }
+
+/* Dialogs and pop-ups: pop in. */
+.overlay:not(.hidden):not(#menu) > .panel, #create-card.dialog:not(.hidden) { animation: ui-pop 0.26s var(--ease-back); }
+#create-card.dialog:not(.hidden) { animation-name: ui-fade; }
+#toast:not(.hidden) { animation: ui-toast 0.32s var(--ease-back); }
+.slow-tip { animation: ui-toast 0.32s var(--ease-back); }
+.cz-buy:not(.hidden) { animation: ui-rise 0.25s var(--ease-out); }
+
+/* In game */
+#scoreboard:not(.hidden) { animation: ui-pop-c 0.18s var(--ease-out); }
+#death:not(.hidden) #death-timer { animation: ui-fade 0.4s 0.2s both; }
+#endscreen:not(.hidden) { animation: ui-pop-c 0.35s var(--ease-back); }
+#endscreen:not(.hidden) #end-title { animation: ui-drop 0.5s 0.05s var(--ease-back) both; }
+#endscreen:not(.hidden) #end-xp, #endscreen:not(.hidden) #end-sr { animation: ui-rise 0.4s 0.2s var(--ease-out) both; }
+#endscreen:not(.hidden) .vote-card { animation: ui-rise 0.4s var(--ease-out) both; }
+#endscreen:not(.hidden) .vote-card:nth-child(2) { animation-delay: 0.07s; }
+#endscreen:not(.hidden) .vote-card:nth-child(3) { animation-delay: 0.14s; }
+#endscreen:not(.hidden) .pd { animation: ui-rise 0.45s var(--ease-back) both; }
+#endscreen:not(.hidden) .pd.p1 { animation-delay: 0.25s; }
+#endscreen:not(.hidden) .pd.p2 { animation-delay: 0.15s; }
+#endscreen:not(.hidden) .pd.p3 { animation-delay: 0.35s; }
+#endscreen:not(.hidden) #end-body tr { animation: ui-slide-r 0.35s var(--ease-out) both; }
+#endscreen:not(.hidden) #end-body tr:nth-child(2) { animation-delay: 0.04s; }
+#endscreen:not(.hidden) #end-body tr:nth-child(3) { animation-delay: 0.08s; }
+#endscreen:not(.hidden) #end-body tr:nth-child(n+4) { animation-delay: 0.12s; }
+.hl-card { animation: ui-rise 0.45s 0.3s var(--ease-out) both; }
+
+/* Respect "reduce motion" in the OS. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-delay: 0s !important; transition-duration: 0.01ms !important; }
+}

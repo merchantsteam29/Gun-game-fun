@@ -1055,6 +1055,9 @@ function showPane(name) {
   $('pane-sub').textContent = PANE_INFO[name][1];
   document.querySelectorAll('#menu-nav [data-pane]').forEach((b) => b.classList.toggle('sel', b.dataset.pane === name));
   document.querySelectorAll('.menu-pane').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== name));
+  // Entrance animation (ui.css) only when a screen opens, not on every refresh.
+  const opened = document.querySelector(`.menu-pane[data-pane="${name}"]`);
+  if (opened) { opened.classList.remove('enter'); void opened.offsetWidth; opened.classList.add('enter'); clearTimeout(showPane.t); showPane.t = setTimeout(() => opened.classList.remove('enter'), 700); }
   if (name === 'character') { if (settingsUI) settingsUI.tryOn = null; renderCharacter(); }
   renderChip();
   if (name === 'missions') renderMissions();
