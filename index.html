@@ -13,8 +13,9 @@
 <link rel="icon" type="image/png" href="icons/favicon-64.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="ui.css">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="preconnect" href="https://unpkg.com" crossorigin>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
@@ -206,13 +207,15 @@
 <!-- Main menu -->
 <div id="menu" class="overlay">
   <div class="panel menu-panel">
-    <aside class="menu-rail">
-      <header class="brand">
-        <h1>GUN GAME <span>3D</span></h1>
+    <header class="topbar">
+      <div class="brand"><span class="logo-mark">◎</span><h1>GUN GAME <span>3D</span></h1></div>
+      <div class="topbar-right">
         <button id="player-chip" class="player-chip" title="Edit your character"><i id="chip-dot"></i><span id="chip-name"></span><em id="chip-tokens"></em></button>
-      </header>
+      </div>
+    </header>
+    <aside class="menu-rail">
       <nav class="menu-nav" id="menu-nav">
-        <button data-pane="play" class="sel"><span class="ic">▶</span><span class="lbl">Servers<small>Join or create a match</small></span></button>
+        <button data-pane="play" class="sel"><span class="ic">▶</span><span class="lbl">Play<small>Join or create a match</small></span></button>
         <button data-pane="loadout"><span class="ic">⌖</span><span class="lbl">Loadout<small>Pick your weapons</small></span></button>
         <button data-pane="character"><span class="ic">☺</span><span class="lbl">Character<small>Name, color, cosmetics</small></span></button>
         <button data-pane="missions"><span class="ic">★</span><span class="lbl">Missions<small>Season pass &amp; daily rewards</small></span><b id="nav-missions-count"></b></button>
@@ -240,32 +243,23 @@
       <!-- Play -->
       <section class="menu-pane" data-pane="play">
         <div id="home-strip" class="home-strip"></div>
-        <!-- Join by code -->
-        <div class="card join-card">
-          <div class="join-row">
-            <div>
-              <h3>Join with code</h3>
-              <p class="note">The 5-letter code from a friend's pause menu or invite link. Works for private servers too.</p>
-            </div>
-            <div class="join">
-              <input id="join-code" maxlength="5" placeholder="CODE" autocomplete="off" spellcheck="false" inputmode="text" autocapitalize="characters">
-              <button id="btn-join" class="primary">Join</button>
-            </div>
-          </div>
-        </div>
         <p id="menu-status"></p>
         <!-- Find servers -->
         <div class="card servers-card">
           <div class="sv-head">
-            <h3>Find servers</h3>
+            <h3>Servers</h3>
             <span id="sv-status" class="sv-status"></span>
+            <div class="join sv-join" title="The 5-letter code from a friend's pause menu or invite link. Works for private servers too.">
+              <input id="join-code" maxlength="5" placeholder="CODE" autocomplete="off" spellcheck="false" inputmode="text" autocapitalize="characters">
+              <button id="btn-join" class="primary">Join</button>
+            </div>
             <select id="sv-region" title="Filter by region"><option value="">All regions</option></select>
             <button id="sv-create-toggle" class="primary">+ Create server</button>
           </div>
           <div id="sv-list" class="sv-list"></div>
         </div>
         <!-- Create server -->
-        <div id="create-card" class="card create-card hidden">
+        <div id="create-card" class="card create-card dialog hidden">
           <div class="sv-head"><h3>Create server</h3><button id="sv-create-close" class="ghost">Cancel</button></div>
           <div class="create-grid">
             <div class="field">

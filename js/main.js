@@ -161,39 +161,50 @@ function renderHome() {
   const doneN = daily.list.filter((c) => c.done).length;
   const gn = gameNight.window(), gnLive = !!(gn && gn.live);
   const gnServers = browser.list().filter((s) => s.gn), gnPlayers = gnServers.reduce((n, s) => n + s.players, 0);
+  const rk = myRanked(), open = browser.list().filter((x) => x.players < x.max), playing = browser.list().reduce((n, x) => n + x.players, 0);
   el.innerHTML = `
-    <button class="hs-tile hs-quick" data-quick title="Joins the busiest public server, or starts one with bots if there are none">
-      <span class="hs-ic">▶</span><span class="hs-txt"><b>Quick Play</b><small>${quickLabel()}</small></span>
-    </button>
-    ${(() => { const r = myRanked(); return `<button class="hs-tile hs-ranked" data-ranked style="--dv:${r.div.color}" title="Ranked Free For All: your rating moves with where you finish among real players">
-      <span class="hs-ic">🏆</span><span class="hs-txt"><b>Play Ranked</b><small>${r.placing ? `Placement ${r.played}/${PLACEMENTS}` : `${r.div.icon} ${r.div.name} · ${r.sr} SR`}</small></span></button>`; })()}
-    <div class="hs-tile hs-gn ${gnLive ? 'live' : ''}">
-      <span class="hs-ic">🌙</span>
-      <span class="hs-txt"><b>${gnLive ? `Game Night is LIVE · ${GN_XP}x XP` : 'Game Night'}</b><small>${!gn ? 'Off for now' : gnLive
-        ? `${gnPlayers ? `${gnPlayers} playing · ` : ''}ends in ${fmtDuration(gn.end - Date.now())}`
-        : `Starts in ${fmtDuration(gn.start - Date.now())} · ${new Date(gn.start).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })}`}</small></span>
-      ${gnLive ? '<button class="primary" data-gn>Join game night</button>' : gn ? `<button class="ghost hs-remind" data-remind title="${esc(describeGn(gameNight.schedule))}">${gameNight.remind ? '🔔 On' : '🔕 Remind me'}</button>` : ''}
+    <div class="play-hero">
+      <button class="hero-quick hs-tile" data-quick title="Joins the busiest public server, or starts one with bots if there are none">
+        <span class="hq-kicker">Quick Play</span>
+        <span class="hq-title">Jump into a match</span>
+        <span class="hq-sub">${playing ? `${playing} playing on ${open.length} server${open.length === 1 ? '' : 's'}` : 'Starts a match with bots if nobody is on'}</span>
+        <span class="hq-go">Play now ▶</span>
+      </button>
+      <div class="hero-side">
+        <button class="hero-mini hs-tile hs-ranked" data-ranked style="--dv:${rk.div.color}" title="Ranked Free For All: your rating moves with where you finish among real players">
+          <span class="hs-ic">🏆</span><span class="hs-txt"><b>Ranked</b><small>${rk.placing ? `Placement ${rk.played}/${PLACEMENTS}` : `${rk.div.icon} ${rk.div.name} · ${rk.sr} SR`}</small></span><span class="hm-arrow">›</span>
+        </button>
+        <div class="hero-mini hs-tile hs-feat">
+          <span class="hs-ic">⭐</span>
+          <span class="hs-txt"><b>${esc(MODES[featuredMode()].name)}</b><small>Featured today · ${FEATURED_XP}x XP${featuredClaimed() ? '' : ` · 🪙 ${FEATURED_TOKENS}`}</small></span>
+          <button class="primary sm" data-feat>Play</button>
+        </div>
+        <div class="hero-mini hs-tile hs-gn ${gnLive ? 'live' : ''}">
+          <span class="hs-ic">🌙</span>
+          <span class="hs-txt"><b>${gnLive ? `Game Night · LIVE` : 'Game Night'}</b><small>${!gn ? 'Off for now' : gnLive
+            ? `${GN_XP}x XP · ${gnPlayers ? `${gnPlayers} playing · ` : ''}ends in ${fmtDuration(gn.end - Date.now())}`
+            : `in ${fmtDuration(gn.start - Date.now())} · ${new Date(gn.start).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })}`}</small></span>
+          ${gnLive ? '<button class="primary sm" data-gn>Join</button>' : gn ? `<button class="ghost sm hs-remind" data-remind title="${esc(describeGn(gameNight.schedule))}">${gameNight.remind ? '🔔' : '🔕'}</button>` : ''}
+        </div>
+      </div>
     </div>
-    ${!tutorialDone() ? '<button class="hs-tile hs-tutorial" data-tutorial><span class="hs-ic">🎓</span><span class="hs-txt"><b>New here? Take the 1-minute tutorial</b><small>Learn the controls in the Practice Range · 🪙 ' + TUTORIAL_TOKENS + '</small></span></button>' : ''}
-    ${canInstall() ? '<button class="hs-tile hs-install" data-install><span class="hs-ic">📲</span><span class="hs-txt"><b>Install the app</b><small>Gun Game 3D on your home screen</small></span></button>' : ''}
-    <div class="hs-tile hs-feat">
-      <span class="hs-ic">⭐</span>
-      <span class="hs-txt"><b>Today: ${esc(MODES[featuredMode()].name)}</b><small>${FEATURED_XP}x XP${featuredClaimed() ? '' : ` · 🪙 ${FEATURED_TOKENS} first match`} · ${fmtDuration(featuredEnds() - Date.now())} left</small></span>
-      <button class="primary" data-feat>Play it</button>
-    </div>
-    <button class="hs-tile hs-level" data-go="missions" title="Earn XP from kills, headshots, matches, wins and daily challenges">
-      ${levelBadge(lv.level, false).replace('lvl-badge', 'lvl-badge big')}
-      <span class="hs-txt"><b>${esc(lv.rank.name)} · Level ${lv.level}</b><span class="hs-bar"><i style="width:${lv.pct * 100}%"></i></span><small>${lv.need ? `${lv.into.toLocaleString()} / ${lv.need.toLocaleString()} XP` : 'Max level'} · Season tier ${seasons.info().tier}</small></span>
-    </button>
-    <div class="hs-tile hs-daily ${login.claimed ? '' : 'ready'}">
-      <span class="hs-ic">🎁</span>
-      <span class="hs-txt"><b>${login.claimed ? `Day ${login.day} claimed` : `Day ${login.day} reward`}</b><small>${login.claimed ? `Come back tomorrow · 🔥 ${login.streak}-day streak` : `🪙 ${login.reward}${login.wrap ? ' + Ember wrap' : ''}${login.streak > 1 ? ` · 🔥 ${login.streak} days` : ''}`}</small></span>
-      ${login.claimed ? '' : '<button class="primary" data-claim>Claim</button>'}
-    </div>
-    <button class="hs-tile hs-chal" data-go="missions">
-      <span class="hs-ic">🎯</span>
-      <span class="hs-txt"><b>Daily challenges ${doneN}/3</b><span class="hs-minis">${daily.list.map((c) => `<i class="${c.done ? 'done' : ''}"><u style="width:${(c.have / c.goal) * 100}%"></u></i>`).join('')}</span><small>New ones in ${fmtDuration(daily.resetsIn)}</small></span>
-    </button>`;
+    ${!tutorialDone() ? '<button class="hs-tile hs-tutorial banner-row" data-tutorial><span class="hs-ic">🎓</span><span class="hs-txt"><b>New here? Take the 1-minute tutorial</b><small>Learn the controls in the Practice Range · 🪙 ' + TUTORIAL_TOKENS + '</small></span><span class="hm-arrow">›</span></button>' : ''}
+    ${canInstall() ? '<button class="hs-tile hs-install banner-row" data-install><span class="hs-ic">📲</span><span class="hs-txt"><b>Install the app</b><small>Gun Game 3D on your home screen, full screen</small></span><span class="hm-arrow">›</span></button>' : ''}
+    <div class="today-row">
+      <div class="hs-tile hs-daily ${login.claimed ? '' : 'ready'}">
+        <span class="hs-ic">🎁</span>
+        <span class="hs-txt"><b>${login.claimed ? `Day ${login.day} claimed` : `Day ${login.day} reward`}</b><small>${login.claimed ? `Back tomorrow · 🔥 ${login.streak}-day streak` : `🪙 ${login.reward}${login.wrap ? ' + Ember wrap' : ''}${login.streak > 1 ? ` · 🔥 ${login.streak}` : ''}`}</small></span>
+        ${login.claimed ? '' : '<button class="primary sm" data-claim>Claim</button>'}
+      </div>
+      <button class="hs-tile hs-chal" data-go="missions">
+        <span class="hs-ic">🎯</span>
+        <span class="hs-txt"><b>Challenges ${doneN}/3</b><span class="hs-minis">${daily.list.map((c) => `<i class="${c.done ? 'done' : ''}"><u style="width:${(c.have / c.goal) * 100}%"></u></i>`).join('')}</span><small>New in ${fmtDuration(daily.resetsIn)}</small></span>
+      </button>
+      <button class="hs-tile hs-level" data-go="missions" title="Earn XP from kills, headshots, matches, wins and daily challenges">
+        ${levelBadge(lv.level, false).replace('lvl-badge', 'lvl-badge big')}
+        <span class="hs-txt"><b>${esc(lv.rank.name)} · Lv ${lv.level}</b><span class="hs-bar"><i style="width:${lv.pct * 100}%"></i></span><small>Season tier ${seasons.info().tier} · ${lv.need ? `${(lv.need - lv.into).toLocaleString()} XP to go` : 'Max level'}</small></span>
+      </button>
+    </div>`;
   el.querySelectorAll('[data-go]').forEach((b) => { b.onclick = () => showPane(b.dataset.go); });
   const c = el.querySelector('[data-claim]');
   if (c) c.onclick = doClaim;
@@ -1014,7 +1025,7 @@ function setPublic(v) {
 
 // Menu sections. Phones show the section buttons as a bottom bar.
 const PANE_INFO = {
-  play: ['Servers', 'Join friends with a code, browse public servers, or start your own.'],
+  play: ['Play', 'Quick Play, ranked, the featured mode of the day, or pick a server.'],
   loadout: ['Loadout', 'One weapon per slot. Changes apply the next time you spawn.'],
   character: ['Character', 'Your callsign, color and cosmetics. Earn tokens from missions to unlock more.'],
   missions: ['Missions', 'The season pass, daily rewards and challenges, your level and missions. All of them pay tokens.'],
