@@ -420,3 +420,8 @@ button:active { transform: translateY(1px) scale(0.985); }
 #showroom .sr-wraps button.locked { opacity: 0.65; }
 #showroom .sr-fit-btns { margin-top: 12px; }
 #showroom .sr-fit-btns button { flex: 1; }
+
+/* Holiday events */
+.hs-holiday { border-color: rgba(255,207,74,0.45); background: linear-gradient(100deg, rgba(255,207,74,0.12), rgba(255,207,74,0.02)); cursor: default; }
+.hs-holiday.soon { border-color: var(--line, rgba(255,255,255,0.12)); background: none; }
+.hs-holiday .hs-ic { font-size: 22px; }

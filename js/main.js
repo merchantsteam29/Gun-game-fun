@@ -28,6 +28,7 @@ import { CAMOS, camoSwatch, camoOf } from './camos.js';
 import { myLevel, levelBadge, RANKS, loginState, claimLogin, LOGIN_REWARDS, STREAK_WRAP, dailyChallenges, ALL_DAILY_BONUS, fmtDuration, onProgress, setXpBoost, rankOf as rankOfLevel, featuredMode, featuredEnds, FEATURED_XP, FEATURED_TOKENS, claimFeatured, featuredClaimed } from './progress.js';
 import { gameNight, GN_NAME, GN_XP, describe as describeGn } from './gamenight.js';
 import { watchEvents, nextEvent, EVENT_NAMES, TOURNEY_TOKENS } from './events.js';
+import { activeHolidays, upcomingHolidays, HOLIDAY_XP, HOLIDAY_TOKENS } from './holidays.js';
 import { grantWrap, COSMETICS, allStats } from './missions.js';
 import { profiles } from './profiles.js';
 import { clans, CLAN_COLORS, MAX_MEMBERS } from './clans.js';
@@ -38,7 +39,7 @@ import { RULE_PRESETS, presetRules, savedPresets, WEAPON_RULES } from './ruleset
 import { myRanked, srBadge, RANKED_MATCH, PLACEMENTS, divisionOf } from './ranked.js';
 import { tutorial, tutorialDone, TUTORIAL_TOKENS } from './tutorial.js';
 import { highlights } from './highlights.js';
-import { addTokens } from './missions.js';
+import { addTokens, grantItem } from './missions.js';
 import { addXp } from './progress.js';
 import { leaderboard, BOARDS, MODE_BOARDS, weekEnds, CHAMP_TOKENS } from './leaderboard.js';
 import { MODS, MOD_SLOTS, MOD_SLOT_NAMES, modOptions, hasMods, cleanMods, cleanModMap, statsFor } from './mods.js';
@@ -205,6 +206,7 @@ function renderHome() {
         </div>
       </div>
     </div>
+    ${holidayRow()}
     ${!tutorialDone() ? '<button class="hs-tile hs-tutorial banner-row" data-tutorial><span class="hs-ic">🎓</span><span class="hs-txt"><b>New here? Take the 1-minute tutorial</b><small>Learn the controls in the Practice Range · 🪙 ' + TUTORIAL_TOKENS + '</small></span><span class="hm-arrow">›</span></button>' : ''}
     ${canInstall() ? '<button class="hs-tile hs-install banner-row" data-install><span class="hs-ic">📲</span><span class="hs-txt"><b>Install the app</b><small>Gun Game 3D on your home screen, full screen</small></span><span class="hm-arrow">›</span></button>' : ''}
     <div class="today-row">
@@ -344,6 +346,19 @@ function dailyHtml() {
       <div class="dl-ranks">${ladder}</div>
       <p class="note">XP: kill 100 · headshot +25 · multi-kill +50 · finish a match 250 · win +250 · daily login 100. Every level pays tokens; each new rank unlocks a wrap.</p></div>
   </div>`;
+}
+
+// ---------- Holiday events ----------
+// On now: a row on the home screen. Otherwise, one coming up within a week.
+function holidayRow() {
+  const on = activeHolidays();
+  const done = new Set(store.get('holDone', []));
+  if (on.length) {
+    return on.map((h) => `<div class="hs-tile banner-row hs-holiday"><span class="hs-ic">${h.icon}</span><span class="hs-txt"><b>${esc(h.name)} event · ${esc(h.greet)}</b><small>${esc(h.who)} · ${HOLIDAY_XP}x XP · ${done.has(h.id + h.year) ? '✓ banner earned' : `finish a match for the ${esc(h.name)} banner + 🪙 ${HOLIDAY_TOKENS}`} · ends in ${fmtDuration(h.end - Date.now())}</small></span></div>`).join('');
+  }
+  const next = upcomingHolidays(1)[0];
+  if (next && next.start - Date.now() < 7 * 86400000) return `<div class="hs-tile banner-row hs-holiday soon"><span class="hs-ic">${next.icon}</span><span class="hs-txt"><b>Coming up: ${esc(next.name)}</b><small>${esc(next.who)} · holiday event starts in ${fmtDuration(next.start - Date.now())}</small></span></div>`;
+  return '';
 }
 
 // ---------- Weekly leaderboard ----------
@@ -1161,7 +1176,16 @@ function startHighlights() {
 }
 game.onMoment = (m) => highlights.moment(m.score, m.label);
 game.onRendered = (now) => highlights.frame(now);
-game.onMatchStart = () => highlights.resetMatch();
+game.onMatchStart = () => {
+  highlights.resetMatch();
+  // Holiday greeting, once per holiday per session.
+  for (const h of activeHolidays()) {
+    if (holGreeted.has(h.id)) continue;
+    holGreeted.add(h.id);
+    chat.system(`${h.icon} ${h.greet} Holiday event: ${HOLIDAY_XP}x XP, and finish a match for the ${h.name} banner.`);
+  }
+};
+const holGreeted = new Set();
 highlights.onChange = () => { game.highlight = highlights.best; };
 
 function enterGame() {
@@ -1350,10 +1374,21 @@ leaderboard.onChampion = (boards) => {
   renderChip();
 };
 // Double XP in Game Night servers while it's live.
-setXpBoost(() => !game.active ? 1 : (game.rules.gn && gameNight.isLive() ? GN_XP : 1) * (game.rules.mode === featuredMode() ? FEATURED_XP : 1));
+setXpBoost(() => !game.active ? 1 : (game.rules.gn && gameNight.isLive() ? GN_XP : 1) * (game.rules.mode === featuredMode() ? FEATURED_XP : 1) * (activeHolidays().length ? HOLIDAY_XP : 1));
 // Finishing a match in a Game Night server earns the Midnight wrap (once).
 game.onMatchTracked = () => {
   invites.matchDone(settings.name);
+  // Holiday events: the holiday's banner and some tokens for the first match of each holiday.
+  const holDone = new Set(store.get('holDone', []));
+  for (const h of activeHolidays()) {
+    const key = h.id + h.year;
+    if (holDone.has(key)) continue;
+    holDone.add(key);
+    grantItem('banner', 'hol_' + h.id);
+    addTokens(HOLIDAY_TOKENS);
+    game.hud.mission(`${h.icon} ${h.name} banner unlocked`, `+${HOLIDAY_TOKENS} tokens · ${h.greet}`, 'HOLIDAY EVENT');
+  }
+  store.set('holDone', [...holDone]);
   if (game.rules.mode === featuredMode()) {
     const paid = claimFeatured();
     if (paid) game.hud.mission(`Featured mode: ${MODES[game.rules.mode].name}`, `+${paid} tokens`, 'DAILY FEATURED');

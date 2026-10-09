@@ -1,4 +1,5 @@
 import { store } from './util.js';
+import { HOLIDAY_BANNER_ITEMS } from './holidays.js';
 import { camoOf } from './camos.js';
 
 // Cosmetics shown on your character to other players. `free` items are owned from the start;
@@ -92,6 +93,8 @@ export const COSMETICS = {
     { id: 's1elite', name: 'Ignition Elite (S1)', reward: true, how: 'Season 1, tier 25' },
     { id: 's2', name: 'Frostbite (S2)', reward: true, how: 'Season 2, tier 10' },
     { id: 's2elite', name: 'Frostbite Elite (S2)', reward: true, how: 'Season 2, tier 25' },
+    // Holiday events (holidays.js): one per holiday, for playing a match during it
+    ...HOLIDAY_BANNER_ITEMS,
   ],
 };
 export const SLOT_LABELS = { hat: 'Hat', hair: 'Hair', face: 'Face', back: 'Back', banner: 'Banner' };
