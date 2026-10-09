@@ -598,6 +598,8 @@ export class Game {
     this.clockInit = false;
     this.updateTags(0); // removes any dog tags left in the scene
     this.pickupData = null;
+    this.brData = null;
+    this.updateStorm();
     this.updatePickups(0);
     this.updateFlags(0); // and CTF flags
     this.domData = null;
@@ -673,6 +675,13 @@ export class Game {
           if (this.utilId) this.util = WEAPONS[this.utilId].count;
           this.hud.say('AMMO REFILLED');
           sfx.equip(0.8);
+        } else if (m.k === 'power' && WEAPONS[m.w] && this.rules.mode === 'br') { // Battle Royale loot: a new main gun, keep the rest
+          if (SLOTS[1].includes(this.loadout[0])) this.loadout.unshift(m.w); else this.loadout[0] = m.w;
+          this.loadout = this.loadout.slice(0, 3);
+          this.ammo[m.w] = this.W(m.w).mag || 0;
+          this.switchSlot(0, true);
+          this.hud.say(`PICKED UP: ${WEAPONS[m.w].name.toUpperCase()}`);
+          sfx.equip(1);
         } else if (m.k === 'power' && WEAPONS[m.w]) {
           this.loadout[0] = m.w;
           this.ammo[m.w] = this.W(m.w).mag || 0;
@@ -767,6 +776,7 @@ export class Game {
         this.zone = m.z || null;
         this.infection = m.inf ?? 0;
         this.zw = m.zw || null;
+        this.brData = m.br || null;
         this.tagData = m.tg || null;
         this.pickupData = m.pk || null;
         this.rot = m.rot || null;
@@ -1190,6 +1200,7 @@ export class Game {
     }
     this.updateProjectiles(dt);
     this.updateZone(now);
+    this.updateStorm();
     this.updateTags(now);
     this.updatePickups(now);
     this.updateFlags(now);
@@ -2042,6 +2053,29 @@ export class Game {
 
   // Domination: three zones, each a ring + light wall in its owner's color, a letter above it
   // and an arc showing capture progress.
+  // Battle Royale storm: a tall purple wall on the circle's edge; the screen tints while you're outside.
+  updateStorm() {
+    const b = this.brData;
+    if (!b) {
+      if (this.stormMesh) { this.scene.remove(this.stormMesh); this.stormMesh.geometry.dispose(); this.stormMesh.material.dispose(); this.stormMesh = null; }
+      document.body.classList.remove('in-storm');
+      return;
+    }
+    if (!this.stormMesh) {
+      const g = new THREE.CylinderGeometry(1, 1, 80, 72, 1, true);
+      const mat = new THREE.MeshBasicMaterial({ color: '#9b4dff', transparent: true, opacity: 0.28, side: THREE.DoubleSide, depthWrite: false, fog: false });
+      this.stormMesh = new THREE.Mesh(g, mat);
+      this.stormMesh.renderOrder = 5;
+      this.scene.add(this.stormMesh);
+    }
+    const [cx, cz, r] = b;
+    this.stormMesh.visible = r > 0.3;
+    this.stormMesh.position.set(cx, 25, cz);
+    this.stormMesh.scale.set(Math.max(0.3, r), 1, Math.max(0.3, r));
+    const p = this.spectating || !this.me.alive ? this.camera.position : this.me.pos;
+    document.body.classList.toggle('in-storm', !this.matchOver && Math.hypot(p.x - cx, p.z - cz) > r);
+  }
+
   updateDom(now) {
     const data = this.domData;
     if (!data) {
@@ -2265,6 +2299,15 @@ export class Game {
       const st = state === 2 ? 'CONTESTED' : state === 1 ? `HELD BY ${h ? h.name : '?'}` : 'NEUTRAL';
       return `HILL: ${st} · MOVES IN ${secs}s · YOU ${me ? me.sc : 0}/${this.rules.scoreLimit}`;
     }
+    if (mode === 'br') {
+      let left = 0;
+      for (const [id] of this.players) if (id === this.myId ? this.me.alive : this.remotes.get(id) && this.remotes.get(id).alive) left++;
+      const b = this.brData;
+      if (!b) return `BATTLE ROYALE · ${left} LEFT`;
+      const out = Math.hypot(this.me.pos.x - b[0], this.me.pos.z - b[1]) > b[2] && this.me.alive;
+      const zone = b[4] > 0 ? `STORM MOVES IN ${b[4]}s` : b[2] > 0.5 ? 'STORM CLOSING' : 'STORM CLOSED';
+      return `<span class="team zombie">${left} LEFT</span> · ${zone}${out ? ` · <span class="br-out">IN THE STORM -${b[5]}/s</span>` : ''}`;
+    }
     if (mode === 'zombies') {
       if (!this.zw) return 'ZOMBIE SURVIVAL';
       const [wave, left, brk] = this.zw;
@@ -2293,7 +2336,7 @@ export class Game {
       const side = (t, label) => ({ label, score: this.teamScore[t - 1], pct: this.teamScore[t - 1] / lim, color: TEAM_COLORS[t] });
       return { l: side(mineT, mineT === 1 ? 'RED · YOU' : 'BLUE · YOU'), r: side(other, other === 1 ? 'RED' : 'BLUE') };
     }
-    if (this.teams || mode === 'infection' || mode === 'lms') return null;
+    if (this.teams || mode === 'infection' || mode === 'lms' || mode === 'br') return null;
     const total = mode === 'gungame' ? GUNGAME_LADDER.length : lim;
     const val = (p) => (mode === 'gungame' ? Math.min(p.sc + 1, total) : p.sc);
     let best = null;
@@ -2323,6 +2366,11 @@ export class Game {
       const hp = this.rules.mode === 'hardpoint';
       const color = state === 2 ? '#ffb020' : state === 1 ? (hp ? TEAM_COLORS[holder] || '#ffffff' : holder === this.myId ? '#4dff9a' : '#ffb020') : '#ffffff';
       objs.push({ x, z, r, color });
+    }
+    if (this.brData) {
+      const [cx, cz, r, nr] = this.brData;
+      objs.push({ x: cx, z: cz, r, color: '#b06bff' });
+      if (nr < r - 0.5) objs.push({ x: cx, z: cz, r: Math.max(0.5, nr), color: '#ffffff' });
     }
     for (const [n, x, , z, r, owner] of this.domData || []) objs.push({ x, z, r, color: owner ? TEAM_COLORS[owner] : '#d8dde2', label: n });
     for (const [t, x, , z, carrier, state, hx, , hz] of this.flagData || []) {
@@ -2379,8 +2427,9 @@ export class Game {
       const mine = this.players.get(this.myId);
       const out = this.rules.mode === 'lms' && mine && mine.sc <= 0;
       const downed = this.rules.mode === 'zombies';
+      const brOut = this.rules.mode === 'br';
       const kr = killer && this.remotes.get(killer.id);
-      hud.death(true, killer ? killer.name : null, this.deathInfo.w, secs, out ? 'Out of lives · spectating until the next round' : downed ? 'Downed · back when your team clears the wave' : null, this.deathInfo.head,
+      hud.death(true, killer ? killer.name : null, this.deathInfo.w, secs, out ? 'Out of lives · spectating until the next round' : brOut ? 'Eliminated · spectating until the round ends' : downed ? 'Downed · back when your team clears the wave' : null, this.deathInfo.head,
         killer ? this.colorFor(killer) : '#fff', (kr && kr.cos && kr.cos.banner) || 'standard', killer ? killer.role : null);
     }
     if (this.matchOver && this.endInfo) {

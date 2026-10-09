@@ -35,6 +35,14 @@ export const MODES = {
   zombies: { name: 'Zombie Survival', short: 'ZOMBIES', teams: true, coop: true, score: 0, time: 0, desc: 'Co-op. Hold out against waves of zombies that get bigger, tougher and faster. Downed players come back when the wave is cleared. Every 5th wave brings a Brute.' },
   dom: { name: 'Domination', short: 'DOMINATION', teams: true, redBlue: true, dom: true, score: 200, time: 10, desc: 'Red vs Blue over three zones (A, B, C). Stand in a zone with only your team to capture it; every zone you own scores a point per second.' },
 };
+// Game Night event only (never in the mode pickers): started by the Game Night server's host on schedule.
+MODES.br = { name: 'Battle Royale', short: 'BATTLE ROYALE', teams: false, br: true, event: true, score: 0, time: 8, noRegen: true, loadout: ['pistol', 'knife'],
+  desc: 'Game Night event. One life, everyone starts with a pistol. Loot guns, health and ammo, stay inside the circle as the storm closes in. Last one standing wins.' };
+export const BR_MAPS = ['town', 'arctic', 'neonstreets', 'castle', 'yard'];
+// Storm: [seconds holding, seconds shrinking, radius as a share of the map's size afterwards, damage per second outside]
+const BR_STAGES = [[50, 40, 0.62, 4], [30, 35, 0.36, 7], [25, 30, 0.18, 11], [20, 30, 0.06, 16], [15, 25, 0, 24]];
+const BR_LOOT = ['ar', 'carbine', 'br', 'burst', 'smg', 'pdw', 'vector', 'lmg', 'dmr', 'sniper', 'shotgun', 'autoshot', 'slug', 'doublebarrel', 'crossbow', 'flamethrower', 'handcannon', 'autorev'];
+const BR_RARE = ['railgun', 'minigun', 'rocket', 'amr', 'gl'];
 // Single-player only (main menu → Practice Range): no timer, no score limit, target dummies.
 MODES.practice = { name: 'Practice Range', short: 'PRACTICE', teams: false, practice: true, score: 0, time: 0, desc: 'Solo target practice with every weapon.' };
 export const MODE_ORDER = ['ffa', 'tdm', 'gungame', 'koth', 'infection', 'ctf', 'dom', 'hardpoint', 'killconfirmed', 'juggernaut', 'bounty', 'lms', 'oitc',
@@ -120,7 +128,7 @@ export function defaultSettings(mode = 'ffa', map = 'warehouse') {
 
 // Map pickups (on in the standard modes; the host can turn them off). Placed on the map's hills:
 // the power weapon on the main one, health and ammo on the others.
-const PICKUP_MODES = ['zombies', 'ffa', 'tdm', 'koth', 'ctf', 'dom', 'hardpoint', 'killconfirmed', 'bounty', 'lms'];
+const PICKUP_MODES = ['br', 'zombies', 'ffa', 'tdm', 'koth', 'ctf', 'dom', 'hardpoint', 'killconfirmed', 'bounty', 'lms'];
 export const POWER_WEAPONS = ['railgun', 'minigun', 'rocket', 'amr'];
 const PICKUP = {
   hp: { respawn: 20000, first: 0 },
@@ -189,6 +197,7 @@ export class HostLogic {
     this.infected = false;
     // Zombie Survival: wave number, zombies still to spawn this wave, and the break before the next one.
     this.zw = this.s.mode === 'zombies' ? { wave: 0, toSpawn: 0, breakUntil: Date.now() + Z_FIRST_MS, spawnT: 0 } : null;
+    this.brZone = this.mode.br ? this.makeStorm() : null;
     this.jugg = null;
     this.tags = []; // Kill Confirmed dog tags
     this.tagId = 0;
@@ -314,7 +323,7 @@ export class HostLogic {
     });
     this.broadcast({ t: 'pjoin', ...this.info(p) }, id);
     if (this.phase !== 'playing') this.sendTo(id, this.endMsg());
-    else if (this.s.mode === 'lms') this.sendTo(id, { t: 'notice', text: 'ROUND IN PROGRESS · SPECTATING' });
+    else if (this.s.mode === 'lms' || this.mode.br) this.sendTo(id, { t: 'notice', text: 'ROUND IN PROGRESS · SPECTATING' });
     else this.spawn(p);
     this.balanceBots();
   }
@@ -343,7 +352,7 @@ export class HostLogic {
     this.players.set(id, p);
     this.ensureNav();
     this.broadcast({ t: 'pjoin', ...this.info(p) });
-    if (this.phase === 'playing' && this.s.mode !== 'lms') this.spawn(p);
+    if (this.phase === 'playing' && this.s.mode !== 'lms' && !this.mode.br) this.spawn(p);
     return id;
   }
 
@@ -368,6 +377,7 @@ export class HostLogic {
     this.checkInfectionEnd();
     this.checkLmsEnd();
     this.checkZombiesEnd();
+    this.checkBrEnd();
     if (!p.bot) this.balanceBots(); // a real player left: a bot takes the slot
   }
 
@@ -871,6 +881,15 @@ export class HostLogic {
         }
         this.checkInfectionEnd();
         break;
+      case 'br': {
+        v.respawnAt = 0; // one life
+        if (enemyKill) attacker.score = attacker.kills;
+        const left = this.brAlive().length;
+        if (!v.dummy) this.sendTo(v.id, { t: 'notice', text: `ELIMINATED · #${left + 1}` });
+        v.place = left + 1;
+        this.checkBrEnd();
+        break;
+      }
       case 'zombies':
         v.respawnAt = 0; // zombies go back in the pool; survivors wait for the end of the wave
         if (v.zombie) { if (enemyKill) attacker.score += v.brute ? 10 : 1; }
@@ -900,6 +919,7 @@ export class HostLogic {
 
   setupPickups() {
     this.pickups = [];
+    if (this.mode.br) { this.setupLoot(); return; }
     const hills = (MAPS[this.s.map] && MAPS[this.s.map].hills) || [];
     const now = Date.now();
     hills.slice(0, 5).forEach(([x, y, z], i) => {
@@ -913,7 +933,7 @@ export class HostLogic {
     if (this.phase !== 'playing' || !this.pickupsOn()) return;
     for (const k of this.pickups) {
       if (now < k.readyAt) continue;
-      if (k.kind === 'power' && !k.w) {
+      if (k.kind === 'power' && !k.w && !k.loot) {
         k.w = POWER_WEAPONS[(Math.random() * POWER_WEAPONS.length) | 0];
         this.broadcast({ t: 'notice', text: `POWER WEAPON: ${(WEAPONS[k.w] || {}).name || k.w} at the center` });
       }
@@ -924,14 +944,83 @@ export class HostLogic {
           if (p.hp >= max) continue; // full health: leave it for someone who needs it
           p.hp = Math.min(max, p.hp + PICKUP_HEAL);
         }
-        if (k.kind === 'power' && p.bot) p.bot.setLoadout([k.w, ...((p.bot.loadout || []).slice(1))]);
+        if (k.kind === 'power' && p.bot) p.bot.setLoadout(k.loot ? [k.w, ...(p.bot.loadout || [])].slice(0, 3) : [k.w, ...((p.bot.loadout || []).slice(1))]);
         if (!p.bot) this.sendTo(p.id, { t: 'pickup', k: k.kind, w: k.w });
-        if (k.kind === 'power') this.broadcast({ t: 'notice', text: `${p.name} has the ${(WEAPONS[k.w] || {}).name || k.w}` }, p.id);
+        if (k.kind === 'power' && !k.loot) this.broadcast({ t: 'notice', text: `${p.name} has the ${(WEAPONS[k.w] || {}).name || k.w}` }, p.id);
+        if (k.loot) { k.readyAt = Infinity; break; } // Battle Royale loot is one of a kind
         k.readyAt = now + PICKUP[k.kind].respawn;
         k.w = null;
         break;
       }
     }
+  }
+
+  // ---------- Battle Royale ----------
+  // Loot on nav points all over the map: guns (a few rare power weapons), health and ammo.
+  setupLoot() {
+    if (!this.nav) this.nav = new NavGrid(MAPS[this.s.map].bounds); // bots or not, loot goes on walkable spots
+    const nodes = this.nav.nodes.filter((n) => n.edges.length >= 4 && n.y < 9 && n.mat !== 'invisible');
+    nodes.sort(() => Math.random() - 0.5);
+    const picked = [];
+    for (const n of nodes) {
+      if (picked.length >= 34) break;
+      if (picked.some((q) => Math.hypot(q.x - n.x, q.z - n.z) < 6)) continue; // spread out
+      picked.push(n);
+    }
+    picked.forEach((n, i) => {
+      const kind = i % 6 === 4 ? 'hp' : i % 6 === 5 ? 'ammo' : 'power';
+      const w = kind === 'power' ? (Math.random() < 0.08 ? BR_RARE : BR_LOOT)[(Math.random() * (Math.random() < 0.08 ? BR_RARE : BR_LOOT).length) | 0] : null;
+      this.pickups.push({ id: i, kind, x: n.x, y: n.y, z: n.z, readyAt: 0, w: kind === 'power' ? w || 'ar' : null, loot: true });
+    });
+  }
+  makeStorm() {
+    const m = MAPS[this.s.map], size = (m && m.bounds) || 30;
+    const a = Math.random() * Math.PI * 2, d = Math.random() * size * 0.25;
+    return { cx: Math.cos(a) * d, cz: Math.sin(a) * d, size, r: size * 1.5, from: size * 1.5, stage: -1, holdUntil: Date.now() + BR_STAGES[0][0] * 1000, shrinkUntil: 0, dps: 0 };
+  }
+  tickStorm(now, dt) {
+    const z = this.brZone;
+    if (!z.shrinkUntil && now >= z.holdUntil && z.stage < BR_STAGES.length - 1) {
+      z.stage++;
+      z.from = z.r;
+      z.shrinkFrom = now;
+      z.shrinkUntil = now + BR_STAGES[z.stage][1] * 1000;
+      z.dps = BR_STAGES[z.stage][3];
+      this.broadcast({ t: 'notice', text: 'THE STORM IS CLOSING IN' });
+    }
+    if (z.shrinkUntil) {
+      const to = z.size * BR_STAGES[z.stage][2], k = Math.min(1, (now - z.shrinkFrom) / (z.shrinkUntil - z.shrinkFrom));
+      z.r = z.from + (to - z.from) * k;
+      if (k >= 1) { z.shrinkUntil = 0; z.holdUntil = now + ((BR_STAGES[z.stage + 1] || [99999])[0]) * 1000; }
+    }
+    // Outside the circle hurts (a little before the first close, more every stage).
+    const dps = Math.max(2, z.dps);
+    for (const p of this.players.values()) {
+      if (!p.alive || p.dummy) continue;
+      if (Math.hypot(p.st[0] - z.cx, p.st[2] - z.cz) <= z.r) continue;
+      p.hp -= dps * dt;
+      p.lastDmg = now;
+      if (p.hp <= 0) this.kill(p, p, 'storm', false);
+    }
+    // Bots "find" a gun after a while (they don't go looking).
+    for (const p of this.players.values()) {
+      if (!p.bot || !p.alive || p.zombie) continue;
+      if (!p.brLootAt) p.brLootAt = now + 15000 + Math.random() * 30000;
+      else if (now >= p.brLootAt && p.brLootAt > 0) { p.brLootAt = -1; p.bot.setLoadout([BR_LOOT[(Math.random() * BR_LOOT.length) | 0], 'pistol', 'knife']); }
+    }
+  }
+  brAlive() { return [...this.players.values()].filter((p) => p.alive && !p.dummy); }
+  checkBrEnd() {
+    if (!this.mode.br || this.phase !== 'playing') return;
+    const alive = this.brAlive();
+    if (alive.length <= 1 && this.players.size > 1) this.endMatch();
+    else if (alive.length > 1 && alive.length <= 3) this.broadcast({ t: 'notice', text: `${alive.length} PLAYERS LEFT` });
+  }
+  // Game Night: switch this server to a Battle Royale round now; afterwards it goes back to what it was playing.
+  startEvent(mode, map) {
+    if (!MODES[mode] || !MODES[mode].event) return;
+    if (!MODES[this.s.mode].event) this.eventReturn = { mode: this.s.mode, map: this.s.map, scoreLimit: this.s.scoreLimit, timeLimit: this.s.timeLimit };
+    this.startMatch(mode, map);
   }
 
   // Kill Confirmed: walking over a tag scores it (enemy tag) or denies it (your team's).
@@ -1176,6 +1265,10 @@ export class HostLogic {
       this.endTitle = r === b ? 'DRAW' : r > b ? 'RED TEAM WINS' : 'BLUE TEAM WINS';
     } else if (this.s.mode === 'infection') {
       this.endTitle = winnerTeam === 2 ? 'ZOMBIES WIN' : 'SURVIVORS WIN';
+    } else if (this.mode.br) {
+      const w = this.brAlive()[0];
+      this.endTitle = w ? `${w.name} WINS THE BATTLE ROYALE` : 'NOBODY SURVIVED THE STORM';
+      if (w) w.score += 100; // the winner tops the scoreboard
     } else if (this.s.mode === 'zombies') {
       const w = Math.max(0, this.zw.wave - 1);
       this.endTitle = `SURVIVED ${w} WAVE${w === 1 ? '' : 'S'}`;
@@ -1229,6 +1322,16 @@ export class HostLogic {
   // Starts a fresh match. With no arguments it rotates to the next map (end of match);
   // the host panel passes an explicit mode/map to restart immediately.
   startMatch(mode, map) {
+    if (!mode && MODES[this.s.mode].event && this.eventReturn) { // the event is over: back to normal (on the voted map, if there was a vote)
+      const r = this.eventReturn;
+      this.eventReturn = null;
+      mode = r.mode; map = map || r.map;
+      this.startMatch(mode, map);
+      Object.assign(this.s, { scoreLimit: r.scoreLimit, timeLimit: r.timeLimit });
+      this.endsAt = this.s.timeLimit > 0 ? Date.now() + this.s.timeLimit * 60000 : Infinity;
+      this.broadcast({ t: 'settings', s: this.s });
+      return;
+    }
     const manual = !!(mode || map);
     if (mode && MODES[mode] && mode !== this.s.mode) {
       this.s.mode = mode;
@@ -1285,6 +1388,7 @@ export class HostLogic {
       }
       if (this.s.mode === 'infection' && !this.infected && this.infectAt && now >= this.infectAt) this.startInfection();
       if (this.zw) this.tickZombies(now);
+      if (this.brZone && this.phase === 'playing') this.tickStorm(now, rdt);
       if (this.mode.hill) this.tickHill(rdt, now);
       if (this.s.mode === 'killconfirmed') this.tickTags(now);
       this.tickPickups(now);
@@ -1310,6 +1414,8 @@ export class HostLogic {
     const msg = { t: 'snap', tm: now, s, tl: this.endsAt === Infinity ? -1 : this.phase === 'playing' ? Math.max(0, Math.ceil((this.endsAt - now) / 1000)) : 0 };
     if (this.mode.redBlue) msg.ts = [Math.floor(this.teamScore[1]), Math.floor(this.teamScore[2])];
     // Zombie Survival: [wave, zombies left, seconds until the next wave (0 = wave on)]
+    // Battle Royale storm: [center x, center z, radius, next radius, seconds until it moves (0 = moving now), damage per second]
+    if (this.brZone) { const z = this.brZone, nx = BR_STAGES[z.shrinkUntil ? z.stage : z.stage + 1]; msg.br = [r2(z.cx), r2(z.cz), r2(z.r), r2(nx ? z.size * nx[2] : z.r), z.shrinkUntil ? 0 : Math.max(0, Math.ceil((z.holdUntil - now) / 1000)), Math.max(2, z.dps)]; }
     if (this.zw) msg.zw = [this.zw.wave, this.zombiesLeft(), this.zw.breakUntil ? Math.max(0, Math.ceil((this.zw.breakUntil - now) / 1000)) : 0];
     if (this.s.mode === 'infection') msg.inf = this.infected ? 0 : Math.max(0, Math.ceil((this.infectAt - now) / 1000));
     if (this.s.mode === 'killconfirmed') msg.tg = this.tags.map((t) => [t.id, r2(t.x), r2(t.y), r2(t.z), t.team]);

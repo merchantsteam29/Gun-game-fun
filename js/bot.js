@@ -135,7 +135,11 @@ export class Bot {
       else flagGoal = theirs.pos;
     }
     const dz = L.dom && !this.target ? L.domGoal(p) : null;
-    if (flagGoal && (!this.target || L.flags[p.team === 1 ? 2 : 1].carrier === p.id)) goal = flagGoal;
+    const sz = L.brZone; // Battle Royale: get back inside the circle
+    const brGoal = sz && Math.hypot(b.pos.x - sz.cx, b.pos.z - sz.cz) > Math.max(2, sz.r * 0.75) && (!this.target || Math.hypot(b.pos.x - sz.cx, b.pos.z - sz.cz) > sz.r)
+      ? { x: sz.cx + (Math.random() - 0.5) * sz.r * 0.5, y: b.pos.y, z: sz.cz + (Math.random() - 0.5) * sz.r * 0.5 } : null;
+    if (brGoal) { if (!this.brGoal || Math.hypot(this.brGoal.x - sz.cx, this.brGoal.z - sz.cz) > sz.r * 0.7) this.brGoal = brGoal; goal = this.brGoal; }
+    else if (flagGoal && (!this.target || L.flags[p.team === 1 ? 2 : 1].carrier === p.id)) goal = flagGoal;
     else if (dz && Math.random() < 0.995) goal = { x: dz.x + (Math.random() - 0.5) * dz.r, y: dz.y, z: dz.z + (Math.random() - 0.5) * dz.r };
     else if (this.target && melee) goal = this.lastSeen;
     else if (p.zombie && !this.target) { // they can smell you

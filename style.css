@@ -1718,3 +1718,9 @@ body[data-cb="achroma"] .cap.ally { border-left: 4px dashed #777; }
 body[data-cb="achroma"] .ping.enemy i { border-color: #fff; background: #000; border-width: 3px; }
 body[data-cb="achroma"] .ping i { border-style: dashed; }
 body[data-cb="achroma"] .ping.enemy i { border-style: solid; }
+
+/* Battle Royale storm */
+#storm-fx { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.4s; background: radial-gradient(ellipse at center, rgba(120,40,220,0.12) 30%, rgba(110,30,200,0.55) 100%); }
+body.in-storm #storm-fx { opacity: 1; animation: storm-pulse 1.6s ease-in-out infinite; }
+@keyframes storm-pulse { 50% { opacity: 0.7; } }
+.br-out { color: #c88bff; font-weight: 800; }

@@ -5,7 +5,7 @@ import { WEAPONS, SLOTS, SLOT_NAMES, SHORT, CLASSES, validLoadout, weaponInfo, k
 import { MAPS, MAP_ORDER, MAP_BLURB, quality } from './maps.js';
 import { TouchControls } from './touch.js';
 import { COLORS, randCode, store } from './util.js';
-import { MODES, MODE_ORDER } from './host.js';
+import { MODES, MODE_ORDER, BR_MAPS } from './host.js';
 import { HostPanel } from './hostpanel.js';
 import { modelQuality } from './models.js';
 import { SettingsUI } from './settingsui.js';
@@ -27,6 +27,7 @@ import { isBound, keysLabel } from './binds.js';
 import { CAMOS, camoSwatch, camoOf } from './camos.js';
 import { myLevel, levelBadge, RANKS, loginState, claimLogin, LOGIN_REWARDS, STREAK_WRAP, dailyChallenges, ALL_DAILY_BONUS, fmtDuration, onProgress, setXpBoost, rankOf as rankOfLevel, featuredMode, featuredEnds, FEATURED_XP, FEATURED_TOKENS, claimFeatured, featuredClaimed } from './progress.js';
 import { gameNight, GN_NAME, GN_XP, describe as describeGn } from './gamenight.js';
+import { watchEvents, nextEvent, EVENT_NAMES } from './events.js';
 import { grantWrap, COSMETICS, allStats } from './missions.js';
 import { profiles } from './profiles.js';
 import { clans, CLAN_COLORS, MAX_MEMBERS } from './clans.js';
@@ -198,7 +199,7 @@ function renderHome() {
         <div class="hero-mini hs-tile hs-gn ${gnLive ? 'live' : ''}">
           <span class="hs-ic">🌙</span>
           <span class="hs-txt"><b>${gnLive ? `Game Night · LIVE` : 'Game Night'}</b><small>${!gn ? 'Off for now' : gnLive
-            ? `${GN_XP}x XP · ${gnPlayers ? `${gnPlayers} playing · ` : ''}ends in ${fmtDuration(gn.end - Date.now())}`
+            ? `${GN_XP}x XP · ${gnPlayers ? `${gnPlayers} playing · ` : ''}${nextEvent(gn) ? `${EVENT_NAMES[nextEvent(gn).kind]} in ${fmtDuration(nextEvent(gn).at - Date.now())}` : `ends in ${fmtDuration(gn.end - Date.now())}`}`
             : `in ${fmtDuration(gn.start - Date.now())} · ${new Date(gn.start).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })}`}</small></span>
           ${gnLive ? '<button class="primary sm" data-gn>Join</button>' : gn ? `<button class="ghost sm hs-remind" data-remind title="${esc(describeGn(gameNight.schedule))}">${gameNight.remind ? '🔔' : '🔕'}</button>` : ''}
         </div>
@@ -1359,6 +1360,22 @@ gameNight.on((e) => {
   } else if (e.type === 'end' && net && game.rules.gn) chat.system('🌙 Game Night is over. Thanks for playing! Same time next time.');
   if (!game.active && menuPane === 'play') renderHome();
 });
+// Game Night events (events.js): everyone gets the warnings; the Game Night server's host starts them.
+watchEvents(() => gameNight.window(), (e) => {
+  const name = EVENT_NAMES[e.kind] || e.kind;
+  const inGn = !!(net && !net.practice && game.active && game.rules.gn);
+  if (e.step === 'warn' || e.step === 'soon') {
+    const mins = e.step === 'warn' ? e.warn : 1;
+    const text = `${name} starts in ${mins} minute${mins === 1 ? '' : 's'} in the Game Night server!`;
+    if (inGn) { chat.system(text); game.hud.say(`${name.toUpperCase()} IN ${mins} MIN`); }
+    else if (net && !net.practice) chat.system(`${text} Join it from the menu.`);
+    else toast(text);
+    if (e.step === 'warn') gameNight.notify(text);
+  } else if (e.step === 'go' && inGn && net.isHost && net.logic) {
+    if (e.kind === 'br') net.logic.startEvent('br', BR_MAPS[(Math.random() * BR_MAPS.length) | 0]);
+  }
+});
+
 // Presence and reports can arrive in bursts: redraw at most a few times a second, and never
 // while something in the panel is being typed or picked (just the looked-up player then).
 let modRenderT = null;
