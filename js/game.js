@@ -18,6 +18,7 @@ import { binds, actionOf, mouseCode } from './binds.js';
 import { buildProjectile, modelQuality } from './models.js';
 import { clamp, esc, store } from './util.js';
 import { opts, onOpts } from './settings.js';
+import { applyColorblind, pal } from './access.js';
 import { setVolume } from './audio.js';
 
 const JUMP = 8, WALK = 5.6, SPRINT = 1.35, CROUCH_SPD = 0.55, PAD_JUMP = 14;
@@ -128,6 +129,7 @@ export class Game {
       if (!this.active || !this.ads) { this.camera.fov = o.fov * this.fovK; this.camera.updateProjectionMatrix(); }
       setVolume(o.volume);
       this.hud.applyOpts(o);
+      if (o.colorblind !== this.cbMode) { this.cbMode = o.colorblind; applyColorblind(o.colorblind); if (this.active && this.players) this.refreshColors(); }
     });
 
     this.remotes = new Map(); // id -> RemotePlayer
@@ -241,7 +243,7 @@ export class Game {
   }
 
   colorFor(p) {
-    if (this.rules.mode === 'infection') return p.team === 2 ? ZOMBIE_COLOR : p.color;
+    if (this.rules.mode === 'infection') return p.team === 2 ? pal.zombie || ZOMBIE_COLOR : p.color;
     if (this.rules.mode === 'juggernaut' || this.rules.mode === 'bounty') return p.team === JUGG_TEAM ? JUGG_COLOR : p.color;
     if (this.teams && TEAM_COLORS[p.team]) return TEAM_COLORS[p.team];
     return p.color;
@@ -1175,10 +1177,10 @@ export class Game {
       if (this.killcam) this.replayRemote(r);
       r.update(dt);
       if (this.killcam && r.id === this.killcam.killer) { r.root.visible = r.limbs.visible = false; r.tag.visible = false; } // we're looking through their eyes
-      if (r.stepped && r.crouch < 0.5 && r.pos.distanceTo(cam.position) < 32) this.posSound(this.stepSound(r.pos.x, r.pos.y, r.pos.z), r.pos, r.sprint > 0.5 ? 0.6 : 0.42);
+      if (r.stepped && r.crouch < 0.5 && r.pos.distanceTo(cam.position) < 32) this.posSound(this.stepSound(r.pos.x, r.pos.y, r.pos.z), r.pos, r.sprint > 0.5 ? 0.6 : 0.42, this.isAlly(r) ? null : { k: 'step' + r.id, label: r.sprint > 0.5 ? 'Running' : 'Footsteps', enemy: true, pri: 1 }); // teammates' steps aren't captioned
       // Enemies reloading nearby can be heard.
       const rl = !!(r.flags & 1);
-      if (rl && !r.wasReloading && r.alive && r.pos.distanceTo(cam.position) < 18) this.posSound(sfx.magOut, r.pos, 0.5);
+      if (rl && !r.wasReloading && r.alive && r.pos.distanceTo(cam.position) < 18) this.posSound(sfx.magOut, r.pos, 0.5, { k: 'rl' + r.id, label: 'Reloading', enemy: !this.isAlly(r) });
       r.wasReloading = rl;
       if (r.tag.visible && this.fx.smokes.length && this.fx.blocked(cam.position, r.headPos(_c))) r.tag.visible = false;
     }
@@ -1820,7 +1822,7 @@ export class Game {
 
       if (p.kind === 'sticky') {
         p.beep -= dt;
-        if (p.beep <= 0) { p.beep = Math.max(0.12, 0.45 - p.age * 0.15); this.posSound(sfx.beep, p.pos, 0.5); }
+        if (p.beep <= 0) { p.beep = Math.max(0.12, 0.45 - p.age * 0.15); this.posSound(sfx.beep, p.pos, 0.5, { k: 'stick' + p.pid, label: 'Sticky grenade beeping', enemy: p.owner !== this.myId }); }
       }
       const life = W.bolt ? 8 : W.type === 'proj' ? 5 : W.fuse;
       if (W.bolt) {
@@ -1849,7 +1851,7 @@ export class Game {
       return;
     }
     this.fx.explosion(pos, radius);
-    this.posSound(sfx.explosion, pos, 1.2);
+    this.posSound(sfx.explosion, pos, 1.2, { k: 'boom' + Math.round(pos.x) + ',' + Math.round(pos.z), label: 'Explosion', enemy: true });
     const d = this.camera.position.distanceTo(pos);
     this.shake = Math.max(this.shake, clamp(1 - d / 16, 0, 1) * 0.8);
   }
@@ -1858,7 +1860,7 @@ export class Game {
   flashFx(pos) {
     this.fx.burst(pos, null, '#ffffff', 10, 6, 0.06, 0.3);
     this.fx.muzzleFlash(pos);
-    this.posSound(sfx.flashbang, pos, 1.1);
+    this.posSound(sfx.flashbang, pos, 1.1, { k: 'flash' + Math.round(pos.x) + ',' + Math.round(pos.z), label: 'Flashbang', enemy: true });
     if (!this.me.alive) return;
     const cam = this.camera.position;
     const d = cam.distanceTo(pos);
@@ -1872,7 +1874,7 @@ export class Game {
   smokeFx(pos) {
     const W = WEAPONS.smoke;
     this.fx.smoke(pos, W.radius, W.smokeTime);
-    this.posSound(sfx.hiss, pos, 0.8);
+    this.posSound(sfx.hiss, pos, 0.8, { k: 'smoke' + Math.round(pos.x) + ',' + Math.round(pos.z), label: 'Smoke grenade', enemy: true });
   }
 
   // Only the thrower computes splash damage, then reports it to the host.
@@ -1942,14 +1944,14 @@ export class Game {
     if (!m.q) this.fx.muzzleFlash(o); // suppressed guns: no flash, much quieter
     const r = this.remotes.get(m.id);
     if (r) { r.fire(); if (!m.q) r.pingAt = performance.now(); } // loud shots show on the minimap
-    if (sfx[m.w]) this.posSound(sfx[m.w], o, m.q ? 0.3 : 0.9);
+    if (sfx[m.w]) this.posSound(sfx[m.w], o, m.q ? 0.3 : 0.9, { k: 'shot' + m.id, label: m.q ? 'Quiet gunfire' : 'Gunfire', enemy: !(r && this.isAlly(r)) });
   }
 
   remoteFx(m) {
     const r = this.remotes.get(m.id);
     if (m.k === 'melee' && r) {
       r.melee(m.s);
-      this.posSound(m.s === 'chop' ? sfx.axe : sfx.knife, r.pos, 0.6);
+      this.posSound(m.s === 'chop' ? sfx.axe : sfx.knife, r.pos, 0.6, { k: 'mel' + m.id, label: 'Melee swing', enemy: !this.isAlly(r) });
     } else if (m.k === 'stick') {
       const p = this.projectiles.find((q) => q.owner === m.id && q.pid === m.pid);
       if (p && Array.isArray(m.off)) {
@@ -1962,8 +1964,9 @@ export class Game {
 
   // Sounds in the world: quieter and duller with distance, duller still behind you (so you can tell
   // front from back), and loud ones far away get a short echo.
-  posSound(fn, pos, base = 1) {
+  posSound(fn, pos, base = 1, cap = null) {
     const cam = this.camera;
+    if (cap && opts.captions) this.caption(cap, pos);
     const d = cam.position.distanceTo(pos);
     let vol = base / (1 + d * 0.09);
     _c.subVectors(pos, cam.position).normalize();
@@ -1974,6 +1977,30 @@ export class Game {
     let lp = 16000 / (1 + d * 0.05);
     if (d > 2 && front < -0.25) { lp *= 0.45; vol *= 0.85; }
     fn(vol, d < 1 ? 0 : side * 0.8, { lp: Math.max(700, lp), echo: base >= 0.9 && d > 22 ? 0.07 + d * 0.0025 : 0 });
+  }
+
+  // Sound captions (Settings → Accessibility): one line per sound source, kept fresh while it
+  // keeps making noise, with an arrow toward it. cap: { k: unique key, label, enemy }
+  caption(cap, pos) {
+    this.caps = this.caps || new Map();
+    const c = this.caps.get(cap.k);
+    if (c) { c.t = performance.now(); c.pos.copy(pos); c.label = cap.label; return; }
+    if (this.caps.size >= 12) { const oldest = [...this.caps.entries()].sort((a, b) => a[1].t - b[1].t)[0]; this.caps.delete(oldest[0]); }
+    this.caps.set(cap.k, { label: cap.label, enemy: cap.enemy, pri: cap.pri || 0, pos: pos.clone(), t: performance.now() });
+  }
+  capList(now) {
+    if (!this.caps || !this.caps.size) return [];
+    const cam = this.camera, out = [];
+    _r.set(0, 0, -1).applyQuaternion(cam.quaternion); const fx = _r.x, fz = _r.z;
+    for (const [k, c] of this.caps) {
+      if (now - c.t > 1600) { this.caps.delete(k); continue; }
+      const dx = c.pos.x - cam.position.x, dz = c.pos.z - cam.position.z;
+      // angle of the sound relative to where you look (0 = ahead, + = right)
+      const ang = Math.atan2(fx * dz - fz * dx, fx * dx + fz * dz);
+      out.push({ label: c.label, enemy: c.enemy, ang, dist: Math.round(Math.hypot(dx, dz)), age: (now - c.t) / 1600, pri: c.pri });
+    }
+    // Loud things first (footsteps last), then the closest; 4 lines at most.
+    return out.sort((a, b) => a.pri - b.pri || a.dist - b.dist).slice(0, 4);
   }
 
   // Footstep sound for whatever is underfoot at (x, y, z).
@@ -2307,6 +2334,7 @@ export class Game {
       return { angle: -(ang - me.yaw), alpha: a.k * (1 - (now - a.t) / 1500) };
     }));
     hud.lowPulse(me.alive && me.hp > 0 && me.hp <= this.maxHp * 0.3);
+    hud.captions(opts.captions ? this.capList(now) : []);
     // Pings: enemy marks follow the enemy for 5 s, spot marks last 7 s.
     this.pings = (this.pings || []).filter((x) => now - x.t < (x.e ? 5000 : 7000));
     hud.pings(this.pings.map((x) => {

@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { CAMOS, camoOf, camoSwatch } from './camos.js';
 import { buildGun } from './models.js';
 import { WEAPONS } from './weapons.js';
+import { CB_MODES } from './access.js';
 import { hasMods, cleanMods } from './mods.js';
 import { COSMETICS, SLOT_LABELS, HAIR_COLORS, MISSIONS, getStat, missionDone, isOwned, priceOf, buy, getTokens, getCos, setCos, ownsWrap, buyWrap } from './missions.js';
 
@@ -63,6 +64,13 @@ const TABS = [
     { key: 'crossColor', label: 'Crosshair color', type: 'swatch', options: CROSS_COLORS },
     { key: 'crossSize', label: 'Crosshair size', type: 'range', min: 0.6, max: 2, step: 0.05, fmt: mul },
     { key: 'crossDot', label: 'Crosshair center dot', type: 'check' },
+  ] },
+  { name: 'Accessibility', rows: [
+    { key: 'colorblind', label: 'Colorblind mode', hint: 'Changes team, zombie and health bar colors so they are easier to tell apart', type: 'choice', options: CB_MODES },
+    { key: 'captions', label: 'Sound captions', hint: 'Shows footsteps, gunfire, reloads and explosions on screen, with an arrow pointing where they came from', type: 'check' },
+    { key: 'captionSize', label: 'Caption size', type: 'range', min: 0.8, max: 1.6, step: 0.05, fmt: mul },
+    { key: 'killcam', label: 'Kill cam', hint: 'Replay of how you died', type: 'check' },
+    { key: 'blood', label: 'Blood effects', type: 'check' },
   ] },
   { name: 'Mobile', rows: [
     { special: 'uimode' },
@@ -132,6 +140,9 @@ export class SettingsUI {
       el.innerHTML = `<div class="set-label">${r.label}${hint}</div><input type="range" min="${r.min}" max="${r.max}" step="${r.step}" value="${opts[r.key]}"><output>${r.fmt(opts[r.key])}</output>`;
       const input = el.querySelector('input'), out = el.querySelector('output');
       input.oninput = () => { const v = Number(input.value); out.textContent = r.fmt(v); setOpt(r.key, v); };
+    } else if (r.type === 'choice') {
+      el.innerHTML = `<div class="set-label">${r.label}${hint}</div><div class="seg set-choice">${r.options.map((o) => `<button data-v="${o.id}" class="${opts[r.key] === o.id ? 'sel' : ''}" ${o.hint ? `title="${o.hint}"` : ''}>${o.name}</button>`).join('')}</div>`;
+      el.querySelectorAll('[data-v]').forEach((b) => { b.onclick = () => { setOpt(r.key, b.dataset.v); this.render(); }; });
     } else if (r.type === 'swatch') {
       el.innerHTML = `<div class="set-label">${r.label}</div><div class="swatches">${r.options.map((c) => `<button style="background:${c}" class="${opts[r.key] === c ? 'sel' : ''}" data-c="${c}" title="${c}"></button>`).join('')}</div>`;
       el.querySelectorAll('[data-c]').forEach((b) => { b.onclick = () => { setOpt(r.key, b.dataset.c); this.render(); }; });

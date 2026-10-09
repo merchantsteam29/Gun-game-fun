@@ -18,7 +18,10 @@ const DEFAULTS = {
   crossDot: true,
   showFps: false,
   blood: true,
-  killcam: true,      // replay from your killer's view when you die        // off: hits and kills show grey sparks instead of blood
+  killcam: true,
+  colorblind: 'off',  // off | protan | deutan | tritan (see access.js)
+  captions: false,    // on-screen captions for footsteps, gunfire and explosions
+  captionSize: 1,      // replay from your killer's view when you die        // off: hits and kills show grey sparks instead of blood
   autoRes: true,      // lower the resolution a little when frames drop (game.js)
   recordClips: false, // opt-in highlight clips (highlights.js); off by default since browsers show a recording icon
   minimap: true,

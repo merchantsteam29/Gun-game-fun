@@ -40,6 +40,7 @@ export class Hud {
   show(v) { this.el.classList.toggle('hidden', !v); }
 
   applyOpts(o) {
+    document.documentElement.style.setProperty('--cap-scale', String(o.captionSize || 1));
     this.crosshair.style.setProperty('--cross', o.rgbCross ? '#ff3b3b' : o.crossColor);
     this.crosshair.classList.toggle('rgb', !!o.rgbCross);
     this.crosshair.style.setProperty('--cross-scale', o.crossSize);
@@ -319,6 +320,24 @@ export class Hud {
     el.classList.toggle('hidden', !on);
     $('death').classList.toggle('kc', on);
     if (on) el.innerHTML = `<b>◉ KILL CAM</b><span>${esc(name)}'s view</span><small>Any key or tap to skip</small>`;
+  }
+
+  // Sound captions: [{ label, enemy, ang (radians, 0 = ahead), dist, age 0..1 }]
+  captions(list) {
+    const box = $('captions');
+    if (!list.length) { if (this.capN) { box.innerHTML = ''; this.capN = 0; } return; }
+    while (box.children.length < list.length) { const e = document.createElement('div'); e.className = 'cap'; e.innerHTML = '<i>↑</i><b></b><small></small>'; box.appendChild(e); }
+    while (box.children.length > list.length) box.lastChild.remove();
+    this.capN = list.length;
+    list.forEach((c, i) => {
+      const e = box.children[i];
+      e.className = 'cap' + (c.enemy ? ' enemy' : ' ally');
+      e.style.opacity = String(Math.min(1, (1 - c.age) * 2.5));
+      e.querySelector('i').style.transform = `rotate(${c.ang}rad)`;
+      e.querySelector('b').textContent = c.label;
+      const a = Math.abs(c.ang), where = a < 0.5 ? 'ahead' : a > 2.6 ? 'behind' : c.ang > 0 ? 'right' : 'left';
+      e.querySelector('small').textContent = `${c.enemy ? '' : 'Teammate · '}${where} · ${c.dist} m`;
+    });
   }
 
   // Red pulsing edges (and a heartbeat) at low health.

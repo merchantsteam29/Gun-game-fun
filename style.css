@@ -1690,3 +1690,22 @@ body.mobile #killcam-tag { top: 64px; }
 /* Leaderboard: mode picker */
 .lb-mode { padding: 6px 10px; border-radius: 9px; font-size: 12px; max-width: 170px; }
 .lb-week button { white-space: nowrap; }
+
+/* Sound captions (Accessibility) */
+#captions { position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); display: flex; flex-direction: column-reverse; align-items: center; gap: 4px; pointer-events: none; zoom: var(--cap-scale, 1); }
+.cap { display: flex; align-items: center; gap: 8px; padding: 4px 12px 4px 6px; border-radius: 8px; background: rgba(8,10,14,0.78); border-left: 3px solid #ff6a5a; white-space: nowrap; }
+.cap.ally { border-left-color: #59b8ff; }
+.cap i { display: inline-flex; width: 20px; height: 20px; align-items: center; justify-content: center; font-style: normal; font-weight: 900; color: #fff; background: rgba(255,255,255,0.12); border-radius: 50%; }
+.cap b { font-size: 14px; }
+.cap small { font-size: 12px; color: var(--muted); }
+body.mobile #captions { bottom: 120px; }
+/* Colorblind modes: the health bar stops being green / red */
+body[data-cb="protan"] #health-fill, body[data-cb="deutan"] #health-fill { background: linear-gradient(90deg, #2f7fe0, #7cc0ff); }
+body[data-cb="protan"] #health-lag, body[data-cb="deutan"] #health-lag { background: rgba(255,170,40,0.85); }
+body[data-cb="protan"] #health.low #health-fill, body[data-cb="deutan"] #health.low #health-fill { background: #ffae2b; }
+body[data-cb="protan"] .cap, body[data-cb="deutan"] .cap { border-left-color: #ffae2b; }
+body[data-cb="tritan"] #health-fill { background: linear-gradient(90deg, #19c2b4, #8ef0e6); }
+body[data-cb="tritan"] .cap.ally { border-left-color: #19c2b4; }
+.set-choice { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.set-choice button { padding: 6px 12px; font-size: 12px; border-radius: 9px; white-space: nowrap; }
+.set-choice button.sel { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
