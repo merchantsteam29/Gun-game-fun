@@ -511,6 +511,13 @@ export class HostLogic {
       case 'vote': // next-map vote at the end of a match
         this.castVote(id, Number(m.i));
         break;
+      case 'vc': { // Game Night voice: "I'm in voice" (verified gamertags only, not muted players)
+        const now = Date.now();
+        if (!this.s.gn || !p.tag || p.muted || now - (p.lastVc || 0) < 1500) break;
+        p.lastVc = now;
+        this.broadcast({ t: 'vc', id, gt: p.tag, in: !!m.in });
+        break;
+      }
       case 'chat': { // party chat: plain text, max 100 chars, at most ~2 messages a second each
         const now = Date.now();
         if (p.muted || now - (p.lastChat || 0) < 450) break;

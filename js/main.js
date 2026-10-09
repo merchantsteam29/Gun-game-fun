@@ -1122,6 +1122,11 @@ function chatOnNet(m) {
     else if (cmpVersion(m.v, APP_VERSION) > 0) { chat.system(`⚠ Your game is out of date (host has ${m.v}). Update to avoid lag and missed shots.`); updater.check(); }
   }
   if (m.t === 'pjoin' && !m.bot && net && net.isHost && (!m.cos || !m.cos.v || cmpVersion(m.cos.v, APP_VERSION) < 0)) chat.system(`⚠ ${m.name}'s game is out of date. Tell them to refresh the page.`);
+  // Game Night voice room: who's in it comes through the match.
+  if (m.t === 'vc' && m.gt) voice.onAnnounce(m.gt, m.in, 'gn');
+  if (m.t === 'pleave' && voice.inRoom) { const gt = gnvcTags.get(m.id); if (gt) voice.onAnnounce(gt, false, 'gn'); }
+  if (m.t === 'pident' && m.gt) gnvcTags.set(m.id, m.gt);
+  if (m.t === 'welcome') { gnvcTags.clear(); for (const p of m.players || []) if (p.gt) gnvcTags.set(p.id, p.gt); }
   if (m.t === 'pjoin' && !m.bot) chat.system(`${m.name} joined`);
   else if (m.t === 'pleave' && !m.quiet && !String(m.name).startsWith('[BOT]') && !/^zd+$/.test(m.id)) chat.system(`${m.name} left`);
   // Pause-menu player lists follow joins, leaves and staff actions.
@@ -1669,6 +1674,7 @@ async function joinLobby(spectateArg = false) {
 }
 
 function leave(reason) {
+  if (voice.inRoom) voice.leave(); // Game Night voice is for that server only
   highlights.stop();
   highlights.resetMatch();
   if (tutorial.active || !$('tutorial').classList.contains('hidden')) tutorial.stop();
@@ -1713,6 +1719,34 @@ $('btn-resume').onclick = () => {
   }
 };
 $('btn-leave').onclick = () => leave();
+// ---------- Game Night voice ----------
+// Everyone in a Game Night server with a gamertag can talk (push-to-talk and volume follow the
+// voice settings). Leaving the server leaves voice.
+const gnvcTags = new Map(); // player id -> verified gamertag in this match
+const GNVC_MAX = 12;
+function gnRoom() {
+  const code = net && net.code;
+  return {
+    id: 'gn' + String(code || '').toLowerCase(),
+    isMember: (k) => [...game.players.values()].some((p) => p.gt && p.gt.toLowerCase() === k) && voice.calls.size < GNVC_MAX - 1 || voice.calls.has(k),
+    announce: (on) => { if (net) net.send({ t: 'vc', in: on }); },
+  };
+}
+function renderGnVc() {
+  const b = $('btn-gnvc');
+  const show = !!(net && !net.practice && game.active && game.rules.gn);
+  b.classList.toggle('hidden', !show);
+  if (show) b.innerHTML = voice.inRoom ? `<span class="ic">🔇</span>Leave voice${voice.calls.size ? ` (${voice.calls.size + 1} in)` : ''}` : '<span class="ic">🎤</span>Join Game Night voice';
+}
+$('btn-gnvc').onclick = async () => {
+  if (voice.inRoom) { voice.leave(); renderGnVc(); return; }
+  try {
+    await voice.join(gnRoom());
+    chat.system(`🎤 You joined Game Night voice. ${opts.voicePtt ? `Hold ${keysLabel('voice')} to talk.` : 'Your mic is on.'}`);
+  } catch (err) { chat.system('🎤 ' + err.message); }
+  renderGnVc();
+};
+setInterval(renderGnVc, 1000);
 
 // Settings: from the main menu or the pause menu; returns to whichever opened it.
 // "Keyboard & mouse" help in the menu, from the current key bindings.

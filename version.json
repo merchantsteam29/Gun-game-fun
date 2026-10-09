@@ -1,7 +1,7 @@
 {
-  "version": "2026.10.09.8",
+  "version": "2026.10.09.9",
   "notes": [
-    "Game Night event: Battle Royale rounds every 30 minutes in the Game Night server, announced 15 minutes ahead. One life, loot, and a closing storm"
+    "Game Night voice chat: talk with everyone in the Game Night server (pause menu, needs a gamertag)"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",

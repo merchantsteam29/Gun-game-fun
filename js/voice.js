@@ -6,6 +6,9 @@ import { isBound } from './binds.js';
 // the party's relay channel (social.js). Every call carries a token signed with the caller's
 // gamertag key, and calls are only answered from current party members — so nobody else can
 // listen in or talk as someone.
+//
+// Game Night servers have their own voice room too (joinRoom): the same calls, between players in
+// that server who have a gamertag (up to 12), announced through the match instead of the party.
 
 const PREFIX = 'whffa-v1-vc-';
 const ANNOUNCE_MS = 8000;
@@ -27,7 +30,8 @@ export class Voice {
     this.onChange = null;
     this.ctx = null;
     social.onVoice = (tag, inVoice) => this.onAnnounce(tag, inVoice);
-    social.onPartyGone = () => this.leave();
+    social.onPartyGone = () => { if (!this.room) this.leave(); };
+    this.room = null; // Game Night room: { id, isMember(lowerTag), announce(inVoice) }; null = party voice
     onOpts(() => { this.applyMic(); for (const c of this.calls.values()) if (c.audio) c.audio.volume = opts.voiceVolume; });
     // Push-to-talk: hold V (ignored while typing).
     const typing = () => /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName);
@@ -41,10 +45,11 @@ export class Voice {
   get talking() { return this.active && !this.muted && (!opts.voicePtt || this.pttDown); }
 
   // ---------- Join / leave ----------
-  async join() {
+  async join(room = null) {
     const p = this.social.party;
-    if (!p) throw new Error('Join a party first.');
-    if (this.active) return;
+    if (!room && !p) throw new Error('Join a party first.');
+    if (room && !this.social.tag) throw new Error('Get a gamertag (Friends) to use voice chat.');
+    if (this.active) this.leave();
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('Voice chat isn\'t supported in this browser.');
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
@@ -54,12 +59,13 @@ export class Voice {
     this.ctx = this.ctx || new (window.AudioContext || window.webkitAudioContext)();
     if (this.ctx.state === 'suspended') this.ctx.resume();
     this.myLevel = this.meter(this.stream);
-    this.party = p.id;
+    this.room = room;
+    this.party = room ? room.id : p.id;
     this.active = true;
     this.applyMic();
     await this.openPeer();
-    this.social.sendVoice(true);
-    this.announceT = setInterval(() => this.social.sendVoice(true), ANNOUNCE_MS);
+    this.announce(true);
+    this.announceT = setInterval(() => this.announce(true), ANNOUNCE_MS);
     this.levelT = setInterval(() => this.updateLevels(), 100);
     this.changed();
   }
@@ -86,15 +92,20 @@ export class Voice {
     this.active = false;
     clearInterval(this.announceT);
     clearInterval(this.levelT);
-    this.social.sendVoice(false);
+    this.announce(false);
     for (const c of this.calls.values()) this.drop(c);
     this.calls.clear();
     if (this.peer) { this.peer.destroy(); this.peer = null; }
     if (this.stream) { for (const t of this.stream.getTracks()) t.stop(); this.stream = null; }
     this.speaking.clear();
+    this.inVoice.clear();
     this.party = null;
+    this.room = null;
     this.changed();
   }
+
+  announce(on) { if (this.room) this.room.announce(on); else this.social.sendVoice(on); }
+  get inRoom() { return this.active && !!this.room; }
 
   setMuted(v) { this.muted = v; this.applyMic(); this.changed(); }
 
@@ -105,8 +116,11 @@ export class Voice {
   }
 
   // ---------- Who's in voice ----------
-  onAnnounce(tag, inVoice) {
+  // room: 'gn' for Game Night announcements, null for the party's. Ignored if it's not the voice we're in.
+  onAnnounce(tag, inVoice, room = null) {
+    if (!!room !== !!this.room && (this.active || room)) return;
     const k = low(tag);
+    if (!k || k === this.me) return;
     if (inVoice) {
       const isNew = !this.inVoice.has(k);
       this.inVoice.set(k, tag);
@@ -146,6 +160,7 @@ export class Voice {
   }
 
   isMember(k) {
+    if (this.room) return this.room.isMember(k);
     const p = this.social.party;
     return !!p && p.id === this.party && p.members.some((m) => low(m) === k);
   }
