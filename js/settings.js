@@ -43,6 +43,7 @@ const DEFAULTS = {
   padAutoSprint: false, // sprint when the left stick is pushed all the way forward
   padCrouchToggle: true, // B toggles crouch (off = hold)
   padVibration: true,
+  padBinds: {},       // controller: action -> button index (gamepad.js PAD_ACTIONS); empty = defaults
   // Party voice chat
   voiceVolume: 1,
   voicePtt: false,    // push-to-talk: hold the voice key (binds.js)

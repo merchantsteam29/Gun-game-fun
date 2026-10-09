@@ -1,7 +1,7 @@
 {
-  "version": "2026.10.09.13",
+  "version": "2026.10.09.14",
   "notes": [
-    "Small fixes and polish"
+    "Controller update: change any button in Settings, push-to-talk on the controller, switch who you watch with LB / RB, skip the kill cam with any button, PlayStation button names"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",

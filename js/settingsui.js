@@ -8,6 +8,7 @@ import { CAMOS, camoOf, camoSwatch } from './camos.js';
 import { buildGun } from './models.js';
 import { WEAPONS } from './weapons.js';
 import { CB_MODES } from './access.js';
+import { PAD_ACTIONS, padButton, setPadButton, resetPadButtons, buttonName, padStyle, padInput } from './gamepad.js';
 import { hasMods, cleanMods } from './mods.js';
 import { COSMETICS, SLOT_LABELS, HAIR_COLORS, MISSIONS, getStat, missionDone, isOwned, priceOf, buy, getTokens, getCos, setCos, ownsWrap, buyWrap } from './missions.js';
 
@@ -38,7 +39,7 @@ const TABS = [
     { key: 'padDeadzone', label: 'Stick dead zone', hint: 'Raise it if your view drifts on its own', type: 'range', min: 0.04, max: 0.35, step: 0.01, fmt: pct },
     { key: 'aimAssist', label: 'Aim assist', hint: 'Slows your aim on enemies and helps track them while you shoot or aim (controller and touch)', type: 'check' },
     { key: 'aimAssistStrength', label: 'Aim assist strength', type: 'range', min: 0.1, max: 1, step: 0.05, fmt: pct },
-    { key: 'padCrouchToggle', label: 'Crouch toggles', hint: 'Off: hold B to stay crouched', type: 'check' },
+    { key: 'padCrouchToggle', label: 'Crouch toggles', hint: 'Off: hold the crouch button to stay crouched', type: 'check' },
     { key: 'padAutoSprint', label: 'Auto-sprint', hint: 'Sprint whenever the left stick is pushed all the way forward', type: 'check' },
     { key: 'padVibration', label: 'Vibration', hint: 'When you get hit and when you fire (if your controller and browser support it)', type: 'check' },
     { special: 'padmap' },
@@ -427,14 +428,26 @@ export class SettingsUI {
         ? `Connected: ${esc(pads[0].id.replace(/\(.*?\)/g, '').trim().slice(0, 60))}`
         : 'No controller detected. Plug one in or pair it over Bluetooth, then press any button.'}</small></div>`;
     } else if (kind === 'padmap') {
-      const map = [
-        ['L stick', 'Move'], ['R stick', 'Look'], ['RT', 'Fire'], ['LT', 'Aim'], ['A', 'Jump'], ['B', 'Crouch / slide'],
-        ['X', 'Reload'], ['Y', 'Switch weapon'], ['RB', 'Grenade'], ['LB / R3', 'Melee'], ['L3', 'Sprint'],
-        ['D-pad ◀ ▶', 'Prev / next weapon'], ['D-pad ▲', 'Melee weapon'], ['D-pad ▼', 'Inspect'], ['View', 'Scoreboard'], ['Menu', 'Pause'],
-      ];
-      el.className = 'set-row pad-row';
-      el.innerHTML = `<div class="set-label">Button layout<small>In menus: D-pad or left stick to move, A select, B back, LB / RB switch sections.</small>
-        <div class="pad-map">${map.map(([b, a]) => `<span><kbd>${b}</kbd>${a}</span>`).join('')}</div></div>`;
+      // Every action can go on any button (Menu always pauses). Picking a button that's taken swaps them.
+      const style = padStyle();
+      const listening = this.padListen;
+      el.innerHTML = `<div class="set-label">Button layout<small>Pick an action, then press the controller button you want for it. Taken buttons swap. Sticks: left moves, right looks. ${buttonName(9, style)} always pauses; when you're out, ${buttonName(4, style)} / ${buttonName(5, style)} switch who you watch, and any button skips the kill cam. In menus: D-pad or left stick to move, ${buttonName(0, style)} select, ${buttonName(1, style)} back.</small></div>
+        <div class="pad-binds">${PAD_ACTIONS.map(([id, label]) => `<button class="pad-bind ${listening === id ? 'listening' : ''}" data-pb="${id}"><span>${label}</span><kbd>${listening === id ? 'Press a button…' : buttonName(padButton(id), style)}</kbd></button>`).join('')}</div>
+        <button class="ghost sm" data-pbreset>Reset controller buttons</button>`;
+      el.querySelectorAll('[data-pb]').forEach((btn) => {
+        btn.onclick = () => {
+          if (!padInput) return;
+          this.padListen = btn.dataset.pb;
+          this.render();
+          padInput.capture = (i) => {
+            const id = this.padListen;
+            this.padListen = null;
+            if (i !== null && id) setPadButton(id, i);
+            this.render();
+          };
+        };
+      });
+      el.querySelector('[data-pbreset]').onclick = () => { resetPadButtons(); this.render(); };
     } else if (kind === 'layout') {
       if (this.mobile) {
         el.innerHTML = `<div class="set-label">Button layout<small>Drag your touch buttons wherever you like and resize them one by one</small></div>

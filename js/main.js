@@ -1934,6 +1934,7 @@ const gamepad = new GamepadInput(game, {
     else { game.setLocked(false); game.onUnlock(); }
   },
   resume: () => $('btn-resume').click(),
+  ptt: (on) => { voice.pttDown = on; voice.applyMic(); }, // controller push-to-talk
   back: (root) => {
     if (root.id === 'settings') settingsUI.close();
     else if (root.id === 'host-panel') hostPanel.close();

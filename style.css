@@ -1724,3 +1724,11 @@ body[data-cb="achroma"] .ping.enemy i { border-style: solid; }
 body.in-storm #storm-fx { opacity: 1; animation: storm-pulse 1.6s ease-in-out infinite; }
 @keyframes storm-pulse { 50% { opacity: 0.7; } }
 .br-out { color: #c88bff; font-weight: 800; }
+
+/* Controller button bindings */
+.pad-binds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; margin: 8px 0; }
+.pad-bind { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px; font-size: 13px; text-align: left; }
+.pad-bind kbd { min-width: 64px; text-align: center; }
+.pad-bind.listening { border-color: var(--accent); }
+.pad-bind.listening kbd { color: var(--accent); animation: ping-pulse-txt 1s ease-in-out infinite; }
+@media (max-width: 640px) { .pad-binds { grid-template-columns: 1fr; } }

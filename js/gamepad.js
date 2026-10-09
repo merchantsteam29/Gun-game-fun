@@ -1,14 +1,45 @@
-import { opts } from './settings.js';
+import { opts, setOpt } from './settings.js';
 
 // Controller support (standard-mapping gamepads: Xbox, PlayStation, Switch Pro, most Bluetooth pads).
 //
-// In a match:  left stick move · right stick look · RT fire · LT aim · A jump · B crouch/slide ·
-//              X reload · Y switch weapon · RB grenade · LB / R3 melee · L3 sprint ·
-//              D-pad ←/→ previous/next weapon, ↑ melee weapon, ↓ inspect · View scoreboard · Menu pause.
+// In a match (defaults; every button but Menu can be changed in Settings → Controller):
+//              left stick move · right stick look · RT fire · LT aim · A jump · B crouch/slide ·
+//              X reload · Y switch weapon · RB grenade · LB melee · L3 sprint · R3 push-to-talk ·
+//              D-pad ←/→ previous/next weapon, ↑ ping (team modes) or melee weapon, ↓ inspect ·
+//              View scoreboard · Menu pause. Dead / spectating: LB / RB previous / next player.
+//              Any button skips the kill cam.
 // In menus:    D-pad / left stick move between buttons · A select · B back · LB/RB sections or tabs ·
 //              LT/RT loadout slots · right stick scroll · ←/→ on a slider or dropdown changes it.
 
 const B = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, LT: 6, RT: 7, VIEW: 8, MENU: 9, L3: 10, R3: 11, UP: 12, DOWN: 13, LEFT: 14, RIGHT: 15 };
+// Remappable actions: [id, label, default button]. Menu always pauses.
+export const PAD_ACTIONS = [
+  ['fire', 'Fire', B.RT], ['aim', 'Aim', B.LT], ['jump', 'Jump', B.A], ['crouch', 'Crouch / slide', B.B],
+  ['reload', 'Reload', B.X], ['swap', 'Switch weapon', B.Y], ['grenade', 'Grenade', B.RB], ['melee', 'Quick melee', B.LB],
+  ['sprint', 'Sprint', B.L3], ['voice', 'Push to talk (voice chat)', B.R3], ['prev', 'Previous weapon', B.LEFT], ['next', 'Next weapon', B.RIGHT],
+  ['ping', 'Ping (team modes) / melee weapon', B.UP], ['inspect', 'Inspect weapon', B.DOWN], ['scores', 'Scoreboard', B.VIEW],
+];
+const PAD_DEFAULT = Object.fromEntries(PAD_ACTIONS.map(([id, , b]) => [id, b]));
+export const padButton = (id) => { const b = opts.padBinds && opts.padBinds[id]; return Number.isInteger(b) && b >= 0 && b < 16 && b !== B.MENU ? b : PAD_DEFAULT[id]; };
+// Give an action a button; whatever had that button gets this action's old one (a swap).
+export function setPadButton(id, button) {
+  const binds = { ...(opts.padBinds || {}) };
+  const old = padButton(id);
+  for (const [other] of PAD_ACTIONS) if (other !== id && padButton(other) === button) binds[other] = old;
+  binds[id] = button;
+  setOpt('padBinds', binds);
+}
+export const resetPadButtons = () => setOpt('padBinds', {});
+// Button names: Xbox style, or PlayStation's when that's what's plugged in.
+const XBOX = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'View', 'Menu', 'L3', 'R3', 'D-pad ▲', 'D-pad ▼', 'D-pad ◀', 'D-pad ▶'];
+const PS = ['✕', '○', '□', '△', 'L1', 'R1', 'L2', 'R2', 'Create', 'Options', 'L3', 'R3', 'D-pad ▲', 'D-pad ▼', 'D-pad ◀', 'D-pad ▶'];
+export function padStyle() {
+  const pads = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : [];
+  return pads.some((p) => /playstation|dualsense|dualshock|054c/i.test(p.id)) ? 'ps' : 'xbox';
+}
+export const buttonName = (i, style = padStyle()) => (style === 'ps' ? PS : XBOX)[i] || 'Button ' + i;
+export let padInput = null; // the running GamepadInput (Settings uses it to listen for a button)
+
 const FOCUSABLE = 'button, input, select, summary, a[href], [tabindex]:not([tabindex="-1"])';
 // Overlays in front-to-back order: the first visible one gets the controller.
 const OVERLAYS = ['#sys-msg', '#update-pop', '#tag-pop', '#settings', '#host-panel', '#pause', '#menu'];
@@ -25,6 +56,8 @@ export class GamepadInput {
   constructor(game, hooks) {
     this.game = game;
     this.hooks = hooks;
+    this.capture = null; // Settings: waiting for a button to bind
+    padInput = this;
     this.prev = [];
     this.active = false; // last input came from a controller
     this.sprintLatch = false;
@@ -96,6 +129,7 @@ export class GamepadInput {
     this.sprintLatch = false;
     this.crouchOn = false;
     if (this.scores) { g.showScores = false; this.scores = false; }
+    if (this.talking) { this.talking = false; if (this.hooks.ptt) this.hooks.ptt(false); }
   }
 
   overlay() {
@@ -114,6 +148,12 @@ export class GamepadInput {
     const pressed = (i) => down(i) && !((this.prev[i] || 0) > 0.35);
     const dz = opts.padDeadzone;
     const ls = stick(p.axes[0] || 0, p.axes[1] || 0, dz), rs = stick(p.axes[2] || 0, p.axes[3] || 0, dz);
+    if (this.capture) { // Settings → Controller: the next button pressed (Menu cancels)
+      const i = btn.findIndex((v, n) => n < 16 && v > 0.35 && !((this.prev[n] || 0) > 0.35));
+      if (i >= 0) { const fn = this.capture; this.capture = null; fn(i === B.MENU ? null : i); }
+      this.prev = btn;
+      return;
+    }
     const anyInput = btn.some((v) => v > 0.35) || ls[0] || ls[1] || rs[0] || rs[1];
     if (anyInput && !this.active) this.setActive(true);
     if (this.active) {
@@ -141,22 +181,29 @@ export class GamepadInput {
     g.padLook(curve(rs[0]), curve(rs[1]), dt);
 
     // Sprint: click L3 (stays on until you stop pushing forward); crouching cancels it.
-    if (pressed(B.L3)) { this.sprintLatch = !this.sprintLatch; if (this.crouchOn) { this.crouchOn = false; k.delete('@crouch'); } }
+    const P = padButton;
+    // Any button skips the kill cam.
+    if (g.killcam && btn.some((v, n) => n < 16 && v > 0.35 && !((this.prev[n] || 0) > 0.35))) g.endKillcam();
+    // Push-to-talk (voice chat)
+    const talk = down(P('voice'));
+    if (talk !== this.talking) { this.talking = talk; if (this.hooks.ptt) this.hooks.ptt(talk); }
+
+    if (pressed(P('sprint'))) { this.sprintLatch = !this.sprintLatch; if (this.crouchOn) { this.crouchOn = false; k.delete('@crouch'); } }
     if (-ls[1] < 0.35) this.sprintLatch = false;
     if (this.sprintLatch) k.add('@sprint'); else k.delete('@sprint');
 
     // Jump (A) also stands you up from a toggled crouch.
-    if (down(B.A)) k.add('@jump'); else k.delete('@jump');
-    if (pressed(B.A) && this.crouchOn) { this.crouchOn = false; k.delete('@crouch'); }
+    if (down(P('jump'))) k.add('@jump'); else k.delete('@jump');
+    if (pressed(P('jump')) && this.crouchOn) { this.crouchOn = false; k.delete('@crouch'); }
 
     // Crouch / slide (B): toggle or hold.
     if (opts.padCrouchToggle) {
-      if (pressed(B.B)) { this.crouchOn = !this.crouchOn; this.sprintLatch = false; }
-    } else this.crouchOn = down(B.B);
+      if (pressed(P('crouch'))) { this.crouchOn = !this.crouchOn; this.sprintLatch = false; }
+    } else this.crouchOn = down(P('crouch'));
     if (this.crouchOn) k.add('@crouch'); else k.delete('@crouch');
 
     // Triggers
-    const fire = down(B.RT), aim = down(B.LT);
+    const fire = down(P('fire')), aim = down(P('aim'));
     if (fire && !this.firing) g.firedThisPress = false;
     g.mouse.left = fire;
     this.firing = fire;
@@ -164,7 +211,7 @@ export class GamepadInput {
     this.aiming = aim;
 
     // Scoreboard while View is held
-    this.scores = down(B.VIEW);
+    this.scores = down(P('scores'));
     g.showScores = this.scores;
 
     if (pressed(B.MENU)) { this.releaseGame(); this.hooks.pause(); return; }
@@ -174,15 +221,20 @@ export class GamepadInput {
       else if (pressed(B.Y)) g.voteMap(1);
       else if (pressed(B.B)) g.voteMap(2);
     }
-    if (!alive) return;
-    if (pressed(B.X)) g.startReload();
-    if (pressed(B.Y)) g.swapLast();
-    if (pressed(B.RB)) g.quickThrow();
-    if (pressed(B.LB) || pressed(B.R3)) g.quickMelee();
-    if (pressed(B.LEFT)) g.cycleSlot(-1);
-    if (pressed(B.RIGHT)) g.cycleSlot(1);
-    if (pressed(B.UP)) { if (g.teams) g.ping(); else g.switchSlot(2); } // team modes: ping
-    if (pressed(B.DOWN) && g.reloadT <= 0) g.vm.inspect();
+    if (!alive) {
+      // Dead or spectating: LB / RB (or the previous / next weapon buttons) change who you watch.
+      if (!g.killcam && (pressed(B.RB) || pressed(P('next')))) g.specIdx = (g.specIdx || 0) + 1;
+      if (!g.killcam && (pressed(B.LB) || pressed(P('prev')))) g.specIdx = (g.specIdx || 0) - 1;
+      return;
+    }
+    if (pressed(P('reload'))) g.startReload();
+    if (pressed(P('swap'))) g.swapLast();
+    if (pressed(P('grenade'))) g.quickThrow();
+    if (pressed(P('melee'))) g.quickMelee();
+    if (pressed(P('prev'))) g.cycleSlot(-1);
+    if (pressed(P('next'))) g.cycleSlot(1);
+    if (pressed(P('ping'))) { if (g.teams) g.ping(); else g.switchSlot(2); } // team modes: ping
+    if (pressed(P('inspect')) && g.reloadT <= 0) g.vm.inspect();
   }
 
   // Rumble when you get hit and a little kick when you fire.
