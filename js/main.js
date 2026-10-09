@@ -39,7 +39,7 @@ import { tutorial, tutorialDone, TUTORIAL_TOKENS } from './tutorial.js';
 import { highlights } from './highlights.js';
 import { addTokens } from './missions.js';
 import { addXp } from './progress.js';
-import { leaderboard, BOARDS, weekEnds, CHAMP_TOKENS } from './leaderboard.js';
+import { leaderboard, BOARDS, MODE_BOARDS, weekEnds, CHAMP_TOKENS } from './leaderboard.js';
 import { MODS, MOD_SLOTS, MOD_SLOT_NAMES, modOptions, hasMods, cleanMods, cleanModMap, statsFor } from './mods.js';
 
 const $ = (id) => document.getElementById(id);
@@ -346,7 +346,7 @@ function dailyHtml() {
 }
 
 // ---------- Weekly leaderboard ----------
-let lbBoard = store.get('lbBoard', 'xp'), lbWhich = 'cur', lbT = 0;
+let lbBoard = store.get('lbBoard', 'xp'), lbWhich = 'cur', lbMode = '', lbT = 0;
 function updateLbNav() {
   const r = leaderboard.rows('xp').find((x) => x.me);
   $('nav-lb-rank').textContent = r ? '#' + r.rank : '';
@@ -361,26 +361,34 @@ function clanRows(which) {
 function renderLeaderboard() {
   const el = $('menu-lb');
   if (!el) return;
+  // XP and clans aren't split by mode; clans are weekly only.
+  if (lbMode && (lbBoard === 'xp' || lbBoard === 'clans')) lbBoard = 'kills';
+  if (lbWhich === 'all' && lbBoard === 'clans') lbBoard = 'xp';
   if (lbBoard === 'clans') clans.loadAll();
-  const rows = lbBoard === 'clans' ? clanRows(lbWhich) : leaderboard.rows(lbBoard, lbWhich), b = lbBoard === 'clans' ? { name: 'XP' } : BOARDS.find((x) => x.id === lbBoard) || BOARDS[0];
+  const rows = lbBoard === 'clans' ? clanRows(lbWhich) : leaderboard.rows(lbBoard, lbWhich, lbMode || null), b = lbBoard === 'clans' ? { name: 'XP' } : BOARDS.find((x) => x.id === lbBoard) || BOARDS[0];
   const me = rows.find((r) => r.me), top = rows.slice(0, 50);
-  const mine = leaderboard.mine;
+  const all = lbWhich === 'all', life = leaderboard.lifetime();
+  const mineSrc = all ? life : leaderboard.mine;
+  const mine = lbMode ? { ...((mineSrc.m || {})[lbMode] || {}) } : mineSrc;
+  const shownBoards = lbMode ? BOARDS.filter((x) => MODE_BOARDS.includes(x.id)) : BOARDS;
+  const modeName = lbMode && MODES[lbMode] ? MODES[lbMode].name : '';
   const champs = BOARDS.map((x) => ({ b: x, top: leaderboard.rows(x.id, 'prev')[0] })).filter((c) => c.top);
   const fmt = (n) => Number(n).toLocaleString();
   el.innerHTML = `<div class="lb">
     <div class="card lb-main">
       <div class="lb-head">
-        <div class="seg lb-week"><button data-which="cur" class="${lbWhich === 'cur' ? 'sel' : ''}">This week</button><button data-which="prev" class="${lbWhich === 'prev' ? 'sel' : ''}">Last week</button></div>
-        <small>${lbWhich === 'cur' ? `Resets in ${fmtDuration(weekEnds() - Date.now())} (Monday, ${new Date(weekEnds()).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} your time)` : 'Final results'}</small>
+        <div class="seg lb-week"><button data-which="cur" class="${lbWhich === 'cur' ? 'sel' : ''}">This week</button><button data-which="prev" class="${lbWhich === 'prev' ? 'sel' : ''}">Last week</button><button data-which="all" class="${all ? 'sel' : ''}">All time</button></div>
+        <select id="lb-mode" class="lb-mode" title="Show one game mode"><option value="">All modes</option>${MODE_ORDER.filter((id) => MODES[id] && id !== 'practice').map((id) => `<option value="${id}" ${id === lbMode ? 'selected' : ''}>${esc(MODES[id].name)}</option>`).join('')}</select>
+        <small>${all ? 'Lifetime totals' : lbWhich === 'cur' ? `Resets in ${fmtDuration(weekEnds() - Date.now())} (Monday, ${new Date(weekEnds()).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} your time)` : 'Final results'}</small>
       </div>
-      <div class="lb-tabs">${BOARDS.map((x) => `<button data-board="${x.id}" class="${x.id === lbBoard ? 'sel' : ''}">${x.icon} ${x.name}</button>`).join('')}<button data-board="clans" class="${lbBoard === 'clans' ? 'sel' : ''}">🛡 Clans</button></div>
+      <div class="lb-tabs">${shownBoards.map((x) => `<button data-board="${x.id}" class="${x.id === lbBoard ? 'sel' : ''}">${x.icon} ${x.name}</button>`).join('')}${lbMode || all ? '' : `<button data-board="clans" class="${lbBoard === 'clans' ? 'sel' : ''}">🛡 Clans</button>`}</div>
       <table class="lb-table"><tbody>${top.length ? top.map((r) => `<tr class="${r.me ? 'me' : ''} ${r.rank <= 3 ? 'top' + r.rank : ''}"><td class="rk">${r.rank <= 3 ? ['🥇', '🥈', '🥉'][r.rank - 1] : r.rank}</td><td ${r.clan ? '' : `class="pf-link" data-profile="${esc(r.tag)}"`}>${esc(r.tag)}${leaderboard.isChamp(r.tag) ? ' <span class="trophy" title="#1 last week">🏆</span>' : ''}</td><td class="sc">${fmt(r.value)} <small>${esc(b.name)}</small></td></tr>`).join('')
-        : `<tr><td class="lb-empty">${lbWhich === 'cur' ? 'Nobody on the board yet this week. Play a match to be first!' : 'No results from last week.'}</td></tr>`}</tbody></table>
+        : `<tr><td class="lb-empty">${lbMode ? `Nobody on the ${esc(modeName)} board yet. Play some ${esc(modeName)} to be first!` : all ? 'Nobody on the all-time board yet.' : lbWhich === 'cur' ? 'Nobody on the board yet this week. Play a match to be first!' : 'No results from last week.'}</td></tr>`}</tbody></table>
       ${me && me.rank > 50 ? `<div class="lb-you">You: #${me.rank} · ${fmt(me.value)} ${esc(b.name)}</div>` : ''}
     </div>
     <div class="lb-side">
-      <div class="card"><h3>Your week</h3>${social.tag ? '' : '<p class="note">Get a gamertag (Friends) to show up on the leaderboard. Your stats still count.</p>'}
-        <div class="lb-mine">${BOARDS.map((x) => `<div><b>${fmt(mine[x.id] || 0)}</b><small>${x.icon} ${x.name}</small></div>`).join('')}</div></div>
+      <div class="card"><h3>${all ? 'All time' : lbWhich === 'prev' ? 'Your week' : 'Your week'}${modeName ? ` · ${esc(modeName)}` : ''}</h3>${social.tag ? '' : '<p class="note">Get a gamertag (Friends) to show up on the leaderboard. Your stats still count.</p>'}
+        <div class="lb-mine">${shownBoards.map((x) => `<div><b>${fmt(mine[x.id] || 0)}</b><small>${x.icon} ${x.name}</small></div>`).join('')}</div>${all && lbMode ? '<p class="note">Per-mode all-time counts started with this update.</p>' : ''}</div>
       <div class="card"><h3>Last week's champions</h3>${champs.length ? champs.map((c) => `<div class="lb-champ"><span>${c.b.icon} ${c.b.name}</span><b>🏆 ${esc(c.top.tag)}</b><small>${fmt(c.top.value)}</small></div>`).join('') : '<p class="note">No champions yet.</p>'}
         <p class="note">Finish #1 on any board to get a 🏆 by your name all next week, ${CHAMP_TOKENS} tokens and the Weekly Champion wrap.</p></div>
       <p class="note">Only players with a gamertag are listed. Each player's game reports its own totals, so numbers are capped to what's possible in a week.</p>
@@ -388,6 +396,7 @@ function renderLeaderboard() {
   </div>`;
   el.querySelectorAll('[data-board]').forEach((x) => { x.onclick = () => { lbBoard = x.dataset.board; store.set('lbBoard', lbBoard); renderLeaderboard(); }; });
   el.querySelectorAll('[data-which]').forEach((x) => { x.onclick = () => { lbWhich = x.dataset.which; renderLeaderboard(); }; });
+  $('lb-mode').onchange = (e) => { lbMode = e.target.value; renderLeaderboard(); };
 }
 
 // ---------- Menu widgets ----------
@@ -1046,7 +1055,7 @@ const PANE_INFO = {
   loadout: ['Loadout', 'One weapon per slot. Changes apply the next time you spawn.'],
   character: ['Character', 'Your callsign, color and cosmetics. Earn tokens from missions to unlock more.'],
   missions: ['Missions', 'The season pass, daily rewards and challenges, your level and missions. All of them pay tokens.'],
-  leaderboard: ['Leaderboard', 'This week\'s top players by XP, kills, wins and headshots. Resets every Monday.'],
+  leaderboard: ['Leaderboard', 'Top players by XP, kills, wins and headshots: this week, last week or all time, in every mode or just one.'],
   friends: ['Friends', 'Add friends by gamertag, see who\'s online, party up and chat.'],
   mod: ['Mod Panel', 'Staff only: warn, ban or force a new gamertag. Every action is signed with your key.'],
 };

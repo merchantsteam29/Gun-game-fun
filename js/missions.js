@@ -296,7 +296,7 @@ export function onMissionComplete(fn) { onComplete = fn; }
 const statListeners = [];
 export function onStats(fn) { statListeners.push(fn); }
 
-function bump(updates, pre = null) {
+function bump(updates, pre = null, mode = null) {
   if (pre) pre();
   for (const [k, v] of Object.entries(updates)) {
     if (k === 'bestStreak') stats[k] = Math.max(stats[k] || 0, v);
@@ -304,7 +304,7 @@ function bump(updates, pre = null) {
   }
   store.set('stats', stats);
   for (const m of claimMissions()) onComplete(m);
-  for (const fn of statListeners) fn(updates);
+  for (const fn of statListeners) fn(updates, mode);
 }
 
 export const track = {
@@ -328,7 +328,7 @@ export const track = {
     if (air) u.airKills = 1;
     if (silent) u.silentKills = 1;
     if (lowHp) u.clutchKills = 1;
-    bump(u);
+    bump(u, null, mode);
   },
   died() { streak = 0; bump({ deaths: 1 }); },
   tag() { bump({ tags: 1 }); },
@@ -344,6 +344,6 @@ export const track = {
       if (map) maps.add(map);
       store.set('modesPlayed', [...modes]);
       store.set('mapsPlayed', [...maps]);
-    });
+    }, mode);
   },
 };

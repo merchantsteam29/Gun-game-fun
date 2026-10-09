@@ -1,7 +1,7 @@
 {
-  "version": "2026.10.09.3",
+  "version": "2026.10.09.4",
   "notes": [
-    "Kill cam: when you die, watch the last few seconds from your killer's eyes (any key or tap skips it; turn it off in Settings)"
+    "Leaderboard: new All time tab, and a mode picker to see the top players in just one game mode"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",

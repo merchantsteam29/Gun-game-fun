@@ -1686,3 +1686,7 @@ body.mobile:not(.tablet) .hs-remind { max-width: 30px; overflow: hidden; white-s
 #death.kc { top: auto !important; bottom: 96px; transform: translateX(-50%) scale(0.8); transform-origin: bottom center; padding: 8px 20px; }
 #death.kc .big, #death.kc .small, #death.kc #death-timer { display: none; }
 body.mobile #killcam-tag { top: 64px; }
+
+/* Leaderboard: mode picker */
+.lb-mode { padding: 6px 10px; border-radius: 9px; font-size: 12px; max-width: 170px; }
+.lb-week button { white-space: nowrap; }
