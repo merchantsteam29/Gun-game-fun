@@ -56,6 +56,7 @@ const TABS = [
     { key: 'showFps', label: 'Show FPS counter', type: 'check' },
   ] },
   { name: 'HUD & Audio', rows: [
+    { special: 'timezone' },
     { key: 'volume', label: 'Volume', type: 'range', min: 0, max: 1, step: 0.05, fmt: pct },
     { key: 'showChat', label: 'Show party chat', hint: 'Turn off to hide all chat messages', type: 'check' },
     { key: 'voiceVolume', label: 'Voice chat volume', type: 'range', min: 0, max: 1, step: 0.05, fmt: pct },
@@ -422,6 +423,17 @@ export class SettingsUI {
           finish(mc);
         }, true);
       }
+    } else if (kind === 'timezone') {
+      // Times in the game (Game Night, resets, events, holidays) follow the device's own time zone.
+      let tz = 'your device', off = '';
+      try {
+        tz = Intl.DateTimeFormat().resolvedOptions().timeZone || tz;
+        const p = new Intl.DateTimeFormat('en-US', { timeZoneName: 'shortOffset' }).formatToParts(new Date()).find((x) => x.type === 'timeZoneName');
+        if (p) off = p.value.replace('GMT', 'UTC').replace('-', '−') || 'UTC';
+      } catch { /* older browsers: it's still the device's zone */ }
+      const now = new Date().toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+      el.innerHTML = `<div class="set-label">Time zone<small>Game Night, leaderboard resets, events and holidays use your device's time zone. To change it, change the time zone in your system settings.</small></div>
+        <div class="tz-now"><b>${esc(String(tz).replace(/_/g, ' '))}</b>${off ? ` · ${esc(off)}` : ''} · now ${esc(now)}</div>`;
     } else if (kind === 'padinfo') {
       const pads = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : [];
       el.innerHTML = `<div class="set-label">Controller<small>${pads.length

@@ -1732,3 +1732,7 @@ body.in-storm #storm-fx { opacity: 1; animation: storm-pulse 1.6s ease-in-out in
 .pad-bind.listening { border-color: var(--accent); }
 .pad-bind.listening kbd { color: var(--accent); animation: ping-pulse-txt 1s ease-in-out infinite; }
 @media (max-width: 640px) { .pad-binds { grid-template-columns: 1fr; } }
+
+/* Time zone (read-only: follows the device) */
+.tz-now { margin-top: 6px; font-size: 13px; color: var(--muted); }
+.tz-now b { color: var(--text, #fff); }
