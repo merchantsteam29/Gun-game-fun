@@ -313,6 +313,14 @@ export class Hud {
     });
   }
 
+  // Kill cam tag (top of the screen) and the death card moved out of the way while it plays.
+  killcam(on, name = '') {
+    const el = $('killcam-tag');
+    el.classList.toggle('hidden', !on);
+    $('death').classList.toggle('kc', on);
+    if (on) el.innerHTML = `<b>◉ KILL CAM</b><span>${esc(name)}'s view</span><small>Any key or tap to skip</small>`;
+  }
+
   // Red pulsing edges (and a heartbeat) at low health.
   lowPulse(on) {
     if (on === this.pulsing) return;

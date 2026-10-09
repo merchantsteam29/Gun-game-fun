@@ -1675,3 +1675,14 @@ body.mobile:not(.tablet) .hs-remind { max-width: 30px; overflow: hidden; white-s
 @keyframes ping-pulse { 50% { transform: rotate(45deg) scale(1.3); } }
 .b-ping { right: calc(212px + env(safe-area-inset-right)); bottom: 236px; width: 50px; height: 50px; font-size: 18px; display: none; }
 #touch.teams .b-ping { display: flex; }
+
+/* Kill cam */
+#killcam-tag { position: absolute; left: 50%; top: 104px; transform: translateX(-50%); display: flex; align-items: baseline; gap: 10px; padding: 6px 14px;
+  border-radius: 10px; background: rgba(8,10,14,0.75); border: 1px solid rgba(255,74,58,0.6); pointer-events: none; white-space: nowrap; }
+#killcam-tag b { color: #ff5a4a; letter-spacing: 3px; font-size: 14px; animation: ping-pulse-txt 1s ease-in-out infinite; }
+#killcam-tag span { font-size: 13px; }
+#killcam-tag small { font-size: 11px; color: var(--muted); }
+@keyframes ping-pulse-txt { 50% { opacity: 0.55; } }
+#death.kc { top: auto !important; bottom: 96px; transform: translateX(-50%) scale(0.8); transform-origin: bottom center; padding: 8px 20px; }
+#death.kc .big, #death.kc .small, #death.kc #death-timer { display: none; }
+body.mobile #killcam-tag { top: 64px; }

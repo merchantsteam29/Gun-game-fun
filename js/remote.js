@@ -366,7 +366,7 @@ export class RemotePlayer {
     if (!this.hasState) return;
     this.stepped = false;
     this.prev.copy(this.pos);
-    if (this.alive) {
+    if (this.alive && !this.replay) {
       if (this.buf.length) this.interpolate();
       else {
         this.pos.lerp(this.tpos, 1 - Math.exp(-dt * 16));

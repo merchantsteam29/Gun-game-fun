@@ -3,7 +3,7 @@ import { MAPS, setMapData, buildMapScene, boxes, quality } from './maps.js';
 import { moveBody, overlap, raycast, rayAABB, PLAYER_R, phys } from './physics.js';
 import { MODES, TEAM_COLORS, ZOMBIE_COLOR, JUGG_COLOR, JUGG_TEAM, defaultSettings } from './host.js';
 import { WEAPONS, DEFAULT_LOADOUT, GUNGAME_LADDER, SLOTS } from './weapons.js';
-import { track, onMissionComplete } from './missions.js';
+import { track, onMissionComplete, getCos } from './missions.js';
 import { onProgress, myLevel } from './progress.js';
 import { rateMatch } from './ranked.js';
 import { statsFor, cleanModMap } from './mods.js';
@@ -376,6 +376,86 @@ export class Game {
     else if (act === 'ping') this.ping();
   }
 
+  // ---------- Kill cam ----------
+  // Every 50 ms the last 3.5 s of everyone's position and aim (yours too) is kept. When you die,
+  // the last 2.6 s play back from your killer's eyes, with a copy of you that falls over at
+  // the moment of the kill. Any key / tap skips it; it also ends when you respawn.
+  recordHistory(now) {
+    if (this.killcam && this.me.alive) this.endKillcam(); // respawned some other way
+    if (this.killcam || now - (this.histT || 0) < 50) return;
+    this.histT = now;
+    this.hist = this.hist || new Map();
+    const push = (id, x, y, z, yaw, pitch, cr) => {
+      let h = this.hist.get(id);
+      if (!h) this.hist.set(id, (h = []));
+      h.push({ t: now, x, y, z, yaw, pitch, cr });
+      while (h.length && now - h[0].t > 3500) h.shift();
+    };
+    const me = this.me;
+    if (me.alive) push('me', me.pos.x, me.pos.y, me.pos.z, me.yaw, me.pitch, me.crouch ? 1 : 0);
+    for (const [id, r] of this.remotes) if (r.alive) push(id, r.pos.x, r.pos.y, r.pos.z, r.yaw, r.pitch, r.crouch);
+  }
+  sampleHist(id, t, out) {
+    const h = this.hist && this.hist.get(id);
+    if (!h || !h.length) return null;
+    if (t <= h[0].t) return Object.assign(out, h[0]);
+    for (let i = 1; i < h.length; i++) {
+      if (h[i].t >= t) {
+        const a = h[i - 1], b = h[i], k = (t - a.t) / Math.max(1, b.t - a.t);
+        let dy = b.yaw - a.yaw;
+        if (dy > Math.PI) dy -= Math.PI * 2; else if (dy < -Math.PI) dy += Math.PI * 2;
+        return Object.assign(out, { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k, z: a.z + (b.z - a.z) * k, yaw: a.yaw + dy * k, pitch: a.pitch + (b.pitch - a.pitch) * k, cr: b.cr });
+      }
+    }
+    return Object.assign(out, h[h.length - 1]);
+  }
+  startKillcam(killer, head, now) {
+    const kh = this.hist && this.hist.get(killer), mh = this.hist && this.hist.get('me');
+    if (opts.killcam === false || this.rules.mode === 'practice' || this.spectating || !kh || kh.length < 8 || !mh || !this.remotes.get(killer)) return;
+    const meP = this.players.get(this.myId);
+    const ghost = new RemotePlayer(this.scene, 'killcam-me', meP ? meP.name : 'You', meP ? this.colorFor(meP) : '#fff', getCos(), this.mods);
+    ghost.hasState = true; ghost.alive = true; ghost.replay = true;
+    ghost.setWeapon(this.curW); ghost.swapT = 0;
+    this.killcam = { killer, head, at: now, t0: now - 2600, ghost, died: false, s: {} };
+    for (const r of this.remotes.values()) r.replay = true;
+    this.hud.killcam(true, this.players.get(killer) ? this.players.get(killer).name : '');
+    // Held keys repeat and the trigger may still be down: only a fresh press after 0.3 s skips.
+    this.kcSkip = (e) => { if (!e.repeat && performance.now() - now > 300) this.endKillcam(); };
+    addEventListener('keydown', this.kcSkip);
+    addEventListener('pointerdown', this.kcSkip);
+  }
+  replayRemote(r) {
+    const k = this.killcam, t = Math.min(k.t0 + (performance.now() - k.at), k.at);
+    const s = this.sampleHist(r.id, t, {});
+    if (!s) return;
+    r.pos.set(s.x, s.y, s.z); r.yaw = s.yaw; r.pitch = s.pitch; r.tcrouch = s.cr || 0;
+  }
+  runKillcam(dt, now) {
+    const k = this.killcam, cam = this.camera;
+    const t = k.t0 + (now - k.at);
+    if (t > k.at + 700 || !this.deathInfo || this.me.alive) { this.endKillcam(); this.deathCam(dt, now); return; }
+    const tt = Math.min(t, k.at);
+    const s = this.sampleHist(k.killer, tt, k.s);
+    if (!s) { this.endKillcam(); return; }
+    cam.position.set(s.x, s.y + (s.cr ? 1.15 : 1.55), s.z);
+    cam.rotation.set(s.pitch, s.yaw, 0);
+    // You, as everyone else saw you, falling over at the moment of the kill.
+    const g = k.ghost, m = this.sampleHist('me', tt, {});
+    if (m) { g.pos.set(m.x, m.y, m.z); g.yaw = m.yaw; g.pitch = m.pitch; g.tcrouch = m.cr || 0; }
+    if (!k.died && t >= k.at) { k.died = true; g.die(cam.position, k.head, 3); }
+    g.update(dt);
+  }
+  endKillcam() {
+    const k = this.killcam;
+    if (!k) return;
+    this.killcam = null;
+    k.ghost.dispose();
+    for (const r of this.remotes.values()) r.replay = false;
+    removeEventListener('keydown', this.kcSkip);
+    removeEventListener('pointerdown', this.kcSkip);
+    this.hud.killcam(false);
+  }
+
   // ---------- Pings (team modes) ----------
   // Marks the enemy under your crosshair (the mark follows them for a few seconds), or else the
   // spot you're looking at. Teammates see it on screen with the distance. 2.5 s cooldown.
@@ -485,6 +565,8 @@ export class Game {
   }
 
   reset() {
+    this.endKillcam();
+    this.hist = null;
     this.active = false;
     this.myId = null;
     for (const r of this.remotes.values()) r.dispose();
@@ -760,6 +842,7 @@ export class Game {
 
   respawn(m) {
     const me = this.me;
+    this.endKillcam();
     this.endDeathSpectate(); // back to your own view
     me.pos.set(m.p[0], m.p[1], m.p[2]);
     me.vel.set(0, 0, 0);
@@ -872,6 +955,7 @@ export class Game {
       this.headStreak = 0;
       this.lifeKills = 0;
       if (m.k !== this.myId) this.lastKiller = m.k; // for revenge kills
+      if (m.k !== this.myId) this.startKillcam(m.k, !!m.head, performance.now());
       this.deathInfo = {
         killer: m.k !== this.myId ? m.k : null, w: m.w, at: performance.now(), head: !!m.head && m.k !== this.myId,
         pos: this.me.pos.clone(), eye: this.me.eye, roll: Math.random() > 0.5 ? 1 : -1,
@@ -1055,6 +1139,8 @@ export class Game {
         this.roll + Math.sin(this.bobPhase) * 0.004 * bob + this.flinch * 0.02);
     } else if (this.spectating) {
       this.specCam(dt);
+    } else if (this.killcam) {
+      this.runKillcam(dt, now);
     } else if (this.deathInfo) {
       if (!this.deathSpectate(dt, now)) { this.endDeathSpectate(); this.deathCam(dt, now); }
     } else {
@@ -1084,8 +1170,11 @@ export class Game {
       this.net.send({ t: 'st', q: this.stSeq, p: arr(me.pos), y: r2(me.yaw), pi: r2(me.pitch), w: this.curW, c: me.crouch ? 1 : 0, a });
     }
 
+    this.recordHistory(now);
     for (const r of this.remotes.values()) {
+      if (this.killcam) this.replayRemote(r);
       r.update(dt);
+      if (this.killcam && r.id === this.killcam.killer) { r.root.visible = r.limbs.visible = false; r.tag.visible = false; } // we're looking through their eyes
       if (r.stepped && r.crouch < 0.5 && r.pos.distanceTo(cam.position) < 32) this.posSound(this.stepSound(r.pos.x, r.pos.y, r.pos.z), r.pos, r.sprint > 0.5 ? 0.6 : 0.42);
       // Enemies reloading nearby can be heard.
       const rl = !!(r.flags & 1);

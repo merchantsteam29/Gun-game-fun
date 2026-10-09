@@ -49,6 +49,7 @@ const TABS = [
     { special: 'graphics' },
     { key: 'autoRes', label: 'Auto resolution', hint: 'Lowers the resolution a little when the game slows down, so it stays smooth', type: 'check' },
     { key: 'recordClips', label: 'Record highlight clips', hint: 'Off by default. Records the game screen (never your camera) to keep a clip of your best moment each match. Your browser may show a recording icon while it is on. Computers only', type: 'check' },
+    { key: 'killcam', label: 'Kill cam', hint: 'When you die, replay the last few seconds from your killer\'s eyes (any key or tap skips it)', type: 'check' },
     { key: 'blood', label: 'Blood effects', hint: 'Off: hits and kills show grey sparks instead of red blood', type: 'check' },
     { key: 'showFps', label: 'Show FPS counter', type: 'check' },
   ] },
