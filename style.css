@@ -1709,3 +1709,12 @@ body[data-cb="tritan"] .cap.ally { border-left-color: #19c2b4; }
 .set-choice { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .set-choice button { padding: 6px 12px; font-size: 12px; border-radius: 9px; white-space: nowrap; }
 .set-choice button.sel { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+/* Grayscale mode: brightness and patterns instead of color */
+body[data-cb="achroma"] #health-fill { background: #f2f2f2; }
+body[data-cb="achroma"] #health-lag { background: repeating-linear-gradient(45deg, #777 0 4px, #333 4px 8px); }
+body[data-cb="achroma"] #health.low #health-fill { background: repeating-linear-gradient(90deg, #fff 0 6px, #999 6px 10px); }
+body[data-cb="achroma"] .cap.enemy { border-left: 4px solid #fff; }
+body[data-cb="achroma"] .cap.ally { border-left: 4px dashed #777; }
+body[data-cb="achroma"] .ping.enemy i { border-color: #fff; background: #000; border-width: 3px; }
+body[data-cb="achroma"] .ping i { border-style: dashed; }
+body[data-cb="achroma"] .ping.enemy i { border-style: solid; }

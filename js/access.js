@@ -4,17 +4,20 @@ import { TEAM_COLORS } from './host.js';
 // infection zombies) and the health bar, for ones that stay easy to tell apart.
 //  protan / deutan (red-green): orange vs blue, purple zombies, blue health bar
 //  tritan (blue-yellow): red vs teal, pink zombies
+//  achroma (grayscale): bright yellow vs dark navy, near-black zombies; HUD uses light / dark and patterns
 export const CB_MODES = [
   { id: 'off', name: 'Off' },
   { id: 'protan', name: 'Protanopia', hint: 'red-weak' },
   { id: 'deutan', name: 'Deuteranopia', hint: 'green-weak' },
   { id: 'tritan', name: 'Tritanopia', hint: 'blue-weak' },
+  { id: 'achroma', name: 'Grayscale', hint: 'no color (achromatopsia): sides differ by brightness instead' },
 ];
 const PALETTES = {
   off: { 1: '#e5483b', 2: '#3d8fe0', zombie: '#6fbf3a' },
   protan: { 1: '#ff9a1f', 2: '#3d8fe0', zombie: '#b37bff' },
   deutan: { 1: '#ff9a1f', 2: '#3d8fe0', zombie: '#b37bff' },
   tritan: { 1: '#e5483b', 2: '#19c2b4', zombie: '#ff7ab8' },
+  achroma: { 1: '#ffe14a', 2: '#1d2fa8', zombie: '#1a1a1a' }, // very light vs very dark
 };
 export const pal = { zombie: PALETTES.off.zombie };
 

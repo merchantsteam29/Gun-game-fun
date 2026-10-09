@@ -1,7 +1,7 @@
 {
-  "version": "2026.10.09.5",
+  "version": "2026.10.09.6",
   "notes": [
-    "New Accessibility settings: colorblind modes (team, zombie and health bar colors) and sound captions that show footsteps, gunfire and explosions with an arrow to where they came from"
+    "Colorblind mode: new Grayscale option (teams told apart by light vs dark, plus patterns on the HUD)"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",
