@@ -360,7 +360,7 @@ export class SettingsUI {
           <div class="cz-bnr-preview">${bannerHtml(shown.banner, this.getName(), this.getColor(), 'KILLED YOU', '<span class="chip">Assault Rifle</span>')}</div>
           <div class="cz-grid cz-bnr-grid">${COSMETICS.banner.map((c) => {
             const st = state('banner', c), b = bannerOf(c.id);
-            return `<button class="cz-card bnr ${st.on ? 'sel' : ''} ${st.trying ? 'trying' : ''} ${st.have ? '' : 'locked'}" data-id="${c.id}" title="${esc(c.name)}">
+            return `<button class="cz-card cz-bnr-card ${st.on ? 'sel' : ''} ${st.trying ? 'trying' : ''} ${st.have ? '' : 'locked'}" data-id="${c.id}" title="${esc(c.name)}">
               <span class="cz-bnr-swatch" style="--bg:${b.bg}"><em>${b.emblem}</em></span><b>${esc(c.name)}</b>${st.tag}</button>`;
           }).join('')}</div>`;
         panel.querySelectorAll('[data-id]').forEach((b) => { b.onclick = () => pick('banner', b.dataset.id); });
