@@ -1,13 +1,13 @@
 {
-  "version": "2026.10.09.11",
+  "version": "2026.10.09.12",
   "notes": [
-    "Holiday events for many faiths and cultures (Diwali, Hanukkah, Eid, Christmas, Lunar New Year, Vesak and more): bonus XP and a free holiday banner for playing"
+    "Languages: play in Spanish, Portuguese or French (Settings, HUD & Audio, Language). Auto picks your browser's language"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",
     "js/audio.js", "js/banners.js", "js/bot.js", "js/chat.js", "js/cosmetics.js", "js/effects.js", "js/game.js", "js/gamepad.js", "js/guns.js", "js/host.js",
     "js/hostpanel.js", "js/hud.js", "js/main.js", "js/maps.js", "js/missions.js", "js/moderation.js", "js/modpanel.js", "js/radar.js", "js/mods.js", "js/modelkit.js", "js/models.js", "js/nav.js",
     "js/net.js", "js/physics.js", "js/relay.js", "js/remote.js", "js/roles.js", "js/rig.js", "js/servers.js", "js/settings.js", "js/settingsui.js", "js/showroom.js", "js/social.js",
-    "js/touch.js", "js/updater.js", "js/util.js", "js/medals.js", "js/camos.js", "js/binds.js", "js/progress.js", "js/gamenight.js", "js/leaderboard.js", "js/seasons.js", "js/invites.js", "js/profiles.js", "js/clans.js", "js/rulesets.js", "js/ranked.js", "js/tutorial.js", "js/highlights.js", "ui.css", "js/access.js", "js/events.js", "js/holidays.js", "js/version.js", "js/viewmodel.js", "js/voice.js", "js/weapons.js"
+    "js/touch.js", "js/updater.js", "js/util.js", "js/medals.js", "js/camos.js", "js/binds.js", "js/progress.js", "js/gamenight.js", "js/leaderboard.js", "js/seasons.js", "js/invites.js", "js/profiles.js", "js/clans.js", "js/rulesets.js", "js/ranked.js", "js/tutorial.js", "js/highlights.js", "ui.css", "js/access.js", "js/events.js", "js/holidays.js", "js/i18n.js", "js/version.js", "js/viewmodel.js", "js/voice.js", "js/weapons.js"
   ]
 }
