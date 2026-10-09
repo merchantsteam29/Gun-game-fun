@@ -106,13 +106,13 @@ export class Bot {
       const dist = Math.hypot(e.st[0] - b.pos.x, e.st[2] - b.pos.z);
       if (dist >= bestD) continue;
       const ang = Math.abs(angDiff(this.yaw, Math.atan2(-(e.st[0] - b.pos.x), -(e.st[2] - b.pos.z))));
-      if (ang > d.fov && dist > 3 && e !== this.target) continue;
+      if (ang > (L.zw && !p.zombie ? 4 : d.fov) && dist > 3 && e !== this.target) continue; // Zombie Survival: survivors hear them coming
       if (!this.visible(e, eye)) continue;
       best = e; bestD = dist;
     }
     // Bots sometimes lose track of a target they were already fighting.
     if (best && best === this.target && Math.random() < d.forget * dt) best = null;
-    if (best !== this.target) { this.target = best; this.reactT = d.react * (0.7 + Math.random() * 0.8); }
+    if (best !== this.target) { this.target = best; this.reactT = d.react * (0.7 + Math.random() * 0.8) * (L.zw && !p.zombie ? 0.5 : 1); }
     if (best) { this.lastSeen = { x: best.st[0], y: best.st[1], z: best.st[2] }; this.lastSeenT = 5; }
     this.lastSeenT -= dt;
     this.reactT -= dt;
@@ -138,6 +138,14 @@ export class Bot {
     if (flagGoal && (!this.target || L.flags[p.team === 1 ? 2 : 1].carrier === p.id)) goal = flagGoal;
     else if (dz && Math.random() < 0.995) goal = { x: dz.x + (Math.random() - 0.5) * dz.r, y: dz.y, z: dz.z + (Math.random() - 0.5) * dz.r };
     else if (this.target && melee) goal = this.lastSeen;
+    else if (p.zombie && !this.target) { // they can smell you
+      let nd = Infinity;
+      for (const e of L.players.values()) {
+        if (!e.alive || e.zombie) continue;
+        const dd = Math.hypot(e.st[0] - b.pos.x, e.st[2] - b.pos.z);
+        if (dd < nd) { nd = dd; goal = { x: e.st[0], y: e.st[1], z: e.st[2] }; }
+      }
+    }
     else if (tag) goal = { x: tag.x, y: tag.y, z: tag.z };
     else if (!this.target && this.lastSeen && this.lastSeenT > 0) goal = this.lastSeen;
     else if (!this.target && hill && Math.random() < 0.995) goal = { x: hill[0] + (Math.random() - 0.5) * hill[3], y: hill[1], z: hill[2] + (Math.random() - 0.5) * hill[3] };
@@ -181,7 +189,7 @@ export class Bot {
     const ml = Math.hypot(mx, mz);
     if (ml > 0.01) { mx /= ml; mz /= ml; }
 
-    const speed = WALK * (w.speedMul || 1) * L.s.moveSpeed * (this.target && !melee ? 0.85 : 1);
+    const speed = WALK * (w.speedMul || 1) * L.s.moveSpeed * (this.target && !melee ? 0.85 : 1) * (p.speedK || 1);
     const a = b.onGround ? 1 - Math.exp(-dt * 12) : 1 - Math.exp(-dt * 2);
     b.vel.x += (mx * speed - b.vel.x) * a;
     b.vel.z += (mz * speed - b.vel.z) * a;
@@ -263,10 +271,10 @@ export class Bot {
   }
 
   melee(w) {
-    this.fireCd = w.rate;
+    this.fireCd = w.rate * (this.p.zombie ? 2 : 1); // zombies swing slower
     this.logic.broadcast({ t: 'fx', k: 'melee', s: w.style, id: this.p.id });
     const t = this.target;
-    this.logic.hit(this.p, { v: t.id, dmg: w.dmg, w: w.id, head: false });
+    this.logic.hit(this.p, { v: t.id, dmg: Math.max(1, Math.round(w.dmg * (this.p.dmgK || 1))), w: w.id, head: false });
   }
 
   shoot(w, eye) {

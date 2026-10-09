@@ -32,12 +32,13 @@ export const MODES = {
   rotation: { name: 'Weapon Rotation', short: 'ROTATION', teams: false, score: 25, time: 10, desc: 'Everyone gets the same random weapon, and it changes every 40 seconds.' },
   ctf: { name: 'Capture the Flag', short: 'CTF', teams: true, redBlue: true, score: 3, time: 12, desc: 'Red vs Blue. Grab the enemy flag and bring it to your base while your own flag is home. Drop it if you die.' },
   bounty: { name: 'Bounty Hunter', short: 'BOUNTY', teams: false, score: 30, time: 10, desc: 'Free-for-all. Whoever is in the lead has a bounty (shown in gold): killing them is worth 3 points.' },
+  zombies: { name: 'Zombie Survival', short: 'ZOMBIES', teams: true, coop: true, score: 0, time: 0, desc: 'Co-op. Hold out against waves of zombies that get bigger, tougher and faster. Downed players come back when the wave is cleared. Every 5th wave brings a Brute.' },
   dom: { name: 'Domination', short: 'DOMINATION', teams: true, redBlue: true, dom: true, score: 200, time: 10, desc: 'Red vs Blue over three zones (A, B, C). Stand in a zone with only your team to capture it; every zone you own scores a point per second.' },
 };
 // Single-player only (main menu → Practice Range): no timer, no score limit, target dummies.
 MODES.practice = { name: 'Practice Range', short: 'PRACTICE', teams: false, practice: true, score: 0, time: 0, desc: 'Solo target practice with every weapon.' };
 export const MODE_ORDER = ['ffa', 'tdm', 'gungame', 'koth', 'infection', 'ctf', 'dom', 'hardpoint', 'killconfirmed', 'juggernaut', 'bounty', 'lms', 'oitc',
-  'instagib', 'rotation', 'blades', 'boom', 'roulette', 'vampire'];
+  'instagib', 'rotation', 'blades', 'boom', 'roulette', 'vampire', 'zombies'];
 const FLAG_RETURN_MS = 20000;
 
 // Runs fn every ms. Browsers slow main-thread timers to once a second in background tabs, which
@@ -102,6 +103,11 @@ const MVP_MS = 4500, VOTE_MS = 12000, RESULT_MS = 2500;
 const TICK_MS = 50;
 const HILL_SECONDS = 60;
 const INFECT_DELAY_MS = 10000;
+// Zombie Survival
+const Z_FIRST_MS = 10000;   // before wave 1
+const Z_BREAK_MS = 15000;   // between waves
+const Z_POOL = 24;          // zombie records are reused, never more than this
+const Z_NAMES = ['Walker', 'Shambler', 'Biter', 'Lurker', 'Crawler', 'Rotter', 'Ghoul', 'Husk', 'Stray', 'Gnasher'];
 
 export function defaultSettings(mode = 'ffa', map = 'warehouse') {
   return {
@@ -114,7 +120,7 @@ export function defaultSettings(mode = 'ffa', map = 'warehouse') {
 
 // Map pickups (on in the standard modes; the host can turn them off). Placed on the map's hills:
 // the power weapon on the main one, health and ammo on the others.
-const PICKUP_MODES = ['ffa', 'tdm', 'koth', 'ctf', 'dom', 'hardpoint', 'killconfirmed', 'bounty', 'lms'];
+const PICKUP_MODES = ['zombies', 'ffa', 'tdm', 'koth', 'ctf', 'dom', 'hardpoint', 'killconfirmed', 'bounty', 'lms'];
 export const POWER_WEAPONS = ['railgun', 'minigun', 'rocket', 'amr'];
 const PICKUP = {
   hp: { respawn: 20000, first: 0 },
@@ -181,6 +187,8 @@ export class HostLogic {
     this.hillHolder = null;
     this.infectAt = this.s.mode === 'infection' ? Date.now() + INFECT_DELAY_MS : 0;
     this.infected = false;
+    // Zombie Survival: wave number, zombies still to spawn this wave, and the break before the next one.
+    this.zw = this.s.mode === 'zombies' ? { wave: 0, toSpawn: 0, breakUntil: Date.now() + Z_FIRST_MS, spawnT: 0 } : null;
     this.jugg = null;
     this.tags = []; // Kill Confirmed dog tags
     this.tagId = 0;
@@ -283,7 +291,7 @@ export class HostLogic {
   }
 
   info(p) {
-    return { id: p.id, name: p.name, color: p.color, team: p.team, k: p.kills, d: p.deaths, sc: Math.floor(p.score), bot: !!p.bot || !!p.dummy, cos: p.cos, mods: p.mods || {}, role: p.role || null, gt: p.tag || null };
+    return { id: p.id, name: p.name, color: p.color, team: p.team, k: p.kills, d: p.deaths, sc: Math.floor(p.score), bot: !!p.bot || !!p.dummy, z: p.zombie ? 1 : 0, cos: p.cos, mods: p.mods || {}, role: p.role || null, gt: p.tag || null };
   }
 
   addPlayer(id, name, color, cos) {
@@ -316,7 +324,7 @@ export class HostLogic {
     if (!this.botFill) return;
     const all = [...this.players.values()];
     const humans = all.filter((p) => !p.bot).length;
-    const bots = all.filter((p) => p.bot);
+    const bots = all.filter((p) => p.bot && !p.zombie);
     const want = Math.max(0, this.botFill - humans);
     for (let i = bots.length; i < want; i++) this.addBot('normal');
     for (let i = want; i < bots.length; i++) this.removePlayer(bots[bots.length - 1 - (i - want)].id);
@@ -359,6 +367,7 @@ export class HostLogic {
     if (this.bountyId === id) { this.bountyId = null; this.updateBounty(); }
     this.checkInfectionEnd();
     this.checkLmsEnd();
+    this.checkZombiesEnd();
     if (!p.bot) this.balanceBots(); // a real player left: a bot takes the slot
   }
 
@@ -393,6 +402,7 @@ export class HostLogic {
       return red <= blue ? 1 : 2;
     }
     if (this.s.mode === 'infection') return this.infected ? 2 : 1;
+    if (this.s.mode === 'zombies') return 1;
     return 0;
   }
 
@@ -409,6 +419,7 @@ export class HostLogic {
       return w === 'knife' ? ['knife'] : [w, 'knife'];
     }
     if (this.s.mode === 'infection' && p.team === 2) return ['claws'];
+    if (p.zombie) return ['claws'];
     if (this.s.mode === 'juggernaut' && p.id === this.jugg) return JUGG_LOADOUT;
     if (this.s.mode === 'roulette') return SLOTS.map((opts) => opts[(Math.random() * opts.length) | 0]);
     if (this.s.mode === 'rotation') return [this.rotW, 'knife'];
@@ -437,6 +448,7 @@ export class HostLogic {
     let k = 1;
     if (this.s.mode === 'infection' && p.team === 2) k = 1.5;
     if (this.s.mode === 'juggernaut' && p.id === this.jugg) k = 4;
+    if (p.zombie) return Math.round(100 * (0.6 + 0.12 * ((this.zw && this.zw.wave) || 1)) * (p.brute ? 7 : 1)); // tougher every wave
     return Math.round(this.s.health * k);
   }
 
@@ -859,6 +871,14 @@ export class HostLogic {
         }
         this.checkInfectionEnd();
         break;
+      case 'zombies':
+        v.respawnAt = 0; // zombies go back in the pool; survivors wait for the end of the wave
+        if (v.zombie) { if (enemyKill) attacker.score += v.brute ? 10 : 1; }
+        else if (!v.dummy) {
+          this.sendTo(v.id, { t: 'notice', text: 'DOWN · BACK WHEN THE WAVE IS CLEARED' });
+          this.checkZombiesEnd();
+        }
+        break;
       case 'practice':
         break;
       default: // ffa and the kill-count variants
@@ -1057,12 +1077,88 @@ export class HostLogic {
     else this.sendTo(z.id, { t: 'loadout', l: ['claws'], hp: z.hp });
   }
 
+  // ---------- Zombie Survival ----------
+  survivors() { return [...this.players.values()].filter((p) => !p.zombie); }
+  checkZombiesEnd() {
+    if (this.s.mode !== 'zombies' || this.phase !== 'playing' || !this.zw || this.zw.wave === 0) return;
+    const s = this.survivors();
+    if (s.length && !s.some((p) => p.alive)) this.endMatch();
+  }
+  // A zombie record that's free to use (dead, from the pool), or a new one.
+  zombieRecord() {
+    for (const p of this.players.values()) if (p.zombie && !p.alive && !p.zPending) return p;
+    if ([...this.players.values()].filter((p) => p.zombie).length >= Z_POOL) return null;
+    const id = 'z' + ++this.botCount;
+    const p = this.record(id, Z_NAMES[this.botCount % Z_NAMES.length], ZOMBIE_COLOR);
+    p.bot = new Bot(this, p, 'normal');
+    p.zombie = true;
+    p.team = 2;
+    p.cos = randomCos();
+    p.mods = {};
+    this.players.set(id, p);
+    this.ensureNav();
+    this.broadcast({ t: 'pjoin', ...this.info(p) });
+    return p;
+  }
+  spawnZombie(brute) {
+    const p = this.zombieRecord();
+    if (!p) return false;
+    const w = this.zw.wave;
+    p.brute = !!brute;
+    // Faster every wave; from wave 3 some are runners. Brutes are slow and huge.
+    // (claws already move 1.25x, so wave 1 shamble along a bit slower than you walk)
+    p.speedK = brute ? 0.6 : Math.min(0.95, 0.62 + 0.03 * w) * (w >= 3 && Math.random() < 0.2 ? 1.3 : 1);
+    p.dmgK = brute ? 1.4 : Math.min(0.8, 0.3 + 0.04 * w); // claws hit for 50: 15 on wave 1, 40 by wave 13
+    const name = brute ? 'Brute' : Z_NAMES[(Math.random() * Z_NAMES.length) | 0];
+    if (p.name !== name) { p.name = name; this.broadcast({ t: 'pname', id: p.id, name }); }
+    this.spawn(p);
+    p.protectUntil = 0;
+    return true;
+  }
+  tickZombies(now) {
+    const z = this.zw;
+    if (z.breakUntil) {
+      if (now < z.breakUntil) return;
+      z.breakUntil = 0;
+      z.wave++;
+      const n = this.survivors().length;
+      z.toSpawn = Math.round((4 + 3 * z.wave) * (1 + 0.35 * Math.min(4, Math.max(0, n - 1))));
+      z.brutes = z.wave % 5 === 0 ? Math.floor(z.wave / 5) : 0;
+      this.broadcast({ t: 'notice', text: z.brutes ? `WAVE ${z.wave} · BRUTE INCOMING` : `WAVE ${z.wave}` });
+      return;
+    }
+    // A zombie that hasn't got anywhere for 8 s is stuck: it comes back in somewhere else.
+    for (const p of this.players.values()) {
+      if (!p.zombie || !p.alive) continue;
+      if (!p.zLast || Math.hypot(p.st[0] - p.zLast[0], p.st[2] - p.zLast[2]) > 2) { p.zLast = [p.st[0], p.st[2]]; p.zMovedAt = now; }
+      else if (now - p.zMovedAt > 8000) { p.zLast = null; this.spawn(p); p.protectUntil = 0; }
+    }
+    const alive = [...this.players.values()].filter((p) => p.zombie && p.alive).length;
+    const cap = Math.min(16, 4 + 2 * this.survivors().length + Math.floor(z.wave / 3));
+    if (z.toSpawn > 0 && alive < cap && now >= z.spawnT) {
+      const brute = z.brutes > 0 && z.toSpawn <= z.brutes * 4; // brutes come near the end of the wave
+      if (this.spawnZombie(brute)) { z.toSpawn--; if (brute) z.brutes--; }
+      z.spawnT = now + Math.max(400, 1400 - z.wave * 60);
+    }
+    if (z.toSpawn <= 0 && alive === 0) {
+      // Wave cleared: everyone downed comes back, everyone is healed.
+      this.broadcast({ t: 'notice', text: `WAVE ${z.wave} CLEARED · NEXT IN ${Z_BREAK_MS / 1000}s` });
+      for (const p of this.survivors()) {
+        if (!p.alive) this.spawn(p);
+        else p.hp = this.maxHp(p); // the snapshot carries it to the player
+      }
+      z.breakUntil = now + Z_BREAK_MS;
+    }
+  }
+  zombiesLeft() { return this.zw.toSpawn + [...this.players.values()].filter((p) => p.zombie && p.alive).length; }
+
   endMsg() {
     const scores = [...this.players.values()]
+      .filter((p) => !p.zombie)
       .map((p) => this.info(p))
       .sort((a, b) => b.sc - a.sc || b.k - a.k || a.d - b.d);
     return {
-      t: 'end', scores, title: this.endTitle, mode: this.s.mode,
+      t: 'end', scores, title: this.endTitle, mode: this.s.mode, wave: this.zw ? this.zw.wave : undefined,
       next: Math.max(0, Math.ceil((this.restartAt - Date.now()) / 1000)),
       nextMap: this.vote ? this.vote.winner : this.nextMap(),
       mvp: this.mvp || null,
@@ -1080,6 +1176,9 @@ export class HostLogic {
       this.endTitle = r === b ? 'DRAW' : r > b ? 'RED TEAM WINS' : 'BLUE TEAM WINS';
     } else if (this.s.mode === 'infection') {
       this.endTitle = winnerTeam === 2 ? 'ZOMBIES WIN' : 'SURVIVORS WIN';
+    } else if (this.s.mode === 'zombies') {
+      const w = Math.max(0, this.zw.wave - 1);
+      this.endTitle = `SURVIVED ${w} WAVE${w === 1 ? '' : 'S'}`;
     } else {
       this.endTitle = sorted[0] ? `${sorted[0].name} WINS` : 'MATCH OVER';
     }
@@ -1094,7 +1193,7 @@ export class HostLogic {
 
   // Best player of the match: highest score, then kills, then fewest deaths.
   pickMvp() {
-    const p = [...this.players.values()].sort((a, b) => b.score - a.score || b.kills - a.kills || a.deaths - b.deaths)[0];
+    const p = [...this.players.values()].filter((q) => !q.zombie).sort((a, b) => b.score - a.score || b.kills - a.kills || a.deaths - b.deaths)[0];
     return p ? { id: p.id, name: p.name, color: p.color, team: p.team, k: p.kills, d: p.deaths, sc: Math.floor(p.score), hs: p.heads || 0, streak: p.bestStreak || 0, role: p.role || null } : null;
   }
 
@@ -1140,13 +1239,14 @@ export class HostLogic {
     this.s.map = map && MAPS[map] ? map : manual ? this.s.map : this.nextMap();
     this.loadMap(this.s.map);
     this.ensureNav();
+    for (const p of [...this.players.values()]) if (p.zombie) { this.players.delete(p.id); this.broadcast({ t: 'pleave', id: p.id, name: p.name, quiet: 1 }); }
     this.beginMatchState();
     const list = [...this.players.values()].sort(() => Math.random() - 0.5);
     list.forEach((p, i) => {
       p.kills = 0; p.deaths = 0; p.level = 0;
       p.heads = 0; p.streak = 0; p.bestStreak = 0;
       p.score = this.s.mode === 'lms' ? Math.max(1, this.s.scoreLimit) : 0;
-      p.team = this.mode.redBlue ? (i % 2) + 1 : this.s.mode === 'infection' ? 1 : 0;
+      p.team = this.mode.redBlue ? (i % 2) + 1 : this.s.mode === 'infection' || this.s.mode === 'zombies' ? 1 : 0;
       p.alive = false;
       p.respawnAt = 0;
     });
@@ -1184,6 +1284,7 @@ export class HostLogic {
         if (p.alive && p.hp < max && now - p.lastDmg > 5000 && this.s.mode !== 'vampire' && !this.mode.noRegen) p.hp = Math.min(max, p.hp + max * 0.25 * rdt);
       }
       if (this.s.mode === 'infection' && !this.infected && this.infectAt && now >= this.infectAt) this.startInfection();
+      if (this.zw) this.tickZombies(now);
       if (this.mode.hill) this.tickHill(rdt, now);
       if (this.s.mode === 'killconfirmed') this.tickTags(now);
       this.tickPickups(now);
@@ -1208,6 +1309,8 @@ export class HostLogic {
     }
     const msg = { t: 'snap', tm: now, s, tl: this.endsAt === Infinity ? -1 : this.phase === 'playing' ? Math.max(0, Math.ceil((this.endsAt - now) / 1000)) : 0 };
     if (this.mode.redBlue) msg.ts = [Math.floor(this.teamScore[1]), Math.floor(this.teamScore[2])];
+    // Zombie Survival: [wave, zombies left, seconds until the next wave (0 = wave on)]
+    if (this.zw) msg.zw = [this.zw.wave, this.zombiesLeft(), this.zw.breakUntil ? Math.max(0, Math.ceil((this.zw.breakUntil - now) / 1000)) : 0];
     if (this.s.mode === 'infection') msg.inf = this.infected ? 0 : Math.max(0, Math.ceil((this.infectAt - now) / 1000));
     if (this.s.mode === 'killconfirmed') msg.tg = this.tags.map((t) => [t.id, r2(t.x), r2(t.y), r2(t.z), t.team]);
     // Pickups that are ready: [id, kind, x, y, z, power weapon]

@@ -379,7 +379,7 @@ export class Hud {
   scoreboard(show, players, myId, mode, colorFor) {
     $('scoreboard').classList.toggle('hidden', !show);
     if (!show) return;
-    const scoreLabel = { gungame: 'Lvl', koth: 'Pts', infection: 'Inf', lms: 'Lives', juggernaut: 'Pts' }[mode] || 'Score';
+    const scoreLabel = { gungame: 'Lvl', koth: 'Pts', infection: 'Inf', lms: 'Lives', juggernaut: 'Pts', zombies: 'Pts' }[mode] || 'Score';
     $('sb-head').innerHTML = `<th>#</th><th>Player</th><th>${scoreLabel}</th><th>K</th><th>D</th><th>K/D</th>`;
     const rows = [...players.values()].sort((a, b) => (a.team || 0) - (b.team || 0) || b.sc - a.sc || b.k - a.k || a.d - b.d);
     $('sb-sub').textContent = `${rows.length} player${rows.length === 1 ? '' : 's'}`;

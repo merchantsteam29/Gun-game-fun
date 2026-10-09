@@ -244,6 +244,7 @@ export class Game {
 
   colorFor(p) {
     if (this.rules.mode === 'infection') return p.team === 2 ? pal.zombie || ZOMBIE_COLOR : p.color;
+    if (this.rules.mode === 'zombies') return p.team === 2 ? (p.name === 'Brute' ? '#8b1e1e' : pal.zombie || ZOMBIE_COLOR) : p.color;
     if (this.rules.mode === 'juggernaut' || this.rules.mode === 'bounty') return p.team === JUGG_TEAM ? JUGG_COLOR : p.color;
     if (this.teams && TEAM_COLORS[p.team]) return TEAM_COLORS[p.team];
     return p.color;
@@ -640,10 +641,10 @@ export class Game {
         if (this.onWelcome) this.onWelcome(); // staff send their proof (main.js)
         break;
       case 'pjoin':
-        this.players.set(m.id, { id: m.id, name: m.name, color: m.color, k: 0, d: 0, team: m.team, sc: 0, bot: m.bot, role: m.role || null, gt: m.gt || null, lvl: (m.cos && m.cos.lvl) || 0 });
+        this.players.set(m.id, { id: m.id, name: m.name, color: m.color, k: 0, d: 0, team: m.team, sc: 0, bot: m.bot, z: !!m.z, role: m.role || null, gt: m.gt || null, lvl: (m.cos && m.cos.lvl) || 0 });
         this.addRemote(m);
         this.refreshColors();
-        this.hud.say(`${m.name} joined`);
+        if (!m.z) this.hud.say(`${m.name} joined`);
         break;
       case 'settings':
         this.applySettings(m.s);
@@ -702,6 +703,7 @@ export class Game {
         if (p) { p.name = m.name; if (m.t === 'prole') p.role = m.role; }
         const r = this.remotes.get(m.id);
         if (r) r.setIdentity(m.name, p ? p.role : null);
+        if (p && p.z) this.refreshColors(); // a Brute looks different
         if (m.t === 'prole' && m.id !== this.myId) this.hud.say(`${m.role === 'owner' ? '♛ THE OWNER' : '🛡 A MODERATOR'} IS HERE: ${m.name}`);
         break;
       }
@@ -743,10 +745,11 @@ export class Game {
         }
         break;
       case 'pleave': {
+        const was = this.players.get(m.id);
         this.players.delete(m.id);
         const r = this.remotes.get(m.id);
         if (r) { r.dispose(); this.remotes.delete(m.id); }
-        this.hud.say(`${m.name} left`);
+        if (!m.quiet && !(was && was.z)) this.hud.say(`${m.name} left`);
         break;
       }
       case 'snap':
@@ -763,6 +766,7 @@ export class Game {
         this.teamScore = m.ts || null;
         this.zone = m.z || null;
         this.infection = m.inf ?? 0;
+        this.zw = m.zw || null;
         this.tagData = m.tg || null;
         this.pickupData = m.pk || null;
         this.rot = m.rot || null;
@@ -2261,6 +2265,14 @@ export class Game {
       const st = state === 2 ? 'CONTESTED' : state === 1 ? `HELD BY ${h ? h.name : '?'}` : 'NEUTRAL';
       return `HILL: ${st} · MOVES IN ${secs}s · YOU ${me ? me.sc : 0}/${this.rules.scoreLimit}`;
     }
+    if (mode === 'zombies') {
+      if (!this.zw) return 'ZOMBIE SURVIVAL';
+      const [wave, left, brk] = this.zw;
+      let up = 0, all = 0;
+      for (const p of this.players.values()) if (!p.z) { all++; if (this.remotes.get(p.id) ? this.remotes.get(p.id).alive : p.id === this.myId && this.me.alive) up++; }
+      if (brk > 0) return wave ? `WAVE ${wave} CLEARED · NEXT WAVE IN ${brk}s` : `FIRST WAVE IN ${brk}s · GET READY`;
+      return `<span class="team zombie">WAVE ${wave}</span> · ${left} ZOMBIE${left === 1 ? '' : 'S'} LEFT · ${up}/${all} STANDING`;
+    }
     if (mode === 'infection') {
       let s = 0, z = 0;
       for (const p of this.players.values()) if (p.team === 2) z++; else s++;
@@ -2301,6 +2313,8 @@ export class Game {
       if (!p) continue;
       const ally = !!p.team && p.team === this.myTeam && (this.teams || this.rules.mode === 'infection');
       if (ally) { blips.push({ x: r.pos.x, z: r.pos.z, color: '#4fc3ff', kind: 'ally' }); continue; }
+      // Zombie Survival: the last few zombies of a wave always show, so nobody has to hunt for them.
+      if (p.z && this.zw && this.zw[1] <= 3 && !this.zw[2]) { blips.push({ x: r.pos.x, z: r.pos.z, color: '#ff4a3a', kind: 'enemy', a: 1 }); continue; }
       const age = now - (r.pingAt || -1e9);
       if (age < 2500) blips.push({ x: r.pos.x, z: r.pos.z, color: '#ff4a3a', kind: 'enemy', a: age < 1500 ? 1 : 1 - (age - 1500) / 1000 });
     }
@@ -2358,14 +2372,15 @@ export class Game {
     hud.modeBar(this.modeBar());
     if (this.rules.mode === 'practice') hud.lobby(null, 0, 'Solo · offline');
     else hud.lobby(this.net.code, this.players.size, `${MODES[this.rules.mode].short} · ${MAPS[this.mapId].name}`);
-    hud.scoreboard(this.showScores && !this.matchOver, this.players, this.myId, this.rules.mode, (p) => this.colorFor(p));
+    hud.scoreboard(this.showScores && !this.matchOver, this.rules.mode === 'zombies' ? new Map([...this.players].filter(([, p]) => !p.z)) : this.players, this.myId, this.rules.mode, (p) => this.colorFor(p));
     if (!me.alive && this.deathInfo && !this.matchOver) {
       const secs = Math.ceil(this.rules.respawn - (now - this.deathInfo.at) / 1000);
       const killer = this.deathInfo.killer && this.players.get(this.deathInfo.killer);
       const mine = this.players.get(this.myId);
       const out = this.rules.mode === 'lms' && mine && mine.sc <= 0;
+      const downed = this.rules.mode === 'zombies';
       const kr = killer && this.remotes.get(killer.id);
-      hud.death(true, killer ? killer.name : null, this.deathInfo.w, secs, out ? 'Out of lives · spectating until the next round' : null, this.deathInfo.head,
+      hud.death(true, killer ? killer.name : null, this.deathInfo.w, secs, out ? 'Out of lives · spectating until the next round' : downed ? 'Downed · back when your team clears the wave' : null, this.deathInfo.head,
         killer ? this.colorFor(killer) : '#fff', (kr && kr.cos && kr.cos.banner) || 'standard', killer ? killer.role : null);
     }
     if (this.matchOver && this.endInfo) {

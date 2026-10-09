@@ -1122,7 +1122,7 @@ function chatOnNet(m) {
   }
   if (m.t === 'pjoin' && !m.bot && net && net.isHost && (!m.cos || !m.cos.v || cmpVersion(m.cos.v, APP_VERSION) < 0)) chat.system(`⚠ ${m.name}'s game is out of date. Tell them to refresh the page.`);
   if (m.t === 'pjoin' && !m.bot) chat.system(`${m.name} joined`);
-  else if (m.t === 'pleave' && !String(m.name).startsWith('[BOT]')) chat.system(`${m.name} left`);
+  else if (m.t === 'pleave' && !m.quiet && !String(m.name).startsWith('[BOT]') && !/^zd+$/.test(m.id)) chat.system(`${m.name} left`);
   // Pause-menu player lists follow joins, leaves and staff actions.
   if (['chatmode', 'pident', 'prole', 'pmute', 'pfrozen', 'pname', 'pjoin', 'pleave'].includes(m.t)) { renderModList(); renderReportList(); }
   // Keep a public listing's player count / mode / map current.

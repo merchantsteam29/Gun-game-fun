@@ -1,7 +1,7 @@
 {
-  "version": "2026.10.09.6",
+  "version": "2026.10.09.7",
   "notes": [
-    "Colorblind mode: new Grayscale option (teams told apart by light vs dark, plus patterns on the HUD)"
+    "New mode: Zombie Survival. Co-op waves of zombies that get bigger, tougher and faster; downed players come back when the wave is cleared, and every 5th wave brings a Brute"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",
