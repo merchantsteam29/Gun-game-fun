@@ -436,7 +436,7 @@ export class Game {
   runKillcam(dt, now) {
     const k = this.killcam, cam = this.camera;
     const t = k.t0 + (now - k.at);
-    if (t > k.at + 700 || !this.deathInfo || this.me.alive) { this.endKillcam(); this.deathCam(dt, now); return; }
+    if (t > k.at + 700 || !this.deathInfo || this.me.alive) { this.endKillcam(); if (this.deathInfo && !this.me.alive) this.deathCam(dt, now); return; }
     const tt = Math.min(t, k.at);
     const s = this.sampleHist(k.killer, tt, k.s);
     if (!s) { this.endKillcam(); return; }

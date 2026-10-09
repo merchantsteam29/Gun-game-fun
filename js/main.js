@@ -42,7 +42,6 @@ import { highlights } from './highlights.js';
 import { addTokens, grantItem } from './missions.js';
 import { addXp } from './progress.js';
 import { leaderboard, BOARDS, MODE_BOARDS, weekEnds, CHAMP_TOKENS } from './leaderboard.js';
-import { initI18n } from './i18n.js';
 import { MODS, MOD_SLOTS, MOD_SLOT_NAMES, modOptions, hasMods, cleanMods, cleanModMap, statsFor } from './mods.js';
 
 const $ = (id) => document.getElementById(id);
@@ -1376,7 +1375,6 @@ leaderboard.onChampion = (boards) => {
 };
 // Double XP in Game Night servers while it's live.
 setXpBoost(() => !game.active ? 1 : (game.rules.gn && gameNight.isLive() ? GN_XP : 1) * (game.rules.mode === featuredMode() ? FEATURED_XP : 1) * (activeHolidays().length ? HOLIDAY_XP : 1));
-initI18n(); // interface language (Settings → HUD & Audio)
 // Finishing a match in a Game Night server earns the Midnight wrap (once).
 game.onMatchTracked = () => {
   invites.matchDone(settings.name);

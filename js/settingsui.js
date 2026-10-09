@@ -8,7 +8,6 @@ import { CAMOS, camoOf, camoSwatch } from './camos.js';
 import { buildGun } from './models.js';
 import { WEAPONS } from './weapons.js';
 import { CB_MODES } from './access.js';
-import { LANGS } from './i18n.js';
 import { hasMods, cleanMods } from './mods.js';
 import { COSMETICS, SLOT_LABELS, HAIR_COLORS, MISSIONS, getStat, missionDone, isOwned, priceOf, buy, getTokens, getCos, setCos, ownsWrap, buyWrap } from './missions.js';
 
@@ -56,7 +55,6 @@ const TABS = [
     { key: 'showFps', label: 'Show FPS counter', type: 'check' },
   ] },
   { name: 'HUD & Audio', rows: [
-    { key: 'lang', label: 'Language', hint: 'Menus, settings and the HUD. Auto uses the language your browser is set to', type: 'choice', options: LANGS },
     { key: 'volume', label: 'Volume', type: 'range', min: 0, max: 1, step: 0.05, fmt: pct },
     { key: 'showChat', label: 'Show party chat', hint: 'Turn off to hide all chat messages', type: 'check' },
     { key: 'voiceVolume', label: 'Voice chat volume', type: 'range', min: 0, max: 1, step: 0.05, fmt: pct },
@@ -68,7 +66,6 @@ const TABS = [
     { key: 'crossDot', label: 'Crosshair center dot', type: 'check' },
   ] },
   { name: 'Accessibility', rows: [
-    { key: 'lang', label: 'Language', type: 'choice', options: LANGS },
     { key: 'colorblind', label: 'Colorblind mode', hint: 'Changes team, zombie and health bar colors so they are easier to tell apart', type: 'choice', options: CB_MODES },
     { key: 'captions', label: 'Sound captions', hint: 'Shows footsteps, gunfire, reloads and explosions on screen, with an arrow pointing where they came from', type: 'check' },
     { key: 'captionSize', label: 'Caption size', type: 'range', min: 0.8, max: 1.6, step: 0.05, fmt: mul },

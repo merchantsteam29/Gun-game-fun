@@ -19,7 +19,6 @@ const DEFAULTS = {
   showFps: false,
   blood: true,
   killcam: true,
-  lang: 'auto',       // interface language (i18n.js); auto = the browser's
   colorblind: 'off',  // off | protan | deutan | tritan (see access.js)
   captions: false,    // on-screen captions for footsteps, gunfire and explosions
   captionSize: 1,      // replay from your killer's view when you die        // off: hits and kills show grey sparks instead of blood

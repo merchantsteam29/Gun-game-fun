@@ -1,2 +1,2 @@
 // Bump this together with version.json whenever a new build is released.
-export const APP_VERSION = '2026.10.09.12';
+export const APP_VERSION = '2026.10.09.13';
