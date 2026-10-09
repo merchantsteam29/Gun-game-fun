@@ -13,6 +13,7 @@ import { getCos, ownsWrap, MISSIONS, missionDone, getTokens } from './missions.j
 import { opts, onOpts } from './settings.js';
 import { ServerBrowser, ServerAnnouncer, REGIONS, guessRegion } from './servers.js';
 import { Updater } from './updater.js';
+import { APP_VERSION } from './version.js';
 import { esc } from './util.js';
 import { Chat } from './chat.js';
 import { GamepadInput } from './gamepad.js';
@@ -163,7 +164,9 @@ function updateMissionCount() {
 }
 
 // Your cosmetics plus the level shown next to your name (sent to the host).
-const myCos = () => { const c = clans.myClan(), r = myRanked(); return { ...getCos(), lvl: myLevel().level, sr: r.sr, ...(r.placing ? { srp: 1 } : {}), ...(c ? { clan: c.tag } : {}) }; };
+const myCos = () => { const c = clans.myClan(), r = myRanked(); return { ...getCos(), lvl: myLevel().level, sr: r.sr, v: APP_VERSION, ...(r.placing ? { srp: 1 } : {}), ...(c ? { clan: c.tag } : {}) }; };
+// Versions look like 2026.10.08.42: compare them number by number.
+const cmpVersion = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 4; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); return 0; };
 
 // ---------- Home strip (top of Servers) and Daily (Missions) ----------
 // Level, the daily login reward and today's challenges at a glance.
@@ -1103,6 +1106,12 @@ function chatOnNet(m) {
   if (m.t === 'pjoin' && m.cos && m.cos.clan) clans.lookup(m.cos.clan);
   if (m.t === 'pcos' && m.c && m.c.clan) clans.lookup(m.c.clan);
   if (m.t === 'welcome') for (const p of m.players) if (p.cos && p.cos.clan) clans.lookup(p.cos.clan);
+  // Different game versions in one match cause lag, missed shots and odd bugs: say so right away.
+  if (m.t === 'welcome' && !game.spectating && net && !net.practice && !net.isHost) {
+    if (!m.v || cmpVersion(m.v, APP_VERSION) < 0) chat.system(`⚠ The host's game is out of date${m.v ? ` (${m.v})` : ''}. Things may act up until they refresh.`);
+    else if (cmpVersion(m.v, APP_VERSION) > 0) { chat.system(`⚠ Your game is out of date (host has ${m.v}). Update to avoid lag and missed shots.`); updater.check(); }
+  }
+  if (m.t === 'pjoin' && !m.bot && net && net.isHost && (!m.cos || !m.cos.v || cmpVersion(m.cos.v, APP_VERSION) < 0)) chat.system(`⚠ ${m.name}'s game is out of date. Tell them to refresh the page.`);
   if (m.t === 'pjoin' && !m.bot) chat.system(`${m.name} joined`);
   else if (m.t === 'pleave' && !String(m.name).startsWith('[BOT]')) chat.system(`${m.name} left`);
   // Pause-menu player lists follow joins, leaves and staff actions.

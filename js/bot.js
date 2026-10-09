@@ -308,7 +308,21 @@ export class Bot {
     }
     const o = [eye.x + fx * 0.6, eye.y - 0.25, eye.z + fz * 0.6].map((v) => Math.round(v * 100) / 100);
     L.broadcast({ t: 'shot', id: this.p.id, w: this.weapon, o, e: ends });
-    for (const [vid, h] of hits) L.hit(this.p, { v: vid, dmg: Math.round(h.dmg), w: this.weapon, head: h.head });
+    // Players' positions reach the host a moment late, so a player who just ducked behind cover
+    // could still be hit where the host last saw them (it looks like a shot through the wall).
+    // The hit lands 0.1 s later, and only if the target is still in sight from this bot then.
+    const wid = this.weapon, self = this.p;
+    setTimeout(() => {
+      if (!self.alive) return;
+      const e0 = { x: this.body.pos.x, y: this.body.pos.y + EYE, z: this.body.pos.z };
+      for (const [vid, h] of hits) {
+        const e = L.players.get(vid);
+        if (!e || !e.alive) continue;
+        const clear = (y) => { const dx = e.st[0] - e0.x, dy = e.st[1] + y - e0.y, dz = e.st[2] - e0.z, d = Math.hypot(dx, dy, dz); return d < 0.5 || !raycast(e0.x, e0.y, e0.z, dx / d, dy / d, dz / d, d - 0.25); };
+        if (!clear(h.head ? 1.7 : 1.1) && !clear(1.45) && !clear(0.6)) continue; // fully behind cover now
+        L.hit(self, { v: vid, dmg: Math.round(h.dmg), w: wid, head: h.head });
+      }
+    }, 100);
   }
 }
 

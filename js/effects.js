@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { opts } from './settings.js';
 
 const unitBox = new THREE.BoxGeometry(1, 1, 1);
 const sphereGeo = new THREE.SphereGeometry(1, 16, 12);
@@ -81,7 +82,10 @@ export class Effects {
   }
 
   impact(pos, normal) { this.burst(pos, normal, '#d8d0c0', 5, 2.5, 0.04, 0.35); }
-  blood(pos) { this.burst(pos, null, '#b3121b', 8, 3, 0.06, 0.45); }
+  blood(pos) {
+    if (opts.blood === false) { this.burst(pos, null, '#b9c0c8', 5, 2.6, 0.035, 0.3); return; } // Settings: blood off
+    this.burst(pos, null, '#b3121b', 8, 3, 0.06, 0.45);
+  }
 
   explosion(pos, radius) {
     const fire = new THREE.Mesh(sphereGeo, new THREE.MeshBasicMaterial({ color: '#ffb347', transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));

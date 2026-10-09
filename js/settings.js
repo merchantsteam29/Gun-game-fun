@@ -17,6 +17,7 @@ const DEFAULTS = {
   crossSize: 1,
   crossDot: true,
   showFps: false,
+  blood: true,        // off: hits and kills show grey sparks instead of blood
   autoRes: true,      // lower the resolution a little when frames drop (game.js)
   recordClips: false, // opt-in highlight clips (highlights.js); off by default since browsers show a recording icon
   minimap: true,

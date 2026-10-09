@@ -8,6 +8,7 @@ import { COLORS } from './util.js';
 import { sanitizeCos, randomCos } from './missions.js';
 import { cleanModMap, randomMods } from './mods.js';
 import { roles } from './roles.js';
+import { APP_VERSION } from './version.js';
 import { moderation } from './moderation.js';
 
 // redBlue: two balanced teams. hill: uses the moving zone. loadout: forced for everyone.
@@ -300,7 +301,7 @@ export class HostLogic {
       }, 6000);
     }
     this.sendTo(id, {
-      t: 'welcome', id, settings: this.s,
+      t: 'welcome', id, settings: this.s, v: APP_VERSION,
       players: [...this.players.values()].map((q) => this.info(q)),
     });
     this.broadcast({ t: 'pjoin', ...this.info(p) }, id);

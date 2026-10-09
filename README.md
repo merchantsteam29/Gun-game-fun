@@ -317,7 +317,7 @@ Open **Settings** from the main menu or the pause menu. Everything is saved in y
 |---|---|
 | Controls | Mouse sensitivity (desktop) / look sensitivity (touch), aiming sensitivity, invert look, toggle aim with right mouse |
 | Controller | Look sensitivity, aiming sensitivity, invert, stick dead zone, aim assist + strength, crouch toggle, auto-sprint, vibration, button layout |
-| Video | Field of view, weapon field of view, view bobbing, graphics (**Low-end** for school laptops and old phones: low resolution, no shadows or decorations, shorter view; Low; Normal; High), **auto resolution** (drops the resolution a little when frames dip, on by default), FPS counter. If a match runs very slowly the game suggests Low-end once |
+| Video | Field of view, weapon field of view, view bobbing, graphics (**Low-end** for school laptops and old phones: low resolution, no shadows or decorations, shorter view; Low; Normal; High), **auto resolution** (drops the resolution a little when frames dip, on by default), **blood effects** (off shows grey sparks instead), FPS counter. If a match runs very slowly the game suggests Low-end once |
 | HUD & Audio | Volume, party chat, voice chat, minimap on/off, HUD size, crosshair color, size and center dot |
 | Mobile | Edit button layout (drag any touch button anywhere, resize each one), button size, button opacity |
 | Missions | 50 missions (kills, headshots, sniper / shotgun / melee / secondary / explosive kills, streaks, multi-kills, long shots, revenge, airborne, suppressed and low-health kills, matches, wins, team wins, maps and modes played, mode-specific goals, collecting cosmetics). Each one pays tokens 🪙 |
