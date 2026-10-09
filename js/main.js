@@ -27,7 +27,7 @@ import { isBound, keysLabel } from './binds.js';
 import { CAMOS, camoSwatch, camoOf } from './camos.js';
 import { myLevel, levelBadge, RANKS, loginState, claimLogin, LOGIN_REWARDS, STREAK_WRAP, dailyChallenges, ALL_DAILY_BONUS, fmtDuration, onProgress, setXpBoost, rankOf as rankOfLevel, featuredMode, featuredEnds, FEATURED_XP, FEATURED_TOKENS, claimFeatured, featuredClaimed } from './progress.js';
 import { gameNight, GN_NAME, GN_XP, describe as describeGn } from './gamenight.js';
-import { watchEvents, nextEvent, EVENT_NAMES } from './events.js';
+import { watchEvents, nextEvent, EVENT_NAMES, TOURNEY_TOKENS } from './events.js';
 import { grantWrap, COSMETICS, allStats } from './missions.js';
 import { profiles } from './profiles.js';
 import { clans, CLAN_COLORS, MAX_MEMBERS } from './clans.js';
@@ -1124,6 +1124,16 @@ function chatOnNet(m) {
   if (m.t === 'pjoin' && !m.bot && net && net.isHost && (!m.cos || !m.cos.v || cmpVersion(m.cos.v, APP_VERSION) < 0)) chat.system(`⚠ ${m.name}'s game is out of date. Tell them to refresh the page.`);
   // Game Night voice room: who's in it comes through the match.
   if (m.t === 'vc' && m.gt) voice.onAnnounce(m.gt, m.in, 'gn');
+  if (m.t === 'tourney') {
+    chat.system(m.champ ? `🏆 ${m.name} is the Game Night tournament champion!` : '🏆 The tournament is over.');
+    const place = m.champ === game.myId ? 0 : m.second === game.myId ? 1 : -1;
+    if (place >= 0 && !game.spectating) {
+      addTokens(TOURNEY_TOKENS[place]);
+      game.hud.mission(place ? 'Tournament runner-up' : 'Tournament champion', `+${TOURNEY_TOKENS[place]} tokens`, 'GAME NIGHT');
+      if (!place) grantWrap('champion');
+      renderChip();
+    }
+  }
   if (m.t === 'pleave' && voice.inRoom) { const gt = gnvcTags.get(m.id); if (gt) voice.onAnnounce(gt, false, 'gn'); }
   if (m.t === 'pident' && m.gt) gnvcTags.set(m.id, m.gt);
   if (m.t === 'welcome') { gnvcTags.clear(); for (const p of m.players || []) if (p.gt) gnvcTags.set(p.id, p.gt); }
@@ -1362,14 +1372,25 @@ gameNight.on((e) => {
     const mins = Math.max(1, Math.round((e.w.start - Date.now()) / 60000));
     if (!net) toast(`🌙 Game Night starts in ${mins} min`);
     gameNight.notify(`Game Night starts in ${mins} minutes.`);
-  } else if (e.type === 'end' && net && game.rules.gn) chat.system('🌙 Game Night is over. Thanks for playing! Same time next time.');
+  } else if (e.type === 'end' && net && game.rules.gn) {
+    chat.system('🌙 Game Night is over. Thanks for playing! Same time next time.');
+    if (net.isHost && net.logic) net.logic.endTourney();
+  }
   if (!game.active && menuPane === 'play') renderHome();
 });
 // Game Night events (events.js): everyone gets the warnings; the Game Night server's host starts them.
 watchEvents(() => gameNight.window(), (e) => {
   const name = EVENT_NAMES[e.kind] || e.kind;
   const inGn = !!(net && !net.practice && game.active && game.rules.gn);
-  if (e.step === 'warn' || e.step === 'soon') {
+  if (e.kind === 'tourney' && e.step === 'warn') { // the owner's wording
+    const text = '🏆 10 MINS UNTIL TOURNAMENT. LEAVE SOON IF YOU DON\'T WANT TO PARTICIPATE';
+    if (inGn) { chat.system(text); game.hud.say('10 MINS UNTIL TOURNAMENT · LEAVE SOON IF YOU DON\'T WANT TO PARTICIPATE'); }
+    else if (net && !net.practice) chat.system('🏆 The Game Night tournament starts in 10 minutes. Join the Game Night server to take part.');
+    else toast('🏆 Game Night tournament in 10 minutes');
+    gameNight.notify('Game Night tournament in 10 minutes.');
+  } else if (e.kind === 'tourney' && e.step === 'soon') {
+    if (inGn) { chat.system('🏆 Tournament in 1 minute. Everyone still here is in!'); game.hud.say('TOURNAMENT IN 1 MINUTE'); }
+  } else if (e.step === 'warn' || e.step === 'soon') {
     const mins = e.step === 'warn' ? e.warn : 1;
     const text = `${name} starts in ${mins} minute${mins === 1 ? '' : 's'} in the Game Night server!`;
     if (inGn) { chat.system(text); game.hud.say(`${name.toUpperCase()} IN ${mins} MIN`); }
@@ -1378,6 +1399,7 @@ watchEvents(() => gameNight.window(), (e) => {
     if (e.step === 'warn') gameNight.notify(text);
   } else if (e.step === 'go' && inGn && net.isHost && net.logic) {
     if (e.kind === 'br') net.logic.startEvent('br', BR_MAPS[(Math.random() * BR_MAPS.length) | 0]);
+    if (e.kind === 'tourney') net.logic.startEvent('tourney');
   }
 });
 

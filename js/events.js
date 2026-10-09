@@ -3,6 +3,7 @@
 // gets the same warnings and the Game Night server's host starts the round on time.
 //  - Battle Royale: every 30 minutes into Game Night (warned 15 minutes before). None in the
 //    last 30 minutes, which are kept for the tournament.
+//  - Tournament: the last 30 minutes (warned 10 minutes before). Game Nights of an hour or more.
 
 const MIN = 60000;
 export const BR_EVERY = 30; // minutes
@@ -16,10 +17,12 @@ export function gnEvents(w) {
   const out = [];
   const tourney = w.end - TOURNEY_LENGTH * MIN;
   for (let t = w.start + BR_EVERY * MIN; t + BR_LENGTH * MIN <= tourney; t += BR_EVERY * MIN) out.push({ kind: 'br', at: t, warn: BR_WARN });
+  if (w.end - w.start >= 60 * MIN) out.push({ kind: 'tourney', at: tourney, warn: 10 });
   return out;
 }
 
-export const EVENT_NAMES = { br: '⚔ Battle Royale' };
+export const EVENT_NAMES = { br: '⚔ Battle Royale', tourney: '🏆 Tournament' };
+export const TOURNEY_TOKENS = [750, 250]; // champion, runner-up
 
 // The next event that hasn't started yet (or null).
 export function nextEvent(w, now = Date.now()) {

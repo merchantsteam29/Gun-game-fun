@@ -599,6 +599,7 @@ export class Game {
     this.updateTags(0); // removes any dog tags left in the scene
     this.pickupData = null;
     this.brData = null;
+    this.tourData = null;
     this.updateStorm();
     this.updatePickups(0);
     this.updateFlags(0); // and CTF flags
@@ -777,6 +778,7 @@ export class Game {
         this.infection = m.inf ?? 0;
         this.zw = m.zw || null;
         this.brData = m.br || null;
+        this.tourData = m.tr || null;
         this.tagData = m.tg || null;
         this.pickupData = m.pk || null;
         this.rot = m.rot || null;
@@ -1160,7 +1162,9 @@ export class Game {
     } else if (this.deathInfo) {
       if (!this.deathSpectate(dt, now)) { this.endDeathSpectate(); this.deathCam(dt, now); }
     } else {
-      this.menuCam(now); // waiting to spawn (e.g. joined mid-round in Last Man Standing)
+      // Waiting to spawn (joined mid-round, or out of a Game Night event): watch the players, if any.
+      if (MODES[this.rules.mode].event && [...this.remotes.values()].some((r) => r.alive)) this.specCam(dt, null, false);
+      else this.menuCam(now);
     }
     cam.updateMatrixWorld();
 
@@ -1263,7 +1267,7 @@ export class Game {
   deathSpectate(dt, now) {
     const di = this.deathInfo;
     const mine = this.players.get(this.myId);
-    const out = this.rules.mode === 'lms' && mine && mine.sc <= 0;
+    const out = (this.rules.mode === 'lms' && mine && mine.sc <= 0) || this.rules.mode === 'br' || (this.tourData && !this.tourData[2].includes(this.myId));
     const left = this.rules.respawn - (now - di.at) / 1000;
     if ((now - di.at) < 2600 || (!out && left < 1.2)) return false;
     const myTeam = this.myTeam;
@@ -2299,6 +2303,13 @@ export class Game {
       const st = state === 2 ? 'CONTESTED' : state === 1 ? `HELD BY ${h ? h.name : '?'}` : 'NEUTRAL';
       return `HILL: ${st} · MOVES IN ${secs}s · YOU ${me ? me.sc : 0}/${this.rules.scoreLimit}`;
     }
+    if (mode === 'tourney') {
+      const t = this.tourData;
+      if (!t) return 'TOURNAMENT';
+      const [round, final, ids] = t, inIt = ids.includes(this.myId);
+      const head = final ? 'FINAL · FIRST TO 7' : `ROUND ${round} · ${ids.length} IN · TOP ${Math.max(2, Math.ceil(ids.length / 2))} GO THROUGH`;
+      return `<span class="team zombie">🏆 ${head}</span>${inIt ? ` · YOU ${me ? me.sc : 0}` : ' · SPECTATING'}`;
+    }
     if (mode === 'br') {
       let left = 0;
       for (const [id] of this.players) if (id === this.myId ? this.me.alive : this.remotes.get(id) && this.remotes.get(id).alive) left++;
@@ -2428,8 +2439,9 @@ export class Game {
       const out = this.rules.mode === 'lms' && mine && mine.sc <= 0;
       const downed = this.rules.mode === 'zombies';
       const brOut = this.rules.mode === 'br';
+      const tourOut = this.tourData && !this.tourData[2].includes(this.myId);
       const kr = killer && this.remotes.get(killer.id);
-      hud.death(true, killer ? killer.name : null, this.deathInfo.w, secs, out ? 'Out of lives · spectating until the next round' : brOut ? 'Eliminated · spectating until the round ends' : downed ? 'Downed · back when your team clears the wave' : null, this.deathInfo.head,
+      hud.death(true, killer ? killer.name : null, this.deathInfo.w, secs, out ? 'Out of lives · spectating until the next round' : tourOut ? 'Out of the tournament · spectating' : brOut ? 'Eliminated · spectating until the round ends' : downed ? 'Downed · back when your team clears the wave' : null, this.deathInfo.head,
         killer ? this.colorFor(killer) : '#fff', (kr && kr.cos && kr.cos.banner) || 'standard', killer ? killer.role : null);
     }
     if (this.matchOver && this.endInfo) {

@@ -38,6 +38,9 @@ export const MODES = {
 // Game Night event only (never in the mode pickers): started by the Game Night server's host on schedule.
 MODES.br = { name: 'Battle Royale', short: 'BATTLE ROYALE', teams: false, br: true, event: true, score: 0, time: 8, noRegen: true, loadout: ['pistol', 'knife'],
   desc: 'Game Night event. One life, everyone starts with a pistol. Loot guns, health and ammo, stay inside the circle as the storm closes in. Last one standing wins.' };
+MODES.tourney = { name: 'Tournament', short: 'TOURNAMENT', teams: false, event: true, score: 15, time: 5,
+  desc: 'Game Night event. Free-for-all rounds: the top half of each round go through, until two are left for a 1v1 final. Win it to be the Game Night champion.' };
+export const TOURNEY_MIN = 4; // bots fill in up to this many players
 export const BR_MAPS = ['town', 'arctic', 'neonstreets', 'castle', 'yard'];
 // Storm: [seconds holding, seconds shrinking, radius as a share of the map's size afterwards, damage per second outside]
 const BR_STAGES = [[50, 40, 0.62, 4], [30, 35, 0.36, 7], [25, 30, 0.18, 11], [20, 30, 0.06, 16], [15, 25, 0, 24]];
@@ -323,14 +326,14 @@ export class HostLogic {
     });
     this.broadcast({ t: 'pjoin', ...this.info(p) }, id);
     if (this.phase !== 'playing') this.sendTo(id, this.endMsg());
-    else if (this.s.mode === 'lms' || this.mode.br) this.sendTo(id, { t: 'notice', text: 'ROUND IN PROGRESS · SPECTATING' });
+    else if (this.s.mode === 'lms' || this.mode.br || this.tour) this.sendTo(id, { t: 'notice', text: this.tour ? 'TOURNAMENT IN PROGRESS · SPECTATING' : 'ROUND IN PROGRESS · SPECTATING' });
     else this.spawn(p);
     this.balanceBots();
   }
 
   // "Fill with bots": add bots up to the fill size, and drop one each time a real player joins.
   balanceBots() {
-    if (!this.botFill) return;
+    if (!this.botFill || this.tour) return; // the tournament's line-up is set when it starts
     const all = [...this.players.values()];
     const humans = all.filter((p) => !p.bot).length;
     const bots = all.filter((p) => p.bot && !p.zombie);
@@ -352,7 +355,7 @@ export class HostLogic {
     this.players.set(id, p);
     this.ensureNav();
     this.broadcast({ t: 'pjoin', ...this.info(p) });
-    if (this.phase === 'playing' && this.s.mode !== 'lms' && !this.mode.br) this.spawn(p);
+    if (this.phase === 'playing' && this.s.mode !== 'lms' && !this.mode.br && !this.tour) this.spawn(p);
     return id;
   }
 
@@ -378,6 +381,7 @@ export class HostLogic {
     this.checkLmsEnd();
     this.checkZombiesEnd();
     this.checkBrEnd();
+    if (this.tour && this.tour.ids.delete(id) && this.tour.ids.size <= 1 && this.phase === 'playing') this.endMatch(); // last one left wins
     if (!p.bot) this.balanceBots(); // a real player left: a bot takes the slot
   }
 
@@ -1027,7 +1031,28 @@ export class HostLogic {
   startEvent(mode, map) {
     if (!MODES[mode] || !MODES[mode].event) return;
     if (!MODES[this.s.mode].event) this.eventReturn = { mode: this.s.mode, map: this.s.map, scoreLimit: this.s.scoreLimit, timeLimit: this.s.timeLimit };
+    this.tour = null;
+    if (mode === 'tourney') {
+      // Everyone still here is in. Bots only when there aren't enough people (and only up to TOURNEY_MIN).
+      const humans = [...this.players.values()].filter((p) => !p.bot);
+      const bots = [...this.players.values()].filter((p) => p.bot && !p.zombie);
+      const ids = new Set(humans.map((p) => p.id));
+      for (const b of bots) { if (ids.size < TOURNEY_MIN) ids.add(b.id); else this.removePlayer(b.id); }
+      this.tour = { ids, round: 0, done: false };
+    }
     this.startMatch(mode, map);
+  }
+  // Game Night ended mid-tournament: whoever leads the current round wins it.
+  endTourney() {
+    if (!this.tour || this.tour.done) return;
+    this.tour.force = true;
+    if (this.phase === 'playing') this.endMatch();
+  }
+  tourneyIn(p) { return !!this.tour && this.tour.ids.has(p.id); }
+  // Ranking of a round: score (kills), then fewer deaths.
+  tourneyRank() {
+    return [...this.tour.ids].map((id) => this.players.get(id)).filter(Boolean)
+      .sort((a, b) => b.score - a.score || b.kills - a.kills || a.deaths - b.deaths);
   }
 
   // Kill Confirmed: walking over a tag scores it (enemy tag) or denies it (your team's).
@@ -1272,6 +1297,19 @@ export class HostLogic {
       this.endTitle = r === b ? 'DRAW' : r > b ? 'RED TEAM WINS' : 'BLUE TEAM WINS';
     } else if (this.s.mode === 'infection') {
       this.endTitle = winnerTeam === 2 ? 'ZOMBIES WIN' : 'SURVIVORS WIN';
+    } else if (this.tour) {
+      const t = this.tour, rank = this.tourneyRank();
+      if (rank.length <= 2 || t.force) {
+        const champ = rank[0], second = rank[1];
+        t.done = true;
+        this.endTitle = champ ? `${champ.name} IS THE TOURNAMENT CHAMPION` : 'TOURNAMENT OVER';
+        if (champ) champ.score += 100;
+        this.broadcast({ t: 'tourney', champ: champ ? champ.id : null, name: champ ? champ.name : '', second: second ? second.id : null });
+      } else {
+        const keep = rank.slice(0, Math.max(2, Math.ceil(rank.length / 2)));
+        for (const p of rank.slice(keep.length)) { t.ids.delete(p.id); this.sendTo(p.id, { t: 'notice', text: 'ELIMINATED FROM THE TOURNAMENT' }); }
+        this.endTitle = keep.length === 2 ? `FINAL: ${keep[0].name} VS ${keep[1].name}` : `ROUND ${t.round}: ${keep.length} GO THROUGH`;
+      }
     } else if (this.mode.br) {
       const w = this.brAlive()[0];
       this.endTitle = w ? `${w.name} WINS THE BATTLE ROYALE` : 'NOBODY SURVIVED THE STORM';
@@ -1286,7 +1324,7 @@ export class HostLogic {
     this.mvp = this.pickMvp();
     // Map vote when maps rotate; otherwise the same map comes back.
     const now = Date.now();
-    this.vote = this.s.rotate ? { maps: this.voteChoices(), counts: [0, 0, 0], ballots: new Map(), opensAt: now + MVP_MS, endsAt: now + MVP_MS + VOTE_MS, winner: null } : null;
+    this.vote = this.s.rotate && !this.tour ? { maps: this.voteChoices(), counts: [0, 0, 0], ballots: new Map(), opensAt: now + MVP_MS, endsAt: now + MVP_MS + VOTE_MS, winner: null } : null;
     this.restartAt = this.vote ? this.vote.endsAt + RESULT_MS : now + END_SCREEN_MS;
     this.broadcast(this.endMsg());
   }
@@ -1329,7 +1367,9 @@ export class HostLogic {
   // Starts a fresh match. With no arguments it rotates to the next map (end of match);
   // the host panel passes an explicit mode/map to restart immediately.
   startMatch(mode, map) {
-    if (!mode && MODES[this.s.mode].event && this.eventReturn) { // the event is over: back to normal (on the voted map, if there was a vote)
+    if (!mode && this.tour && !this.tour.done && this.s.mode === 'tourney') map = MAP_ORDER[(Math.random() * MAP_ORDER.length) | 0]; // next round, new map
+    else if (this.tour && this.tour.done && !mode) this.tour = null;
+    if (!mode && !this.tour && MODES[this.s.mode].event && this.eventReturn) { // the event is over: back to normal (on the voted map, if there was a vote)
       const r = this.eventReturn;
       this.eventReturn = null;
       mode = r.mode; map = map || r.map;
@@ -1337,9 +1377,11 @@ export class HostLogic {
       Object.assign(this.s, { scoreLimit: r.scoreLimit, timeLimit: r.timeLimit });
       this.endsAt = this.s.timeLimit > 0 ? Date.now() + this.s.timeLimit * 60000 : Infinity;
       this.broadcast({ t: 'settings', s: this.s });
+      this.balanceBots(); // bots that sat out the event come back
       return;
     }
     const manual = !!(mode || map);
+    if (mode && mode !== 'tourney') this.tour = null;
     if (mode && MODES[mode] && mode !== this.s.mode) {
       this.s.mode = mode;
       this.s.scoreLimit = MODES[mode].score;
@@ -1350,6 +1392,12 @@ export class HostLogic {
     this.loadMap(this.s.map);
     this.ensureNav();
     for (const p of [...this.players.values()]) if (p.zombie) { this.players.delete(p.id); this.broadcast({ t: 'pleave', id: p.id, name: p.name, quiet: 1 }); }
+    if (this.tour && this.s.mode === 'tourney') { // round settings: the final is a 1v1, first to 7
+      this.tour.round++;
+      const final = this.tour.ids.size <= 2;
+      this.s.scoreLimit = final ? 7 : 15;
+      this.s.timeLimit = final ? 6 : 5;
+    }
     this.beginMatchState();
     const list = [...this.players.values()].sort(() => Math.random() - 0.5);
     list.forEach((p, i) => {
@@ -1362,7 +1410,11 @@ export class HostLogic {
     });
     this.broadcast({ t: 'settings', s: this.s });
     this.broadcast({ t: 'start', map: this.s.map, mode: this.s.mode });
-    for (const p of this.players.values()) this.spawn(p);
+    if (this.tour && this.s.mode === 'tourney') {
+      const n = this.tour.ids.size;
+      this.broadcast({ t: 'notice', text: n <= 2 ? 'TOURNAMENT FINAL · FIRST TO 7' : `TOURNAMENT ROUND ${this.tour.round} · ${n} PLAYERS · TOP ${Math.max(2, Math.ceil(n / 2))} GO THROUGH` });
+    }
+    for (const p of this.players.values()) if (!this.tour || this.s.mode !== 'tourney' || this.tour.ids.has(p.id)) this.spawn(p);
   }
 
   applySettings(partial) {
@@ -1423,6 +1475,8 @@ export class HostLogic {
     // Zombie Survival: [wave, zombies left, seconds until the next wave (0 = wave on)]
     // Battle Royale storm: [center x, center z, radius, next radius, seconds until it moves (0 = moving now), damage per second]
     if (this.brZone) { const z = this.brZone, nx = BR_STAGES[z.shrinkUntil ? z.stage : z.stage + 1]; msg.br = [r2(z.cx), r2(z.cz), r2(z.r), r2(nx ? z.size * nx[2] : z.r), z.shrinkUntil ? 0 : Math.max(0, Math.ceil((z.holdUntil - now) / 1000)), Math.max(2, z.dps)]; }
+    // Tournament: [round, final (1/0), ids still in]
+    if (this.tour && this.s.mode === 'tourney') msg.tr = [this.tour.round, this.tour.ids.size <= 2 ? 1 : 0, [...this.tour.ids]];
     if (this.zw) msg.zw = [this.zw.wave, this.zombiesLeft(), this.zw.breakUntil ? Math.max(0, Math.ceil((this.zw.breakUntil - now) / 1000)) : 0];
     if (this.s.mode === 'infection') msg.inf = this.infected ? 0 : Math.max(0, Math.ceil((this.infectAt - now) / 1000));
     if (this.s.mode === 'killconfirmed') msg.tg = this.tags.map((t) => [t.id, r2(t.x), r2(t.y), r2(t.z), t.team]);

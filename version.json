@@ -1,7 +1,7 @@
 {
-  "version": "2026.10.09.9",
+  "version": "2026.10.09.10",
   "notes": [
-    "Game Night voice chat: talk with everyone in the Game Night server (pause menu, needs a gamertag)"
+    "Game Night tournament: the last 30 minutes of Game Night are knockout rounds and a 1v1 final, with a 10-minute warning. The champion wins tokens and a wrap"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",
