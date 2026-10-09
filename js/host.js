@@ -588,6 +588,17 @@ export class HostLogic {
         }
         break;
       }
+      case 'ping': { // team modes only; one ping per 2.5 s, at most 4 in 15 s
+        if (!this.mode.teams || !p.alive || !Array.isArray(m.p) || m.p.length !== 3 || !m.p.every(Number.isFinite)) break;
+        const now = Date.now();
+        p.pings = (p.pings || []).filter((t) => now - t < 15000);
+        if (p.pings.length >= 4 || now - (p.pings[p.pings.length - 1] || 0) < 2500) break;
+        p.pings.push(now);
+        const e = typeof m.e === 'string' && this.players.get(m.e) && this.players.get(m.e).team !== p.team ? m.e : null;
+        const msg = { t: 'ping', id, p: m.p.map((v) => Math.round(v * 10) / 10), e };
+        for (const q of this.players.values()) if (q.team === p.team && !q.bot) this.sendTo(q.id, msg);
+        break;
+      }
       case 'mods': // weapon attachments (looks for everyone else; stats are applied on their side)
         p.mods = cleanModMap(m.m);
         this.broadcast({ t: 'pmods', id, m: p.mods }, id);

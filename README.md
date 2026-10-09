@@ -65,6 +65,12 @@ real match. Replay it any time from **Keyboard & mouse → Play the tutorial** i
 | Bounty Hunter | The leader carries a bounty (gold). Killing them is worth 3 points, anyone else 1. First to 30 |
 | Domination | Red vs Blue over three zones A, B, C. Stand in a zone with only your team to capture it; each zone you own scores a point per second. First to 200 |
 
+## Pings (team modes)
+
+In team modes, press **Z** (rebindable), **D-pad up** on a controller, or the **📍** button on touch to ping. Aiming at
+an enemy marks them (the mark follows them for 5 s); otherwise it marks the spot you're looking at (7 s). Only your
+team sees it, with the distance. One ping every 2.5 s (at most 4 in 15 s).
+
 ## Map pickups
 
 In Free For All, Team Deathmatch, King of the Hill, Capture the Flag, Domination, Hardpoint, Kill Confirmed, Bounty

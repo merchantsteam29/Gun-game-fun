@@ -292,6 +292,27 @@ export class Hud {
     });
   }
 
+  // Ping markers: [{ x, y (NDC), behind, enemy, dist, name, age 0..1 }]. Clamped to the screen edge.
+  pings(list) {
+    const box = $('pings');
+    if (!this.pingEls) this.pingEls = [];
+    while (this.pingEls.length < list.length) { const e = document.createElement('div'); e.className = 'ping'; e.innerHTML = '<i></i><b></b><small></small>'; box.appendChild(e); this.pingEls.push(e); }
+    this.pingEls.forEach((e, i) => {
+      const p = list[i];
+      if (!p) { if (!e.hidden) e.hidden = true; return; }
+      e.hidden = false;
+      let x = p.x, y = p.y;
+      if (p.behind) { x = -x; y = -1; }
+      const edge = Math.abs(x) > 0.94 || Math.abs(y) > 0.9 || p.behind;
+      x = Math.max(-0.94, Math.min(0.94, x)); y = Math.max(-0.9, Math.min(0.9, y));
+      e.style.transform = `translate(${(x + 1) * 50}vw, ${(1 - y) * 50}vh) translate(-50%, -50%)`;
+      e.className = 'ping' + (p.enemy ? ' enemy' : '') + (edge ? ' edge' : '');
+      e.style.opacity = String(Math.min(1, (1 - p.age) * 3));
+      e.querySelector('b').textContent = p.enemy ? 'ENEMY' : `${p.dist} m`;
+      e.querySelector('small').textContent = p.enemy ? `${p.dist} m · ${p.name}` : p.name;
+    });
+  }
+
   // Red pulsing edges (and a heartbeat) at low health.
   lowPulse(on) {
     if (on === this.pulsing) return;

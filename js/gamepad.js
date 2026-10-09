@@ -181,7 +181,7 @@ export class GamepadInput {
     if (pressed(B.LB) || pressed(B.R3)) g.quickMelee();
     if (pressed(B.LEFT)) g.cycleSlot(-1);
     if (pressed(B.RIGHT)) g.cycleSlot(1);
-    if (pressed(B.UP)) g.switchSlot(2);
+    if (pressed(B.UP)) { if (g.teams) g.ping(); else g.switchSlot(2); } // team modes: ping
     if (pressed(B.DOWN) && g.reloadT <= 0) g.vm.inspect();
   }
 

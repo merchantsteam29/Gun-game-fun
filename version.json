@@ -1,9 +1,8 @@
 {
-  "version": "2026.10.09.1",
+  "version": "2026.10.09.2",
   "notes": [
-    "New setting: Blood effects (Settings > Video). Off shows grey sparks instead",
-    "Fixed bots sometimes hitting you right after you got behind a wall",
-    "Joining a server now tells you if you or the host are on an old version, and offers the update"
+    "Pings in team modes: press Z (D-pad up / 📍 on touch) to mark an enemy or a spot for your team",
+    "Enemy pings follow the enemy; pings have a cooldown so nobody can spam them"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",

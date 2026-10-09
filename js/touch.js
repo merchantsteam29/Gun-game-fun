@@ -14,6 +14,7 @@ const BUTTONS = [
   { a: 'score', label: '≡', hold: true },
   { a: 'pause', label: 'II' },
   { a: 'chat', label: '💬' },
+  { a: 'ping', label: '📍' },
 ];
 const LOOK_GAIN = 1.5;
 
@@ -267,6 +268,7 @@ export class TouchControls {
         else if (a === 'swap') g.swapGuns();
         else if (a === 'nade') g.quickThrow();
         else if (a === 'melee') g.quickMelee();
+        else if (a === 'ping') g.ping();
     }
   }
 

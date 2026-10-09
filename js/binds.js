@@ -24,6 +24,7 @@ export const ACTIONS = [
   ['grenade', 'Quick grenade', ['KeyG']],
   ['melee', 'Quick melee', ['KeyF']],
   ['inspect', 'Inspect weapon', ['KeyT']],
+  ['ping', 'Ping (team modes)', ['KeyZ']],
   ['scores', 'Scoreboard', ['Tab']],
   ['chat', 'Chat', ['Enter']],
   ['voice', 'Push to talk (party voice)', ['KeyV']],

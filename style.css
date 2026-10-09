@@ -1662,3 +1662,16 @@ body.mobile:not(.tablet) .hs-remind { max-width: 30px; overflow: hidden; white-s
 /* Scroll rows mustn't stretch their cards wider than the screen. */
 .daily { grid-template-columns: minmax(0, 1fr); }
 .daily > *, .lb > *, .home-strip > * { min-width: 0; }
+
+/* Pings (team modes) */
+#pings { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.ping { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 1px; will-change: transform; }
+.ping i { width: 16px; height: 16px; border: 2px solid #4fc3ff; background: rgba(79,195,255,0.25); transform: rotate(45deg); box-shadow: 0 0 10px rgba(79,195,255,0.6); }
+.ping b { font-size: 11px; font-weight: 800; letter-spacing: 1px; color: #bfe9ff; text-shadow: 0 1px 2px #000; }
+.ping small { font-size: 10px; color: #dfe6ee; text-shadow: 0 1px 2px #000; }
+.ping.enemy i { border-color: #ff4a3a; background: rgba(255,74,58,0.3); box-shadow: 0 0 12px rgba(255,74,58,0.7); animation: ping-pulse 0.8s ease-in-out infinite; }
+.ping.enemy b { color: #ffb0a8; }
+.ping.edge small { display: none; }
+@keyframes ping-pulse { 50% { transform: rotate(45deg) scale(1.3); } }
+.b-ping { right: calc(212px + env(safe-area-inset-right)); bottom: 236px; width: 50px; height: 50px; font-size: 18px; display: none; }
+#touch.teams .b-ping { display: flex; }

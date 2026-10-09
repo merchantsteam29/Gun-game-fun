@@ -255,6 +255,7 @@ export class Game {
   }
 
   refreshColors() {
+    const tb = document.getElementById('touch'); if (tb) tb.classList.toggle('teams', !!MODES[this.rules.mode].teams); // ping button
     const big = !!MODES[this.rules.mode].bigHead;
     for (const r of this.remotes.values()) {
       const p = this.players.get(r.id);
@@ -372,6 +373,36 @@ export class Game {
     else if (act === 'grenade') this.quickThrow();
     else if (act === 'melee') this.quickMelee();
     else if (act === 'inspect' && this.reloadT <= 0) this.vm.inspect();
+    else if (act === 'ping') this.ping();
+  }
+
+  // ---------- Pings (team modes) ----------
+  // Marks the enemy under your crosshair (the mark follows them for a few seconds), or else the
+  // spot you're looking at. Teammates see it on screen with the distance. 2.5 s cooldown.
+  ping() {
+    if (!this.teams || !this.me.alive || this.spectating) { if (!this.teams) this.hud.say('Pings work in team modes'); return; }
+    const now = performance.now();
+    if (now - (this.lastPing || 0) < 2500) { this.hud.say('Ping cooling down'); return; }
+    this.lastPing = now;
+    const cam = this.camera, dir = _c.set(0, 0, -1).applyQuaternion(cam.quaternion);
+    const me = this.players.get(this.myId);
+    // An enemy within ~5° of the crosshair and in plain sight
+    let best = null, bestA = 0.09;
+    for (const [id, r] of this.remotes) {
+      const pl = this.players.get(id);
+      if (!r.alive || !pl || (me && pl.team === me.team)) continue;
+      const tp = r.center(_r.clone());
+      const v = tp.clone().sub(cam.position), d = v.length();
+      const a = Math.acos(Math.min(1, v.dot(dir) / d));
+      if (a < bestA && !raycast(cam.position.x, cam.position.y, cam.position.z, v.x / d, v.y / d, v.z / d, d - 0.4)) { best = { id, p: tp }; bestA = a; }
+    }
+    let p;
+    if (best) p = best.p;
+    else {
+      const hit = raycast(cam.position.x, cam.position.y, cam.position.z, dir.x, dir.y, dir.z, 150);
+      p = hit ? new THREE.Vector3(hit.x, hit.y, hit.z) : cam.position.clone().addScaledVector(dir, 40);
+    }
+    this.net.send({ t: 'ping', p: [p.x, p.y, p.z], e: best ? best.id : null });
   }
 
   // The local player's weapon stats, with their attachments applied (cached).
@@ -565,6 +596,13 @@ export class Game {
           sfx.equip(1);
         }
         break;
+      case 'ping': { // a teammate (or you) pinged
+        const from = this.players.get(m.id);
+        this.pings = (this.pings || []).filter((x) => x.from !== m.id);
+        this.pings.push({ from: m.id, name: from ? from.name : '', e: m.e, p: new THREE.Vector3(...m.p), t: performance.now() });
+        sfx.beep(m.e ? 0.5 : 0.35);
+        break;
+      }
       case 'tagc':
         track.tag();
         sfx.pad(0.4);
@@ -2180,6 +2218,13 @@ export class Game {
       return { angle: -(ang - me.yaw), alpha: a.k * (1 - (now - a.t) / 1500) };
     }));
     hud.lowPulse(me.alive && me.hp > 0 && me.hp <= this.maxHp * 0.3);
+    // Pings: enemy marks follow the enemy for 5 s, spot marks last 7 s.
+    this.pings = (this.pings || []).filter((x) => now - x.t < (x.e ? 5000 : 7000));
+    hud.pings(this.pings.map((x) => {
+      if (x.e) { const r = this.remotes.get(x.e); if (r && r.alive) r.center(x.p); }
+      const v = _c.copy(x.p).project(this.camera), behind = v.z > 1;
+      return { x: v.x, y: v.y, behind, enemy: !!x.e, dist: Math.round(x.p.distanceTo(me.pos)), name: x.name, age: (now - x.t) / (x.e ? 5000 : 7000) };
+    }));
     hud.ammo(id, this.ammo[id] ?? 0, w.mag || 0, this.util);
     hud.slots(this.loadout, this.slot, this.util, this.ammo);
     hud.reloading(this.reloadT > 0 && me.alive, w.reload ? 1 - this.reloadT / w.reload : 0);
