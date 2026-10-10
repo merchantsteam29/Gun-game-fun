@@ -1,3 +1,4 @@
+import { opts } from './settings.js';
 import { WEAPONS, SLOT_NAMES, SHORT } from './weapons.js';
 import { esc } from './util.js';
 import { Radar } from './radar.js';
@@ -89,6 +90,7 @@ export class Hud {
   }
 
   lobby(code, count, mapName) {
+    if (code && opts.streamer) code = '•••••'; // streamer mode
     const html = code === null ? `<b>PRACTICE</b> · ${esc(mapName)}` : `LOBBY <b>${esc(code)}</b> · ${count} player${count === 1 ? '' : 's'} · ${esc(mapName)}`;
     if (html !== this.lastLobby) { this.lastLobby = html; $('lobby-tag').innerHTML = html; }
   }

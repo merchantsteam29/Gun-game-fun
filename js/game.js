@@ -133,6 +133,7 @@ export class Game {
     });
 
     this.remotes = new Map(); // id -> RemotePlayer
+    this.aliases = new Map(); this.realNames = new Map(); // streamer mode (alias())
     this.streaks = new Map(); // id -> kills since their last death (SHUTDOWN medals)
     this.players = new Map(); // id -> {id, name, color, k, d}
     this.projectiles = [];
@@ -616,6 +617,25 @@ export class Game {
     this.camera.updateProjectionMatrix();
   }
 
+  // Streamer mode (Settings): other real players show as "Player 1", "Player 2"… (bots and you
+  // keep your names). Set when a player arrives, so turning it on applies from the next match.
+  alias(id, name, bot) {
+    if (!opts.streamer || id === this.myId || bot) return name;
+    if (!this.aliases.has(id)) this.aliases.set(id, `Player ${this.aliases.size + 1}`);
+    this.realNames.set(id, String(name || ''));
+    return this.aliases.get(id);
+  }
+  // Host messages with names in them ("X HAS THE RAILGUN"): swap real names for the aliases.
+  unalias(text) {
+    if (!opts.streamer || !this.realNames.size || typeof text !== 'string') return text;
+    for (const [id, real] of this.realNames) {
+      if (!real) continue;
+      const re = new RegExp(real.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+      text = text.replace(re, () => this.aliases.get(id));
+    }
+    return text;
+  }
+
   addRemote(p) {
     if (p.id === this.myId || this.remotes.has(p.id)) return;
     const r = new RemotePlayer(this.scene, p.id, p.name, p.color, p.cos, cleanModMap(p.mods));
@@ -634,7 +654,9 @@ export class Game {
         this.applySettings(m.settings);
         this.loadMap(m.settings.map);
         this.players.clear();
-        for (const p of m.players) {
+        this.aliases = new Map(); this.realNames = new Map();
+        for (const p0 of m.players) {
+          const p = { ...p0, name: this.alias(p0.id, p0.name, p0.bot) };
           this.players.set(p.id, { id: p.id, name: p.name, color: p.color, k: p.k, d: p.d, team: p.team, sc: p.sc, bot: p.bot, role: p.role || null, gt: p.gt || null, lvl: (p.cos && p.cos.lvl) || 0 });
           this.addRemote(p);
         }
@@ -644,6 +666,7 @@ export class Game {
         if (this.onWelcome) this.onWelcome(); // staff send their proof (main.js)
         break;
       case 'pjoin':
+        m = { ...m, name: this.alias(m.id, m.name, m.bot) };
         this.players.set(m.id, { id: m.id, name: m.name, color: m.color, k: 0, d: 0, team: m.team, sc: 0, bot: m.bot, z: !!m.z, role: m.role || null, gt: m.gt || null, lvl: (m.cos && m.cos.lvl) || 0 });
         this.addRemote(m);
         this.refreshColors();
@@ -658,7 +681,7 @@ export class Game {
         break;
       }
       case 'notice':
-        this.hud.say(m.text);
+        this.hud.say(this.unalias(m.text));
         break;
       case 'ammo': { // One in the Chamber: a kill earned a bullet
         const gun = this.loadout[0], W = WEAPONS[gun];
@@ -710,9 +733,10 @@ export class Game {
       }
       case 'prole': case 'pname': { // a player proved they're staff / an impostor was renamed
         const p = this.players.get(m.id);
-        if (p) { p.name = m.name; if (m.t === 'prole') p.role = m.role; }
+        const nm = this.alias(m.id, m.name, p && p.bot);
+        if (p) { p.name = nm; if (m.t === 'prole') p.role = m.role; }
         const r = this.remotes.get(m.id);
-        if (r) r.setIdentity(m.name, p ? p.role : null);
+        if (r) r.setIdentity(nm, p ? p.role : null);
         if (p && p.z) this.refreshColors(); // a Brute looks different
         if (m.t === 'prole' && m.id !== this.myId) this.hud.say(`${m.role === 'owner' ? '♛ THE OWNER' : '🛡 A MODERATOR'} IS HERE: ${m.name}`);
         break;
@@ -816,6 +840,7 @@ export class Game {
       }
       case 'boom': this.remoteBoom(m); break;
       case 'end':
+        if (opts.streamer) { m = { ...m, title: this.unalias(m.title), scores: (m.scores || []).map((s) => ({ ...s, name: this.players.get(s.id) ? this.players.get(s.id).name : s.name })), mvp: m.mvp ? { ...m.mvp, name: this.players.get(m.mvp.id) ? this.players.get(m.mvp.id).name : m.mvp.name } : m.mvp }; }
         if (!this.matchOver && this.playedThisMatch) this.trackMatchEnd(m);
         this.playedThisMatch = false;
         this.matchOver = true;

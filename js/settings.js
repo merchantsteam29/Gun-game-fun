@@ -48,6 +48,7 @@ const DEFAULTS = {
   voiceVolume: 1,
   voicePtt: false,    // push-to-talk: hold the voice key (binds.js)
   binds: null,        // key bindings: null = defaults (binds.js)
+  streamer: false,    // streamer mode: hide server codes and other players' names
 };
 
 export const opts = { ...DEFAULTS, ...store.get('opts', {}) };

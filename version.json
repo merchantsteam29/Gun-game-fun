@@ -1,7 +1,7 @@
 {
-  "version": "2026.10.10.3",
+  "version": "2026.10.10.4",
   "notes": [
-    "Report a bug: a new button in the pause menu sends bug reports straight to the developer"
+    "Streamer mode: hide server codes and other players' names while you stream or record"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",

@@ -1121,8 +1121,8 @@ if (typeof Peer === 'undefined') status('Networking library failed to load. Chec
 // Chat lines for lobby events and messages (team / zombie colors match the scoreboard).
 function chatOnNet(m) {
   const colorOf = (id, fallback) => { const p = game.players.get(id); return p ? game.colorFor(p) : fallback; };
-  if (m.t === 'welcome') { chat.setLobby(true); chat.system(net && net.practice ? 'Practice Range: pick any weapon from the pause menu (Esc).' : `Joined lobby ${net ? net.code : ''}. Say hi!`); }
-  else if (m.t === 'chat') chat.add((ROLE_INFO[m.role] ? ROLE_INFO[m.role].icon + ' ' : '') + m.name, colorOf(m.id, m.color), moderation.clean(m.text), m.id === game.myId);
+  if (m.t === 'welcome') { chat.setLobby(true); chat.system(net && net.practice ? 'Practice Range: pick any weapon from the pause menu (Esc).' : `Joined lobby ${net && !opts.streamer ? net.code : '•••••'}. Say hi!`); }
+  else if (m.t === 'chat') chat.add((ROLE_INFO[m.role] ? ROLE_INFO[m.role].icon + ' ' : '') + (opts.streamer && game.players.get(m.id) ? game.players.get(m.id).name : m.name), colorOf(m.id, m.color), moderation.clean(m.text), m.id === game.myId);
   if (net && !net.practice && (m.t === 'pjoin' || m.t === 'pident') && !m.bot) {
     const p = game.players.get(m.id);
     if (p && m.id !== game.myId) moderation.notePlayer(p.name, p.gt, net.code);
@@ -1152,8 +1152,8 @@ function chatOnNet(m) {
   if (m.t === 'pleave' && voice.inRoom) { const gt = gnvcTags.get(m.id); if (gt) voice.onAnnounce(gt, false, 'gn'); }
   if (m.t === 'pident' && m.gt) gnvcTags.set(m.id, m.gt);
   if (m.t === 'welcome') { gnvcTags.clear(); for (const p of m.players || []) if (p.gt) gnvcTags.set(p.id, p.gt); }
-  if (m.t === 'pjoin' && !m.bot) chat.system(`${m.name} joined`);
-  else if (m.t === 'pleave' && !m.quiet && !String(m.name).startsWith('[BOT]') && !/^zd+$/.test(m.id)) chat.system(`${m.name} left`);
+  if (m.t === 'pjoin' && !m.bot) chat.system(`${game.players.get(m.id) ? game.players.get(m.id).name : m.name} joined`);
+  else if (m.t === 'pleave' && !m.quiet && !String(m.name).startsWith('[BOT]') && !/^z\d+$/.test(m.id)) chat.system(`${game.aliases.get(m.id) || m.name} left`);
   // Pause-menu player lists follow joins, leaves and staff actions.
   if (['chatmode', 'pident', 'prole', 'pmute', 'pfrozen', 'pname', 'pjoin', 'pleave'].includes(m.t)) { renderModList(); renderReportList(); }
   // Keep a public listing's player count / mode / map current.
@@ -1192,11 +1192,12 @@ function enterGame() {
   setTimeout(startHighlights, 0);
   $('menu').classList.add('hidden');
   if (!game.spectating && !net.practice) social.setWhere('lobby', net.code); // friends see you're in a match and can join
-  $('pause-code').textContent = net.code;
+  $('pause-code').textContent = opts.streamer ? '•••••' : net.code;
   $('pause-title').textContent = net.practice ? 'PRACTICE RANGE' : game.spectating ? 'SPECTATING' : net.isHost ? 'SERVER CREATED' : 'JOINED SERVER';
   $('pause-vis').textContent = 'Code';
   $('btn-resume').textContent = game.padMode ? 'Press Ⓐ to play' : 'Click to play';
-  if (!net.practice) history.replaceState(null, '', '?lobby=' + net.code);
+  if (!net.practice && !opts.streamer) history.replaceState(null, '', '?lobby=' + net.code); // streamer mode keeps the code out of the address bar
+  else if (opts.streamer && location.search) history.replaceState(null, '', location.pathname);
   showPause();
 }
 
@@ -1842,7 +1843,7 @@ function renderKeyHelp() {
     ['<kbd>Esc</kbd>', 'pause'], [k('chat'), 'chat'],
   ].map(([key, what]) => `<span>${key} ${what}</span>`).join('');
 }
-onOpts((o, key) => { if (!key || key === 'binds') renderKeyHelp(); });
+onOpts((o, key) => { if (key === 'streamer' && net && !net.practice) { $('pause-code').textContent = o.streamer ? '•••••' : net.code; history.replaceState(null, '', o.streamer ? location.pathname : '?lobby=' + net.code); } if (!key || key === 'binds') renderKeyHelp(); });
 $('kb-change').onclick = (e) => {
   e.preventDefault();
   $('menu').classList.add('hidden');
