@@ -362,14 +362,14 @@ function holidayRow() {
 }
 
 // ---------- Weekly leaderboard ----------
-let lbBoard = store.get('lbBoard', 'xp'), lbWhich = 'cur', lbMode = '', lbT = 0;
+let lbBoard = ['kills', 'wins', 'heads', 'clans'].includes(store.get('lbBoard', 'kills')) ? store.get('lbBoard', 'kills') : 'kills', lbWhich = 'cur', lbMode = '', lbT = 0;
 function updateLbNav() {
-  const r = leaderboard.rows('xp').find((x) => x.me);
+  const r = leaderboard.rows('kills').find((x) => x.me);
   $('nav-lb-rank').textContent = r ? '#' + r.rank : '';
 }
-// Clans ranked by their members' XP this week.
+// Clans ranked by their members' kills this week.
 function clanRows(which) {
-  const xp = new Map(leaderboard.rows('xp', which).map((r) => [r.tag.toLowerCase(), r.value]));
+  const xp = new Map(leaderboard.rows('kills', which).map((r) => [r.tag.toLowerCase(), r.value]));
   const mine = clans.myClan();
   return clans.list().map((c) => ({ tag: `[${c.tag}] ${c.name}`, clan: c.tag, value: c.members.reduce((n, m) => n + (xp.get(m.toLowerCase()) || 0), 0), me: !!mine && mine.tag === c.tag }))
     .filter((r) => r.value > 0).sort((a, b2) => b2.value - a.value).map((r, i) => ({ ...r, rank: i + 1 }));
@@ -378,10 +378,10 @@ function renderLeaderboard() {
   const el = $('menu-lb');
   if (!el) return;
   // XP and clans aren't split by mode; clans are weekly only.
-  if (lbMode && (lbBoard === 'xp' || lbBoard === 'clans')) lbBoard = 'kills';
-  if (lbWhich === 'all' && lbBoard === 'clans') lbBoard = 'xp';
+  if (lbMode && lbBoard === 'clans') lbBoard = 'kills';
+  if (lbWhich === 'all' && lbBoard === 'clans') lbBoard = 'kills';
   if (lbBoard === 'clans') clans.loadAll();
-  const rows = lbBoard === 'clans' ? clanRows(lbWhich) : leaderboard.rows(lbBoard, lbWhich, lbMode || null), b = lbBoard === 'clans' ? { name: 'XP' } : BOARDS.find((x) => x.id === lbBoard) || BOARDS[0];
+  const rows = lbBoard === 'clans' ? clanRows(lbWhich) : leaderboard.rows(lbBoard, lbWhich, lbMode || null), b = lbBoard === 'clans' ? { name: 'Kills' } : BOARDS.find((x) => x.id === lbBoard) || BOARDS[0];
   const me = rows.find((r) => r.me), top = rows.slice(0, 50);
   const all = lbWhich === 'all', life = leaderboard.lifetime();
   const mineSrc = all ? life : leaderboard.mine;
@@ -1071,7 +1071,7 @@ const PANE_INFO = {
   loadout: ['Loadout', 'One weapon per slot. Changes apply the next time you spawn.'],
   character: ['Character', 'Your callsign, color and cosmetics. Earn tokens from missions to unlock more.'],
   missions: ['Missions', 'The season pass, daily rewards and challenges, your level and missions. All of them pay tokens.'],
-  leaderboard: ['Leaderboard', 'Top players by XP, kills, wins and headshots: this week, last week or all time, in every mode or just one.'],
+  leaderboard: ['Leaderboard', 'Top players by kills, wins and headshots: this week, last week or all time, in every mode or just one.'],
   friends: ['Friends', 'Add friends by gamertag, see who\'s online, party up and chat.'],
   mod: ['Mod Panel', 'Staff only: warn, ban or force a new gamertag. Every action is signed with your key.'],
 };

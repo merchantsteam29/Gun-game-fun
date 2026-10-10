@@ -3,7 +3,7 @@ import { onStats, addTokens, grantWrap, allStats } from './missions.js';
 import { onProgress, myLevel } from './progress.js';
 import { moderation } from './moderation.js';
 
-// Weekly leaderboard: kills, wins, headshots and XP from Monday 00:00 UTC to the next Monday.
+// Weekly leaderboard: kills, wins and headshots (XP is still counted but not shown or ranked) from Monday 00:00 UTC to the next Monday.
 // Every player with a gamertag posts their own week's totals, signed, as a retained message at
 // whffa/v1/lb/<week>/<tag>; everyone reads them all. Totals are self-reported (there's no game
 // server to count them), so they're capped to believable numbers. Last week's #1 in each board
@@ -16,7 +16,6 @@ import { moderation } from './moderation.js';
 
 const V = 'whffa/v1/lb/';
 export const BOARDS = [
-  { id: 'xp', name: 'XP', icon: '⭐' },
   { id: 'kills', name: 'Kills', icon: '💀' },
   { id: 'wins', name: 'Wins', icon: '🏆' },
   { id: 'heads', name: 'Headshots', icon: '🎯' },
