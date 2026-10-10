@@ -503,3 +503,7 @@ body.mobile .shop-wallet { width: 100%; }
 /* Clan wars */
 .cl-war { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
 .cl-war-live { padding: 8px 10px; border-radius: 10px; border: 1px solid #ff6a5a; background: rgba(255,90,70,0.12); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.hs-motw { border-color: rgba(176,107,255,0.5); background: linear-gradient(100deg, rgba(176,107,255,0.14), rgba(176,107,255,0.02)); }
+.hs-motw .hs-ic { font-size: 22px; }
+.hs-motw button { margin-left: auto; }

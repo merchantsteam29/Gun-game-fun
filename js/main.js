@@ -32,6 +32,7 @@ import { activeHolidays, upcomingHolidays, HOLIDAY_XP, HOLIDAY_TOKENS } from './
 import { achievements, ACHIEVEMENTS, ACH, TIER_COLOR } from './achievements.js';
 import { claimSeasonRewards, seasonPeak } from './ranked.js';
 import { gifts } from './gifts.js';
+import { motwNow, motwEnds, MOTW_TOKENS, MOTW_MATCHES } from './modeweek.js';
 import { Shop } from './shop.js';
 import { grantWrap, COSMETICS, allStats } from './missions.js';
 import { profiles } from './profiles.js';
@@ -251,6 +252,7 @@ function renderHome() {
         </div>
       </div>
     </div>
+    ${(() => { const w = motwNow(), p = motwProgress(); return `<div class="hs-tile banner-row hs-motw"><span class="hs-ic">${w.icon}</span><span class="hs-txt"><b>Mode of the week: ${esc(w.name)}</b><small>${esc(w.desc)} · ${p.paid ? '✓ reward earned' : `play ${MOTW_MATCHES} matches: ${p.n}/${MOTW_MATCHES} · 🪙 ${MOTW_TOKENS}`} · new mode in ${fmtDuration(motwEnds() - Date.now())}</small></span><button class="primary sm" data-motw>Play</button></div>`; })()}
     ${holidayRow()}
     ${!tutorialDone() ? '<button class="hs-tile hs-tutorial banner-row" data-tutorial><span class="hs-ic">🎓</span><span class="hs-txt"><b>New here? Take the 1-minute tutorial</b><small>Learn the controls in the Practice Range · 🪙 ' + TUTORIAL_TOKENS + '</small></span><span class="hm-arrow">›</span></button>' : ''}
     ${canInstall() ? '<button class="hs-tile hs-install banner-row" data-install><span class="hs-ic">📲</span><span class="hs-txt"><b>Install the app</b><small>Gun Game 3D on your home screen, full screen</small></span><span class="hm-arrow">›</span></button>' : ''}
@@ -277,6 +279,7 @@ function renderHome() {
   if (tu) tu.onclick = () => startPractice(true);
   el.querySelector('[data-ranked]').onclick = playRanked;
   el.querySelector('[data-feat]').onclick = playFeatured;
+  el.querySelector('[data-motw]').onclick = playMotw;
   const ins = el.querySelector('[data-install]');
   if (ins) ins.onclick = installApp;
   const g = el.querySelector('[data-gn]');
@@ -333,6 +336,17 @@ async function playFeatured() {
   status('');
   hostLobby({ name: `⭐ ${MODES[mode].name}`, mode, map: randomMap(), max: 12, bots: 6, rotate: true, vis: 'public' });
 }
+// Mode of the week: join a server playing it, or start one (public, with bots).
+async function playMotw() {
+  if (busy) return;
+  const w = motwNow();
+  status(`Finding a ${w.name} server…`);
+  const s = (await freshServers()).filter((x) => x.motw === w.id)[0];
+  if (s) return joinCode(s.code);
+  status('');
+  hostLobby({ name: `${w.icon} ${w.name}`, mode: w.mode, map: randomMap(), max: 12, bots: 6, rotate: true, vis: 'public', rules: { ...w.rules, rulesName: w.name }, motw: w.id });
+}
+const motwProgress = () => { const p = store.get('motw', { week: '', n: 0, paid: false }), w = motwNow(); return p.week === w.id + motwEnds() ? p : { week: w.id + motwEnds(), n: 0, paid: false }; };
 // Everyone in one server: join the busiest Game Night server with room, or start it.
 async function joinGameNight() {
   if (busy) return;
@@ -1221,7 +1235,7 @@ function listingInfo() {
   const L = net && net.logic;
   const all = L ? [...L.players.values()] : [];
   return {
-    name: hosting.name, max: hosting.max, region: hosting.region, gn: hosting.gn ? 1 : 0, ranked: L && L.s.ranked ? 1 : 0, sr: myRanked().sr, rules: L ? L.s.rulesName || '' : '',
+    name: hosting.name, max: hosting.max, region: hosting.region, gn: hosting.gn ? 1 : 0, motw: L && L.s.motw ? L.s.motw : '', ranked: L && L.s.ranked ? 1 : 0, sr: myRanked().sr, rules: L ? L.s.rulesName || '' : '',
     mode: L ? L.s.mode : settings.mode, map: L ? L.s.map : settings.map,
     players: all.filter((p) => !p.bot).length, bots: all.filter((p) => p.bot).length,
   };
@@ -1552,6 +1566,13 @@ setXpBoost(() => !game.active ? 1 : (game.rules.gn && gameNight.isLive() ? GN_XP
 // Finishing a match in a Game Night server earns the Midnight wrap (once).
 game.onMatchTracked = () => {
   invites.matchDone(settings.name);
+  // Mode of the week: matches on a server playing it count toward the weekly tokens.
+  if (game.rules.motw && game.rules.motw === motwNow().id) {
+    const p = motwProgress();
+    p.n = Math.min(MOTW_MATCHES, p.n + 1);
+    if (p.n >= MOTW_MATCHES && !p.paid) { p.paid = true; addTokens(MOTW_TOKENS); game.hud.mission(`${motwNow().icon} Mode of the week: ${motwNow().name}`, `+${MOTW_TOKENS} tokens`, 'WEEKLY MODE'); }
+    store.set('motw', p);
+  }
   // Holiday events: the holiday's banner and some tokens for the first match of each holiday.
   const holDone = new Set(store.get('holDone', []));
   for (const h of activeHolidays()) {
@@ -1890,7 +1911,7 @@ async function hostLobby(preset = null) {
     net = newNet();
     try {
       await net.host(code, settings.name || 'Player', settings.color,
-        preset ? { map: preset.map, mode: preset.mode, maxPlayers: preset.max, botFill: Math.min(preset.bots, preset.max), gn: !!preset.gn, ranked: !!preset.ranked, war: preset.war || null }
+        preset ? { map: preset.map, mode: preset.mode, maxPlayers: preset.max, botFill: Math.min(preset.bots, preset.max), gn: !!preset.gn, ranked: !!preset.ranked, war: preset.war || null, rules: preset.rules || null, motw: preset.motw || null }
           : { map: settings.map, mode: settings.mode, maxPlayers: serverCfg.max, botFill: Math.min(serverCfg.bots, serverCfg.max), rules }, myCos());
       net.logic.s.rotate = preset ? preset.rotate : serverCfg.rotate;
       net.logic.onFlag = (p, details) => moderation.autoFlag({ target: p.name, lobby: net.code, details });

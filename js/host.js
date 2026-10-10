@@ -156,6 +156,7 @@ export class HostLogic {
     this.s = defaultSettings(MODES[opts.mode] ? opts.mode : 'ffa', MAPS[opts.map] ? opts.map : MAP_ORDER[0]);
     if (opts.gn) this.s.gn = true; // Game Night server (double XP for players while it's live)
     if (opts.war && opts.war.a && opts.war.b) this.s.war = { a: String(opts.war.a).slice(0, 5), b: String(opts.war.b).slice(0, 5) }; // clan war: [a] red vs [b] blue, members only
+    if (opts.motw) this.s.motw = String(opts.motw).slice(0, 16); // a Mode of the week server (modeweek.js)
     if (opts.ranked) this.s.ranked = true; // ranked server: standard rules, SR on (ranked.js)
     if (opts.rules) Object.assign(this.s, cleanRules(opts.rules), { rulesName: String(opts.rules.rulesName || '').slice(0, 24) }); // custom rules preset
     this.botCount = 0;
