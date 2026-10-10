@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { MAPS, setMapData, buildMapScene, boxes, quality } from './maps.js';
-import { moveBody, overlap, raycast, rayAABB, PLAYER_R, phys } from './physics.js';
+import { moveBody, overlap, raycast, rayAABB, PLAYER_R, phys, GRAVITY } from './physics.js';
 import { MODES, TEAM_COLORS, ZOMBIE_COLOR, JUGG_COLOR, JUGG_TEAM, defaultSettings } from './host.js';
 import { WEAPONS, DEFAULT_LOADOUT, GUNGAME_LADDER, SLOTS } from './weapons.js';
 import { track, onMissionComplete, getCos } from './missions.js';
@@ -945,6 +945,7 @@ export class Game {
   }
 
   respawn(m) {
+    this.mantle = null; this.wallrun = null; this.lastWall = null;
     const me = this.me;
     this.endKillcam();
     this.endDeathSpectate(); // back to your own view
@@ -1243,7 +1244,7 @@ export class Game {
       const adsK = this.ads ? 0.3 : 1;
       if (me.onGround) this.bobPhase += dt * hs * 1.9;
       const bob = me.onGround ? Math.min(1, hs / 6) * adsK * opts.bobbing : 0;
-      const slideRoll = this.slideT > 0 ? 0.045 : 0;
+      const slideRoll = this.slideT > 0 ? 0.045 : this.wallrun ? -this.wallrun.side * 0.13 : 0; // wall-run: lean away from the wall
       this.roll += (-strafe * 0.018 * adsK + slideRoll - this.roll) * Math.min(1, dt * 8);
       cam.position.set(me.pos.x, me.pos.y + this.stepSmooth + me.eye - this.landDip + Math.sin(this.bobPhase * 2) * 0.022 * bob, me.pos.z);
       cam.rotation.set(
@@ -1411,6 +1412,16 @@ export class Game {
 
   updateMovement(dt) {
     const me = this.me, k = this.keys, w = this.W(this.curW);
+    // Climbing onto a ledge: a short scripted move up and over.
+    if (this.mantle) {
+      const m = this.mantle;
+      m.t += dt;
+      const p = Math.min(1, m.t / m.dur), up = Math.min(1, p / 0.65), over = Math.max(0, (p - 0.35) / 0.65);
+      me.pos.set(m.from.x + (m.to.x - m.from.x) * over, m.from.y + (m.to.y - m.from.y) * (1 - (1 - up) * (1 - up)), m.from.z + (m.to.z - m.from.z) * over);
+      me.vel.set(0, 0, 0);
+      if (p >= 1) { this.mantle = null; me.onGround = true; this.coyote = 0; }
+      return;
+    }
     let f = (this.down('forward') ? 1 : 0) - (this.down('back') ? 1 : 0);
     let s = (this.down('right') ? 1 : 0) - (this.down('left') ? 1 : 0);
     let analog = 1;
@@ -1465,9 +1476,49 @@ export class Game {
       me.vel.z += (wz * speed * analog - me.vel.z) * a;
     }
 
+    const jumpDown = this.down('jump');
+    // ---- Mantle: in the air, moving forward into a ledge you can't step up: climb onto it.
+    if (!me.onGround && f > 0 && !me.crouch && me.vel.y < 4 && !this.wallrun && this.tryMantle()) return;
+    // ---- Wall-run: in the air at sprint speed, moving forward along a wall: run on it for a
+    // moment (less gravity, the view tilts); jump to kick off. Touch the ground before using the same wall again.
+    if (me.onGround) { this.lastWall = null; if (this.wallrun) this.endWallrun(); }
+    this.wallCd = Math.max(0, (this.wallCd || 0) - dt);
+    if (this.wallrun) {
+      const wr = this.wallrun;
+      wr.t += dt;
+      const fx = -sy, fz = -cy, dn = fx * wr.nx + fz * wr.nz;
+      let tx = fx - wr.nx * dn, tz = fz - wr.nz * dn;
+      const tl = Math.hypot(tx, tz) || 1; tx /= tl; tz /= tl;
+      const still = raycast(me.pos.x, me.pos.y + 1, me.pos.z, -wr.nx, 0, -wr.nz, 0.95);
+      if (wr.t > 1.2 || f <= 0 || !still) this.endWallrun();
+      else if (this.jumpBuf > 0 || (jumpDown && !this.jumpHeld)) { // wall jump
+        const sp = Math.max(Math.hypot(me.vel.x, me.vel.z), WALK * SPRINT);
+        me.vel.x = tx * sp * 0.9 + wr.nx * 6.5; me.vel.z = tz * sp * 0.9 + wr.nz * 6.5;
+        me.vel.y = JUMP * this.rules.jump * 0.95;
+        this.jumpBuf = 0; this.jumpHeld = true;
+        this.endWallrun();
+        sfx.jump(0.45);
+      } else {
+        const sp = Math.max(Math.hypot(me.vel.x, me.vel.z), WALK * this.rules.moveSpeed * SPRINT * 1.05);
+        me.vel.x = tx * sp - wr.nx * 0.8; me.vel.z = tz * sp - wr.nz * 0.8; // slight pull into the wall keeps you on it
+        me.vel.y = Math.max(-2, me.vel.y + GRAVITY * phys.gravity * dt * 0.78); // about a quarter of normal gravity
+        this.wallStep = (this.wallStep || 0) + dt * 7;
+        if (this.wallStep >= 1) { this.wallStep = 0; this.stepSound(me.pos.x, me.pos.y, me.pos.z)(0.18); }
+      }
+    } else if (!me.onGround && f > 0 && this.wallCd <= 0 && Math.hypot(me.vel.x, me.vel.z) > WALK * 1.12 && me.vel.y < 6 && !me.crouch) {
+      for (const side of [1, -1]) { // 1: wall on the right
+        const dx = cy * side, dz = -sy * side;
+        const hit = raycast(me.pos.x, me.pos.y + 1, me.pos.z, dx, 0, dz, 0.75);
+        if (!hit || hit.nx * dx + hit.nz * dz > -0.7 || Math.abs(hit.ny || 0) > 0.3) continue;
+        if (this.lastWall && Math.abs(this.lastWall.nx - hit.nx) < 0.1 && Math.abs(this.lastWall.nz - hit.nz) < 0.1) continue; // same wall again
+        this.wallrun = { nx: hit.nx, nz: hit.nz, t: 0, side };
+        me.vel.y = Math.max(me.vel.y, 2.6);
+        sfx.jump(0.25);
+        break;
+      }
+    }
     // Jumping: held Space keeps hopping; a tap just before landing or just after leaving a
     // ledge still counts.
-    const jumpDown = this.down('jump');
     if (jumpDown && !this.jumpHeld) this.jumpBuf = JUMP_BUFFER;
     this.jumpHeld = jumpDown;
     this.coyote = me.onGround ? COYOTE : Math.max(0, this.coyote - dt);
@@ -1505,6 +1556,31 @@ export class Game {
       if (this.stepAcc >= 1) { this.stepAcc = 0; this.stepSound(me.pos.x, me.pos.y, me.pos.z)(this.sprinting ? 0.22 : 0.14); }
     }
     if (me.pos.y < (MAPS[this.mapId].voidY !== undefined ? -60 : -20)) me.pos.set(0, 3, 0); // void maps: the host kills you first
+  }
+
+  // A ledge in front: wall at chest height, a top 0.55–2.1 m above your feet, and room to stand.
+  tryMantle() {
+    const me = this.me, fx = -Math.sin(me.yaw), fz = -Math.cos(me.yaw);
+    const wall = raycast(me.pos.x, me.pos.y + 1, me.pos.z, fx, 0, fz, 0.85);
+    if (!wall || wall.nx * fx + wall.nz * fz > -0.6) return false;
+    const px = me.pos.x + fx * (wall.t + 0.45), pz = me.pos.z + fz * (wall.t + 0.45);
+    const top = raycast(px, me.pos.y + 2.4, pz, 0, -1, 0, 2);
+    if (!top) return false;
+    const ty = me.pos.y + 2.4 - top.t, rise = ty - me.pos.y;
+    if (rise < 0.55 || rise > 2.1) return false;
+    if (overlap(px, ty + 0.04, pz, PLAYER_R, STAND_H)) return false; // no room up there
+    if (overlap(me.pos.x, ty + 0.04, me.pos.z, PLAYER_R * 0.8, 0.3)) return false; // ceiling in the way
+    this.mantle = { from: me.pos.clone(), to: new THREE.Vector3(px, ty + 0.02, pz), t: 0, dur: 0.2 + rise * 0.08 };
+    this.slideT = 0;
+    this.vm.landed(0.5);
+    sfx.land(0.35);
+    return true;
+  }
+  endWallrun() {
+    if (!this.wallrun) return;
+    this.lastWall = { nx: this.wallrun.nx, nz: this.wallrun.nz };
+    this.wallrun = null;
+    this.wallCd = 0.2;
   }
 
   // ---------- Weapons ----------

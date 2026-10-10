@@ -1,7 +1,7 @@
 {
-  "version": "2026.10.10.13",
+  "version": "2026.10.10.14",
   "notes": [
-    "New horror mode: Lights Out. Infection in the dark with fog, rain, lightning, flashlights and glowing-eyed zombies"
+    "New movement: climb onto ledges by jumping at them, and wall-run by sprint-jumping along walls (jump again to kick off)"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",
