@@ -427,6 +427,16 @@
     <div id="appeal-box" class="appeal-box"><p id="appeal-status" class="note"></p><textarea id="appeal-text" maxlength="400" rows="3" placeholder="Think this ban is a mistake? Explain why (one appeal per ban)."></textarea><button id="appeal-send" class="primary">Send appeal</button></div>
   </div>
 </div>
+<div id="bug-pop" class="overlay hidden">
+  <div class="panel mod-pop report">
+    <h2>REPORT A BUG</h2>
+    <p class="note">What went wrong? The more detail the better (what you were doing, what you expected). Your game version, device and match are added for you.</p>
+    <textarea id="bug-text" maxlength="500" rows="4" placeholder="Example: my gun disappeared after I picked up the rocket launcher on Desert Town"></textarea>
+    <label class="check"><input type="checkbox" id="bug-shot" checked> <span>Attach a picture of my screen</span></label>
+    <p id="bug-msg" class="note"></p>
+    <div class="rp-btns"><button id="bug-send" class="primary">Send</button><button id="bug-cancel" class="ghost">Cancel</button></div>
+  </div>
+</div>
 <div id="report-pop" class="overlay hidden">
   <div class="panel mod-pop report">
     <h2>REPORT <span id="rp-name"></span></h2>
@@ -453,6 +463,7 @@
     <div class="pause-actions">
       <button id="btn-gnvc" class="hidden"><span class="ic">🎤</span>Game Night voice</button>
       <button id="btn-settings-pause"><span class="ic">⚙</span>Settings</button>
+      <button id="btn-bug"><span class="ic">🐞</span>Report a bug</button>
       <button id="btn-hostpanel" class="hidden"><span class="ic">♛</span>Host panel</button>
       <button id="btn-leave" class="danger"><span class="ic">⎋</span>Leave</button>
     </div>

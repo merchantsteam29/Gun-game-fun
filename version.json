@@ -1,8 +1,7 @@
 {
-  "version": "2026.10.10.2",
+  "version": "2026.10.10.3",
   "notes": [
-    "Smarter bots: they match how good the players are, take cover when hurt, grab health, check corners and stick with their team",
-    "The leaderboard no longer shows XP"
+    "Report a bug: a new button in the pause menu sends bug reports straight to the developer"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",

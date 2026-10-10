@@ -1542,6 +1542,30 @@ function openReport(p) {
   $('report-pop').classList.remove('hidden');
 }
 $('rp-details').addEventListener('keydown', (e) => e.stopPropagation());
+// ---------- Report a bug (pause menu) ----------
+let bugShot = null;
+$('btn-bug').onclick = () => {
+  bugShot = game.active ? grabShot() : null;
+  $('bug-text').value = '';
+  $('bug-msg').textContent = social.tag ? '' : 'Pick a gamertag (Friends tab) first, so the owner knows who sent it.';
+  $('bug-shot').checked = !!bugShot;
+  $('bug-shot').parentElement.classList.toggle('hidden', !bugShot);
+  $('bug-pop').classList.remove('hidden');
+  setTimeout(() => $('bug-text').focus(), 50);
+};
+$('bug-text').addEventListener('keydown', (e) => e.stopPropagation());
+$('bug-cancel').onclick = () => $('bug-pop').classList.add('hidden');
+$('bug-send').onclick = async () => {
+  const where = game.active ? `${MODES[game.rules.mode] ? MODES[game.rules.mode].name : game.rules.mode} on ${MAPS[game.mapId] ? MAPS[game.mapId].name : game.mapId}${net && net.code ? ` (${net.code})` : ''}` : 'menu';
+  const ua = navigator.userAgent, browser = /Edg\//.test(ua) ? 'Edge' : /OPR\//.test(ua) ? 'Opera' : /Chrome\//.test(ua) ? 'Chrome' : /Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : 'browser';
+  const os = /Windows/.test(ua) ? 'Windows' : /Android/.test(ua) ? 'Android' : /iPhone|iPad/.test(ua) ? 'iOS' : /Mac OS/.test(ua) ? 'Mac' : /CrOS/.test(ua) ? 'Chromebook' : /Linux/.test(ua) ? 'Linux' : '';
+  const info = `v${APP_VERSION} · ${browser}${os ? ' on ' + os : ''} · ${mobile ? 'touch' : 'desktop'} · ${innerWidth}×${innerHeight} · ${where}`;
+  try {
+    await moderation.reportBug({ text: $('bug-text').value, info, img: $('bug-shot').checked ? bugShot : null });
+    $('bug-pop').classList.add('hidden');
+    toast('🐞 Bug report sent. Thanks!');
+  } catch (err) { $('bug-msg').textContent = err.message; }
+};
 $('appeal-text').addEventListener('keydown', (e) => e.stopPropagation());
 
 // A warning, from a match (instant) or from your record (persistent, until you acknowledge it).

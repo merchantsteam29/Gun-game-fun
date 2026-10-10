@@ -54,7 +54,7 @@ export class ModPanel {
     const reports = [...moderation.reports.values()];
     const bans = [...moderation.records.values()].filter((r) => moderation.activeBan(r)).length;
     const appeals = moderation.openAppeals();
-    const tabs = [['players', '👤 Players'], ['online', `🟢 Online <b>${online.length}</b>`], ['reports', `🚩 Reports ${reports.length ? `<b class="alert">${reports.length}</b>` : ''}`], ['appeals', `⚖ Appeals ${appeals.length ? `<b class="alert">${appeals.length}</b>` : ''}`], ['announce', '📣 Announce'], ['recent', '🕘 Recent'], ['staffchat', `💬 Staff chat ${this.unread ? `<b class="alert">${this.unread}</b>` : ''}`], ['filter', '🤐 Chat filter'], ['log', '📜 Log']];
+    const tabs = [['players', '👤 Players'], ['online', `🟢 Online <b>${online.length}</b>`], ['reports', `🚩 Reports ${reports.length ? `<b class="alert">${reports.length}</b>` : ''}`], ...(roles.isOwner() ? [['bugs', `🐞 Bugs ${moderation.bugs.size ? `<b class="alert">${moderation.bugs.size}</b>` : ''}`]] : []), ['appeals', `⚖ Appeals ${appeals.length ? `<b class="alert">${appeals.length}</b>` : ''}`], ['announce', '📣 Announce'], ['recent', '🕘 Recent'], ['staffchat', `💬 Staff chat ${this.unread ? `<b class="alert">${this.unread}</b>` : ''}`], ['filter', '🤐 Chat filter'], ['log', '📜 Log']];
     if (owner) tabs.push(['staff', '🛡 Staff']);
     if (!tabs.some(([id]) => id === this.tab)) this.tab = 'players';
     this.el.innerHTML = `
@@ -73,6 +73,7 @@ export class ModPanel {
     if (this.tab === 'players') this.renderPlayers(body);
     else if (this.tab === 'online') this.renderOnline(body, online);
     else if (this.tab === 'reports') this.renderReports(body, reports);
+    else if (this.tab === 'bugs') this.renderBugs(body);
     else if (this.tab === 'announce') this.renderAnnounce(body);
     else if (this.tab === 'appeals') this.renderAppeals(body, appeals);
     else if (this.tab === 'filter') this.renderFilter(body);
@@ -264,6 +265,26 @@ export class ModPanel {
   }
 
   // ---------- Reports ----------
+
+  // Owner: bug reports from players (pause menu → Report a bug).
+  renderBugs(body) {
+    const bugs = [...moderation.bugs.values()].sort((a, b) => b.ts - a.ts);
+    body.innerHTML = `<div class="card">
+      <h3>Bug reports <span class="muted">(${bugs.length})</span></h3>
+      <div class="note">Sent from the pause menu (🐞 Report a bug). Only you see these. They disappear after 30 days, or when you mark them done.</div>
+      <div class="mp-reports">${bugs.length ? bugs.map((r) => `
+        <div class="mp-report">
+          <div class="mp-report-head"><b>${esc(r.from)}</b><small>${ago(r.ts)}</small></div>
+          <div class="mp-report-text">“${esc(r.text)}”</div>
+          ${r.info ? `<small class="muted">${esc(r.info)}</small>` : ''}
+          ${r.img ? `<a href="#" class="mp-shot" data-shot="${esc(r.id)}" title="Their screen when they sent it (click to enlarge)"><img src="${r.img}" alt="Screenshot"></a>` : ''}
+          <div class="mp-actions"><button data-look="${esc(r.from)}">Look up ${esc(r.from)}</button><button class="ghost" data-closebug="${esc(r.id)}">✓ Done</button></div>
+        </div>`).join('') : '<div class="sv-empty">No bug reports. 🎉</div>'}</div>
+    </div>`;
+    body.querySelectorAll('[data-look]').forEach((b) => { b.onclick = () => this.look(b.dataset.look); });
+    body.querySelectorAll('[data-closebug]').forEach((b) => { b.onclick = () => { moderation.closeBug(b.dataset.closebug); this.render(); }; });
+    body.querySelectorAll('[data-shot]').forEach((a) => { a.onclick = (e) => { e.preventDefault(); a.classList.toggle('big'); }; });
+  }
 
   renderReports(body, reports) {
     reports.sort((a, b) => b.ts - a.ts);

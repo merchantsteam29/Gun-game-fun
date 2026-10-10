@@ -21,6 +21,8 @@ const P = V + 'modrec/', ANN = V + 'announce', REP = V + 'report/', PRES = V + '
 const STAFFCHAT_KEEP = 3 * 864e5; // staff chat history: 3 days
 const LOG_MAX = 30;
 const REPORT_MAX_AGE = 7 * 864e5;
+const BUG = V + 'bug/'; // retained bug reports (signed by the sender), read by the owner
+const BUG_MAX_AGE = 30 * 864e5;
 const ONLINE_MS = 75000;
 const low = (t) => String(t || '').toLowerCase();
 const clip = (s, n) => String(s ?? '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, n);
@@ -42,6 +44,7 @@ class Moderation {
     this.onPerma = null;
     this.annRaw = null;
     this.reports = new Map(); // report id -> { id, from, target, lobby, reason, details, ts }
+    this.bugs = new Map(); // bug id -> { id, from, text, info, img, ts } (owner only)
     this.online = new Map(); // lower tag -> { tag, mode, lobby, at }
     this.appeals = new Map(); // lower tag -> { tag, banTs, text, ts }
     this.filter = { defaults: true, words: [] }; // staff-signed chat filter settings
@@ -78,6 +81,7 @@ class Moderation {
     else if (t === ANN) this.receiveAnnouncement(text);
     else if (t === PERMA) this.receivePerma(text);
     else if (t.startsWith(REP)) this.receiveReport(t.slice(REP.length), text);
+    else if (t.startsWith(BUG) && roles.isOwner()) this.receiveBug(t.slice(BUG.length), text);
     else if (t.startsWith(PRES) && roles.myRole()) this.receivePresence(t.slice(PRES.length), text, packet);
     else if (t === FILTER) this.receiveFilter(text);
     else if (t.startsWith(APPEAL)) this.receiveAppeal(t.slice(APPEAL.length), text);
@@ -91,11 +95,13 @@ class Moderation {
     if (!s) return;
     const want = new Set([ANN, FILTER, PERMA]);
     if (s.tag) { want.add(P + low(s.tag)); want.add(APPEAL + low(s.tag)); }
+    if (roles.isOwner()) want.add(BUG + '+');
     if (roles.myRole()) for (const t of [P + '+', REP + '+', PRES + '+', APPEAL + '+', STAFFCHAT + '+', TAG + '+']) want.add(t);
     for (const w of this.watching) if (!want.has(w)) s.relay.unsubscribe(w);
     for (const w of want) if (!this.watching.has(w)) s.relay.subscribe(w);
     this.watching = want;
     if (!roles.myRole()) { this.reports.clear(); this.online.clear(); }
+    if (!roles.isOwner()) this.bugs.clear();
     this.reverify();
     if (this.filterRaw) this.receiveFilter(this.filterRaw);
     if (this.permaRaw) this.receivePerma(this.permaRaw);
@@ -347,6 +353,35 @@ class Moderation {
     if (!roles.myRole()) return;
     this.social.relay.publish(REP + id, '', { retain: true });
     this.reports.delete(id);
+    if (this.onChange) this.onChange(null);
+  }
+
+  // ---------- Bug reports (owner) ----------
+  // Anyone with a gamertag can send one (once a minute): what happened, plus the game version,
+  // device and match it came from, and an optional picture of their screen.
+  async reportBug({ text, info, img }) {
+    const s = this.social;
+    if (!s.tag) throw new Error('Pick a gamertag (Friends tab) first, so the owner knows who sent it.');
+    if (String(text || '').trim().length < 5) throw new Error('Say what went wrong (a few words is fine).');
+    if (Date.now() - (this.lastBug || 0) < 60000) throw new Error('You just sent one. Wait a minute before sending another.');
+    const id = `${low(s.tag)}-${Date.now().toString(36)}`;
+    const shot = typeof img === 'string' && img.startsWith('data:image/jpeg;base64,') && img.length < 60000 ? img : undefined;
+    s.relay.publish(BUG + id, await s.sign({ id, text: clip(text, 500), info: clip(info, 300), img: shot }), { retain: true });
+    this.lastBug = Date.now();
+  }
+  async receiveBug(id, text) {
+    if (!text) { if (this.bugs.delete(id) && this.onChange) this.onChange(null); return; }
+    const b = await this.social.verify(text);
+    if (!b || b.id !== id || Date.now() - (Number(b.ts) || 0) > BUG_MAX_AGE) return;
+    const img = typeof b.img === 'string' && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(b.img) ? b.img : null;
+    this.bugs.set(id, { id, from: b.from, text: clip(b.text, 500), info: clip(b.info, 300), ts: Number(b.ts), img });
+    if (this.onChange) this.onChange(null);
+  }
+  // Owner: mark a bug fixed / handled (removes it).
+  closeBug(id) {
+    if (!roles.isOwner()) return;
+    this.social.relay.publish(BUG + id, '', { retain: true });
+    this.bugs.delete(id);
     if (this.onChange) this.onChange(null);
   }
 
