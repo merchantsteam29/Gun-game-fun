@@ -480,7 +480,7 @@ export class SettingsUI {
 }
 
 // Front-view sketch of the character with its cosmetics, for the Customize tab.
-function drawAvatar(canvas, cos, body) {
+export function drawAvatar(canvas, cos, body) {
   const g = canvas.getContext('2d');
   const W = canvas.width;
   g.clearRect(0, 0, W, canvas.height);

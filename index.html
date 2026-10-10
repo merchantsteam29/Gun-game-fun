@@ -87,6 +87,8 @@
 <link rel="modulepreload" href="js/events.js">
 <link rel="modulepreload" href="js/holidays.js">
 <link rel="modulepreload" href="js/achievements.js">
+<link rel="modulepreload" href="js/gifts.js">
+<link rel="modulepreload" href="js/shop.js">
 </head>
 <body>
 <canvas id="game"></canvas>
@@ -226,6 +228,7 @@
         <button data-pane="play" class="sel"><span class="ic">▶</span><span class="lbl">Play<small>Join or create a match</small></span></button>
         <button data-pane="loadout"><span class="ic">⌖</span><span class="lbl">Loadout<small>Pick your weapons</small></span></button>
         <button data-pane="character"><span class="ic">☺</span><span class="lbl">Character<small>Name, color, cosmetics</small></span></button>
+        <button data-pane="shop"><span class="ic">🛒</span><span class="lbl">Shop<small>Cosmetics, wraps & gifts</small></span></button>
         <button data-pane="missions"><span class="ic">★</span><span class="lbl">Missions<small>Season pass &amp; daily rewards</small></span><b id="nav-missions-count"></b></button>
         <button data-pane="leaderboard"><span class="ic">🏆</span><span class="lbl">Leaderboard<small>Weekly, all-time, per mode</small></span><b id="nav-lb-rank"></b></button>
         <button data-pane="friends"><span class="ic">☻</span><span class="lbl">Friends<small>Gamertags &amp; party chat</small></span><b id="nav-friends-count" class="alert"></b></button>
@@ -319,6 +322,7 @@
         <div id="menu-loadout" class="loadout"></div>
       </section>
       <!-- Character -->
+      <section class="menu-pane hidden" data-pane="shop"><div id="menu-shop"></div></section>
       <section class="menu-pane hidden" data-pane="character">
         <div class="field two">
           <div class="field">

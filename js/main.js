@@ -31,6 +31,8 @@ import { watchEvents, nextEvent, EVENT_NAMES, TOURNEY_TOKENS } from './events.js
 import { activeHolidays, upcomingHolidays, HOLIDAY_XP, HOLIDAY_TOKENS } from './holidays.js';
 import { achievements, ACHIEVEMENTS, ACH, TIER_COLOR } from './achievements.js';
 import { claimSeasonRewards, seasonPeak } from './ranked.js';
+import { gifts } from './gifts.js';
+import { Shop } from './shop.js';
 import { grantWrap, COSMETICS, allStats } from './missions.js';
 import { profiles } from './profiles.js';
 import { clans, CLAN_COLORS, MAX_MEMBERS } from './clans.js';
@@ -182,6 +184,19 @@ achievements.onUnlock((a) => {
   if (!game.active && menuPane === 'missions') renderMissions();
 });
 setTimeout(() => achievements.check(), 1500); // older stats might already count
+// ---------- Shop and gifts ----------
+const shop = new Shop({
+  el: $('menu-shop'), social, getColor: () => settings.color, getName: () => settings.name || 'Player', toast,
+  onCos: (c) => { game.myBanner = c.banner; if (net) net.send({ t: 'cos', c: { ...myCos(), ...c } }); renderChip(); },
+});
+gifts.init(social);
+gifts.onGift = (g) => {
+  const what = g.tokens ? `🪙 ${g.tokens} tokens` : `${shop.itemName(g.item)}${g.refunded ? ' (you had it, so you got its price in tokens)' : ''}`;
+  if (game.active) chat.system(`🎁 ${g.from} sent you ${what}!${g.note ? ` “${g.note}”` : ''}`);
+  else toast(`🎁 ${g.from} sent you ${what}!`);
+  renderChip();
+  if (!game.active && menuPane === 'shop') shop.render();
+};
 // Ranked season rewards: when a season has ended, its banners.
 function claimRanked() {
   for (const r of claimSeasonRewards(grantItem)) toast(`🏆 Ranked Season ${r.season}: you finished at ${r.div.icon} ${r.div.name}. Banner unlocked!`);
@@ -1103,6 +1118,7 @@ const PANE_INFO = {
   loadout: ['Loadout', 'One weapon per slot. Changes apply the next time you spawn.'],
   character: ['Character', 'Your callsign, color and cosmetics. Earn tokens from missions to unlock more.'],
   missions: ['Missions', 'The season pass, daily rewards and challenges, your level and missions. All of them pay tokens.'],
+  shop: ['Shop', 'Everything you can buy with tokens. Prices never change and nothing leaves the shop. You can gift items and tokens to friends too.'],
   leaderboard: ['Leaderboard', 'Top players by kills, wins and headshots: this week, last week or all time, in every mode or just one.'],
   friends: ['Friends', 'Add friends by gamertag, see who\'s online, party up and chat.'],
   mod: ['Mod Panel', 'Staff only: warn, ban or force a new gamertag. Every action is signed with your key.'],
@@ -1122,6 +1138,7 @@ function showPane(name) {
   if (name === 'character') { if (settingsUI) settingsUI.tryOn = null; renderCharacter(); }
   renderChip();
   if (name === 'missions') renderMissions();
+  if (name === 'shop') shop.render();
   if (name === 'play') { browser.start(); renderServers(); }
   if (name === 'friends') renderFriends();
   if (name === 'leaderboard') renderLeaderboard();

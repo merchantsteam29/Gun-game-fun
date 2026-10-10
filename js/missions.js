@@ -246,6 +246,8 @@ export function buyWrap(id) {
 
 // Rewards from progress.js (levels, daily login, challenges, game night, leaderboard).
 export function addTokens(n) { if (n > 0) { tokens += Math.round(n); save(); } }
+// Gifts (gifts.js): take tokens if there are enough.
+export function spendTokens(n) { n = Math.round(n); if (!(n > 0) || tokens < n) return false; tokens -= n; save(); return true; }
 // Gives an earned cosmetic (e.g. a season banner). Returns true if it's new.
 export function grantItem(slot, id) {
   if (!findItem(slot, id) || owned.has(slot + ':' + id)) return false;
