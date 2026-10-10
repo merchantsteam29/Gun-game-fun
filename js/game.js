@@ -601,6 +601,8 @@ export class Game {
     this.pickupData = null;
     this.brData = null;
     this.tourData = null;
+    this.propData = null;
+    this.updateProps();
     this.updateStorm();
     this.updatePickups(0);
     this.updateFlags(0); // and CTF flags
@@ -802,6 +804,7 @@ export class Game {
         this.infection = m.inf ?? 0;
         this.zw = m.zw || null;
         this.brData = m.br || null;
+        this.propData = m.pr || null;
         this.tourData = m.tr || null;
         this.tagData = m.tg || null;
         this.pickupData = m.pk || null;
@@ -839,6 +842,14 @@ export class Game {
         break;
       }
       case 'boom': this.remoteBoom(m); break;
+      case 'propbreak': { // a barrel blew up / a crate broke
+        const pos = new THREE.Vector3(...m.p);
+        this.propData = (this.propData || []).filter((x) => x[0] !== m.id);
+        this.updateProps();
+        if (m.kind === 'barrel') this.boomFx(pos, 5, WEAPONS.rocket);
+        else { this.fx.burst(pos, null, '#9a6a35', 14, 4.5, 0.09, 0.7); this.fx.burst(pos, null, '#5e3f1d', 8, 3, 0.06, 0.5); this.posSound(sfx.bounce, pos, 0.9); }
+        break;
+      }
       case 'end':
         if (opts.streamer) { m = { ...m, title: this.unalias(m.title), scores: (m.scores || []).map((s) => ({ ...s, name: this.players.get(s.id) ? this.players.get(s.id).name : s.name })), mvp: m.mvp ? { ...m.mvp, name: this.players.get(m.mvp.id) ? this.players.get(m.mvp.id).name : m.mvp.name } : m.mvp }; }
         if (!this.matchOver && this.playedThisMatch) this.trackMatchEnd(m);
@@ -1230,6 +1241,7 @@ export class Game {
     this.updateProjectiles(dt);
     this.updateZone(now);
     this.updateStorm();
+    this.updateProps();
     this.updateTags(now);
     this.updatePickups(now);
     this.updateFlags(now);
@@ -1620,6 +1632,7 @@ export class Game {
     const o = this.camera.position;
     this.camBasis();
     const hits = new Map();
+    const propHits = new Map(); // barrels / crates hit by this shot
     const ends = [];
     for (let i = 0; i < w.pellets; i++) {
       const a = Math.random() * Math.PI * 2, r = this.spread * Math.sqrt(Math.random());
@@ -1634,8 +1647,19 @@ export class Game {
           if (t >= 0 && t < maxT) { maxT = t; best = { rp, head: hb.head }; }
         }
       }
+      let prop = null;
+      for (const x of this.propData || []) {
+        const bx = this.propBox(x);
+        const t = rayAABB(o.x, o.y, o.z, dir.x, dir.y, dir.z, bx[0], bx[1], bx[2], bx[3], bx[4], bx[5], maxT);
+        if (t >= 0 && t < maxT) { maxT = t; prop = x[0]; best = null; }
+      }
       const end = o.clone().addScaledVector(dir, maxT);
-      if (best) {
+      if (prop) {
+        let dmg = w.dmg;
+        if (w.falloff) { const [near, far, min] = w.falloff; dmg *= 1 - clamp((maxT - near) / (far - near), 0, 1) * (1 - min); }
+        propHits.set(prop, (propHits.get(prop) || 0) + dmg);
+        this.fx.impact(end, _n.set(-dir.x, -dir.y, -dir.z));
+      } else if (best) {
         let dmg = w.dmg * (best.head ? w.head : 1);
         if (w.falloff) {
           const [near, far, min] = w.falloff;
@@ -1658,6 +1682,7 @@ export class Game {
       this.hud.hit(h.head ? 'head' : null, !!h.head, h.dmg);
       (h.head ? sfx.head : sfx.hit)(0.8);
     }
+    for (const [pid, dmg] of propHits) this.net.send({ t: 'prop', id: pid, dmg: Math.round(dmg) });
     this.net.send({ t: 'shot', w: id, o: arr(muzzle), e: ends, q: w.quiet ? 1 : 0 });
   }
 
@@ -2104,6 +2129,45 @@ export class Game {
     const p = this.spectating || !this.me.alive ? this.camera.position : this.me.pos;
     document.body.classList.toggle('in-storm', !this.matchOver && Math.hypot(p.x - cx, p.z - cz) > r);
   }
+
+  // Barrels (red, explode) and crates (wood, break) from the host's snapshot.
+  updateProps() {
+    if (!this.propMeshes) this.propMeshes = new Map();
+    const want = new Map((this.propData || []).map((x) => [x[0], x]));
+    for (const [id, mesh] of this.propMeshes) if (!want.has(id)) { this.scene.remove(mesh); this.propMeshes.delete(id); }
+    for (const [id, x] of want) {
+      if (this.propMeshes.has(id)) continue;
+      let mesh;
+      if (x[1] === 1) {
+        if (!this.barrelGeo) {
+          this.barrelGeo = new THREE.CylinderGeometry(0.4, 0.4, 1.1, 16);
+          this.barrelMat = new THREE.MeshStandardMaterial({ color: '#b3261e', roughness: 0.55, metalness: 0.35 });
+          this.bandGeo = new THREE.CylinderGeometry(0.41, 0.41, 0.12, 16);
+          this.bandMat = new THREE.MeshStandardMaterial({ color: '#f2c12e', roughness: 0.5 });
+        }
+        mesh = new THREE.Group();
+        const body = new THREE.Mesh(this.barrelGeo, this.barrelMat); body.position.y = 0.55; body.castShadow = true;
+        const band = new THREE.Mesh(this.bandGeo, this.bandMat); band.position.y = 0.75;
+        const band2 = new THREE.Mesh(this.bandGeo, this.bandMat); band2.position.y = 0.3;
+        mesh.add(body, band, band2);
+      } else {
+        if (!this.crateGeo) {
+          this.crateGeo = new THREE.BoxGeometry(0.9, 0.9, 0.9);
+          this.crateMat = new THREE.MeshStandardMaterial({ color: '#9a6a35', roughness: 0.85 });
+        }
+        mesh = new THREE.Mesh(this.crateGeo, this.crateMat);
+        mesh.position.y = 0.45;
+        mesh.castShadow = true;
+        const g = new THREE.Group(); g.add(mesh); mesh = g;
+      }
+      mesh.position.set(x[2], x[3], x[4]);
+      mesh.rotation.y = (id * 1.7) % Math.PI;
+      this.scene.add(mesh);
+      this.propMeshes.set(id, mesh);
+    }
+  }
+  // Hit box of a prop [id, kind, x, y, z].
+  propBox(x) { const r = x[1] === 1 ? 0.4 : 0.45, h = x[1] === 1 ? 1.1 : 0.9; return [x[2] - r, x[3], x[4] - r, x[2] + r, x[3] + h, x[4] + r]; }
 
   updateDom(now) {
     const data = this.domData;

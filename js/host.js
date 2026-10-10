@@ -131,6 +131,9 @@ export function defaultSettings(mode = 'ffa', map = 'warehouse') {
 
 // Map pickups (on in the standard modes; the host can turn them off). Placed on the map's hills:
 // the power weapon on the main one, health and ammo on the others.
+// Explosive barrels and breakable crates, scattered on open ground each match (not in practice).
+const PROP_HP = { barrel: 35, crate: 25 };
+const BARREL_R = 5, BARREL_DMG = 110;
 const PICKUP_MODES = ['br', 'zombies', 'ffa', 'tdm', 'koth', 'ctf', 'dom', 'hardpoint', 'killconfirmed', 'bounty', 'lms'];
 export const POWER_WEAPONS = ['railgun', 'minigun', 'rocket', 'amr'];
 const PICKUP = {
@@ -195,6 +198,7 @@ export class HostLogic {
     this.hillUntil = Date.now() + HILL_SECONDS * 1000;
     this.hillState = 0; // 0 neutral, 1 held, 2 contested
     this.setupPickups();
+    this.setupProps();
     this.hillHolder = null;
     this.infectAt = this.s.mode === 'infection' ? Date.now() + INFECT_DELAY_MS : 0;
     this.infected = false;
@@ -508,7 +512,26 @@ export class HostLogic {
         break;
       case 'proj': case 'boom': case 'fx':
         this.broadcast({ ...m, id }, id);
+        // Explosions also hit barrels and crates.
+        if (m.t === 'boom' && Array.isArray(m.p) && this.props && this.props.length) {
+          const W = WEAPONS[m.k];
+          if (W && W.radius && W.splash && !W.smoke && !W.flash) {
+            for (const o of [...this.props]) {
+              const d = Math.hypot(o.x - m.p[0], o.y + 0.5 - m.p[1], o.z - m.p[2]);
+              if (d < W.radius) this.damageProp(o, W.splash * (1 - d / W.radius) + 10, p);
+            }
+          }
+        }
         break;
+      case 'prop': { // shot a barrel / crate
+        const pr = this.props && this.props.find((o) => o.id === m.id);
+        if (!pr || !p.alive || Math.hypot(p.st[0] - pr.x, p.st[2] - pr.z) > 200) break;
+        const now = Date.now();
+        if (now - (p.lastProp || 0) < 40) break; // a few per shot at most
+        p.lastProp = now;
+        this.damageProp(pr, Math.min(150, Number(m.dmg) || 0), p);
+        break;
+      }
       case 'hit':
         this.hit(p, m);
         break;
@@ -968,6 +991,58 @@ export class HostLogic {
         k.w = null;
         break;
       }
+    }
+  }
+
+  // ---------- Barrels and crates ----------
+  setupProps() {
+    this.props = [];
+    this.propId = 0;
+    if (this.mode.practice || this.s.props === false || this.s.map === 'range' || !MAPS[this.s.map]) return;
+    if (!this.nav) this.nav = new NavGrid(MAPS[this.s.map].bounds);
+    const open = this.nav.nodes.filter((n) => n.edges.length >= 7 && n.y < 9 && n.mat !== 'invisible' && n.mat !== 'pad' && !spawns.some((s) => Math.hypot(s.x - n.x, s.z - n.z) < 4) && !(this.pickups || []).some((k) => Math.hypot(k.x - n.x, k.z - n.z) < 3));
+    open.sort(() => Math.random() - 0.5);
+    const picked = [];
+    for (const n of open) {
+      if (picked.length >= 10) break;
+      if (picked.some((q) => Math.hypot(q.x - n.x, q.z - n.z) < 7)) continue;
+      picked.push(n);
+    }
+    picked.forEach((n, i) => { const kind = i % 2 ? 'crate' : 'barrel'; this.props.push({ id: ++this.propId, kind, x: n.x, y: n.y, z: n.z, hp: PROP_HP[kind] }); });
+  }
+  // A prop takes damage; at zero a crate breaks and a barrel blows up (hurting anyone close, and
+  // setting off other props nearby a moment later). Whoever broke it gets the credit.
+  damageProp(pr, dmg, by) {
+    if (!pr || pr.hp <= 0 || this.phase !== 'playing' || !(dmg > 0)) return;
+    pr.hp -= dmg;
+    if (pr.hp > 0) return;
+    this.props = this.props.filter((x) => x !== pr);
+    this.broadcast({ t: 'propbreak', id: pr.id, kind: pr.kind, p: [r2(pr.x), r2(pr.y + 0.5), r2(pr.z)] });
+    if (pr.kind !== 'barrel') return;
+    const cx = pr.x, cy = pr.y + 0.6, cz = pr.z, now = Date.now();
+    for (const v of [...this.players.values()]) {
+      if (!v.alive || v.dummy || now < v.protectUntil) continue;
+      const atk = by && this.players.get(by.id) === by ? by : v;
+      if (v !== atk && !this.hostile(atk, v) && !(this.s.friendlyFire && this.mode.redBlue)) continue; // teammates are safe
+      const vx = v.st[0], vy = v.st[1] + 0.9, vz = v.st[2];
+      const d = Math.hypot(vx - cx, vy - cy, vz - cz);
+      if (d >= BARREL_R || rayBlocked(cx, cy, cz, vx, vy, vz)) continue;
+      const k = 1 - d / BARREL_R;
+      let hurt = Math.round(BARREL_DMG * k * (v === atk ? 0.5 : 1));
+      if (!hurt) continue;
+      v.hp -= hurt;
+      v.lastDmg = now;
+      const dl = d || 1, push = 10 * k;
+      const imp = [r2(((vx - cx) / dl) * push), r2(3 + 4 * k), r2(((vz - cz) / dl) * push)];
+      const dead = v.hp <= 0;
+      this.sendTo(v.id, { t: 'dmg', hp: Math.max(0, Math.round(v.hp)), from: atk.id, imp }); // bots get it too
+      if (v !== atk && !atk.bot) this.sendTo(atk.id, { t: 'hitc', kill: dead, head: false });
+      if (dead) this.kill(atk, v, 'barrel', false);
+    }
+    // Chain reaction
+    for (const o of [...this.props]) {
+      const d = Math.hypot(o.x - cx, o.z - cz);
+      if (d < BARREL_R) setTimeout(() => this.damageProp(o, 80 * (1 - d / BARREL_R) + 10, by), 140);
     }
   }
 
@@ -1493,6 +1568,8 @@ export class HostLogic {
     if (this.brZone) { const z = this.brZone, nx = BR_STAGES[z.shrinkUntil ? z.stage : z.stage + 1]; msg.br = [r2(z.cx), r2(z.cz), r2(z.r), r2(nx ? z.size * nx[2] : z.r), z.shrinkUntil ? 0 : Math.max(0, Math.ceil((z.holdUntil - now) / 1000)), Math.max(2, z.dps)]; }
     // Tournament: [round, final (1/0), ids still in]
     if (this.tour && this.s.mode === 'tourney') msg.tr = [this.tour.round, this.tour.ids.size <= 2 ? 1 : 0, [...this.tour.ids]];
+    // Barrels and crates still standing: [id, 1 barrel / 2 crate, x, y, z]
+    if (this.props && this.props.length) msg.pr = this.props.map((o) => [o.id, o.kind === 'barrel' ? 1 : 2, r2(o.x), r2(o.y), r2(o.z)]);
     if (this.zw) msg.zw = [this.zw.wave, this.zombiesLeft(), this.zw.breakUntil ? Math.max(0, Math.ceil((this.zw.breakUntil - now) / 1000)) : 0];
     if (this.s.mode === 'infection') msg.inf = this.infected ? 0 : Math.max(0, Math.ceil((this.infectAt - now) / 1000));
     if (this.s.mode === 'killconfirmed') msg.tg = this.tags.map((t) => [t.id, r2(t.x), r2(t.y), r2(t.z), t.team]);

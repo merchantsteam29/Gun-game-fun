@@ -1,7 +1,7 @@
 {
-  "version": "2026.10.10.4",
+  "version": "2026.10.10.5",
   "notes": [
-    "Streamer mode: hide server codes and other players' names while you stream or record"
+    "Explosive barrels and breakable crates on every map. Shoot a barrel near enemies!"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",
