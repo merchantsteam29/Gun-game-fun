@@ -19,6 +19,7 @@ import { buildProjectile, modelQuality } from './models.js';
 import { clamp, esc, store } from './util.js';
 import { opts, onOpts } from './settings.js';
 import { applyColorblind, pal } from './access.js';
+import { SPRAY_PALETTE } from './clans.js';
 import { setVolume } from './audio.js';
 
 const JUMP = 8, WALK = 5.6, SPRINT = 1.35, CROUCH_SPD = 0.55, PAD_JUMP = 14;
@@ -378,6 +379,7 @@ export class Game {
     else if (act === 'melee') this.quickMelee();
     else if (act === 'inspect' && this.reloadT <= 0) this.vm.inspect();
     else if (act === 'ping') this.ping();
+    else if (act === 'spray') this.spray();
   }
 
   // ---------- Kill cam ----------
@@ -458,6 +460,49 @@ export class Game {
     removeEventListener('keydown', this.kcSkip);
     removeEventListener('pointerdown', this.kcSkip);
     this.hud.killcam(false);
+  }
+
+  // ---------- Clan sprays ----------
+  // Sprays your clan's spray on the wall you're looking at (within 5 m). this.mySpray comes from
+  // main.js (your clan's record). One every 8 s; each player has one spray up at a time.
+  spray() {
+    if (!this.me.alive || this.spectating || this.matchOver) return;
+    if (!this.mySpray) { this.hud.say(this.myClanTag ? 'YOUR CLAN HAS NO SPRAY YET' : 'SPRAYS ARE FOR CLAN MEMBERS'); return; }
+    const now = performance.now();
+    if (now - (this.lastSprayT || 0) < 8000) { this.hud.say('SPRAY RECHARGING'); return; }
+    const cam = this.camera, dir = _c.set(0, 0, -1).applyQuaternion(cam.quaternion);
+    const hit = raycast(cam.position.x, cam.position.y, cam.position.z, dir.x, dir.y, dir.z, 5);
+    if (!hit) { this.hud.say('GET CLOSER TO A WALL'); return; }
+    this.lastSprayT = now;
+    const p = cam.position.clone().addScaledVector(dir, hit.t);
+    this.net.send({ t: 'spray', p: [p.x, p.y, p.z], n: [hit.nx, hit.ny, hit.nz], img: this.mySpray });
+    sfx.hiss(0.35);
+  }
+  addSpray(m) {
+    if (!this.sprays) this.sprays = new Map();
+    const old = this.sprays.get(m.id);
+    if (old) { this.scene.remove(old); old.material.map.dispose(); old.material.dispose(); }
+    const c = document.createElement('canvas'); c.width = c.height = 16;
+    const g = c.getContext('2d');
+    for (let i = 0; i < 256; i++) {
+      const col = SPRAY_PALETTE[parseInt(m.img[i], 16)];
+      if (!col) continue;
+      g.fillStyle = col; g.fillRect(i % 16, (i / 16) | 0, 1, 1);
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.NearestFilter;
+    if ('colorSpace' in tex) tex.colorSpace = THREE.SRGBColorSpace;
+    const mesh = new THREE.Mesh(this.sprayGeo || (this.sprayGeo = new THREE.PlaneGeometry(1.1, 1.1)), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 }));
+    const n = new THREE.Vector3(...m.n).normalize(), p = new THREE.Vector3(...m.p).addScaledVector(n, 0.03);
+    mesh.position.copy(p);
+    mesh.lookAt(p.clone().add(n));
+    this.scene.add(mesh);
+    this.sprays.set(m.id, mesh);
+    if (m.id !== this.myId) this.posSound(sfx.hiss, p, 0.35);
+  }
+  clearSprays() {
+    for (const s of (this.sprays || new Map()).values()) { this.scene.remove(s); s.material.map.dispose(); s.material.dispose(); }
+    this.sprays = new Map();
   }
 
   // ---------- Pings (team modes) ----------
@@ -570,6 +615,7 @@ export class Game {
 
   reset() {
     this.endKillcam();
+    this.clearSprays();
     this.stopAim(true);
     this.hist = null;
     this.active = false;
@@ -843,6 +889,7 @@ export class Game {
         break;
       }
       case 'boom': this.remoteBoom(m); break;
+      case 'spray': this.addSpray(m); break;
       case 'propbreak': { // a barrel blew up / a crate broke
         const pos = new THREE.Vector3(...m.p);
         this.propData = (this.propData || []).filter((x) => x[0] !== m.id);
@@ -879,6 +926,7 @@ export class Game {
         if (this.endInfo && this.endInfo.vote) { this.endInfo.vote.winner = m.map; this.endInfo.vote.counts = m.counts; this.endInfo.nextMap = m.map; }
         break;
       case 'start':
+        this.clearSprays(); // new match: walls are clean again
         this.streaks.clear();
         if (this.onMatchStart) this.onMatchStart();
         this.matchXp = 0;

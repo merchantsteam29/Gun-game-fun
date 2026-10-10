@@ -432,6 +432,22 @@
     <div id="appeal-box" class="appeal-box"><p id="appeal-status" class="note"></p><textarea id="appeal-text" maxlength="400" rows="3" placeholder="Think this ban is a mistake? Explain why (one appeal per ban)."></textarea><button id="appeal-send" class="primary">Send appeal</button></div>
   </div>
 </div>
+<div id="spray-pop" class="overlay hidden">
+  <div class="panel mod-pop spray-pop">
+    <h2>CLAN SPRAY</h2>
+    <p class="note">Draw your clan's spray. Members spray it on walls in matches (X key). Everyone in the match sees it, so keep it friendly.</p>
+    <div class="spray-edit">
+      <canvas id="spray-canvas" width="320" height="320"></canvas>
+      <div class="spray-tools">
+        <div id="spray-pal" class="spray-pal"></div>
+        <div class="spray-btns"><button data-tool="paint" class="sel">✏ Draw</button><button data-tool="fill">🪣 Fill</button><button data-tool="erase">⌫ Erase</button><button id="spray-clear" class="ghost">Clear all</button></div>
+        <div class="spray-prev"><small>Size in game</small><canvas id="spray-small" width="48" height="48"></canvas></div>
+      </div>
+    </div>
+    <p id="spray-msg" class="note"></p>
+    <div class="rp-btns"><button id="spray-save" class="primary">Save spray</button><button id="spray-remove" class="ghost">Remove spray</button><button id="spray-cancel" class="ghost">Cancel</button></div>
+  </div>
+</div>
 <div id="bug-pop" class="overlay hidden">
   <div class="panel mod-pop report">
     <h2>REPORT A BUG</h2>

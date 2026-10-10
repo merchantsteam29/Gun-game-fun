@@ -482,3 +482,20 @@ body.mobile .shop { grid-template-columns: 1fr; }
 body.mobile .shop-cats { flex-direction: row; flex-wrap: wrap; position: static; }
 body.mobile .shop-wallet { width: 100%; }
 .shop-bar .seg button { white-space: nowrap; }
+
+/* Clan sprays */
+.cl-spray { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 8px 0; }
+.cl-spray-img { width: 48px; height: 48px; image-rendering: pixelated; background: repeating-conic-gradient(#20252e 0 25%, #272d38 0 50%) 0 0 / 12px 12px; border-radius: 6px; }
+.spray-pop { max-width: 620px; }
+.spray-edit { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+#spray-canvas { width: 320px; height: 320px; max-width: 100%; border-radius: 8px; cursor: crosshair; touch-action: none; image-rendering: pixelated; }
+.spray-tools { display: flex; flex-direction: column; gap: 10px; min-width: 180px; }
+.spray-pal { display: grid; grid-template-columns: repeat(5, 30px); gap: 6px; }
+.spray-pal button { width: 30px; height: 30px; padding: 0; border-radius: 7px; border: 2px solid rgba(255,255,255,0.15); }
+.spray-pal button.sel { border-color: #fff; box-shadow: 0 0 0 2px var(--accent); }
+.spray-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.spray-btns button { padding: 6px 10px; font-size: 12px; }
+.spray-btns button.sel { border-color: var(--accent); color: var(--accent); }
+.spray-prev { display: flex; align-items: center; gap: 8px; }
+.spray-prev small { color: var(--muted); }
+#spray-small { width: 48px; height: 48px; image-rendering: pixelated; background: #2b313b; border-radius: 4px; }

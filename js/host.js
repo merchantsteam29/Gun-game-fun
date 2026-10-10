@@ -644,6 +644,15 @@ export class HostLogic {
         }
         break;
       }
+      case 'spray': { // clan spray on a wall: clan members only, one every 8 s
+        const now = Date.now();
+        if (!p.alive || !p.cos || !p.cos.clan || now - (p.lastSpray || 0) < 8000) break;
+        if (typeof m.img !== 'string' || !/^[0-9a-f]{256}$/.test(m.img) || !Array.isArray(m.p) || !Array.isArray(m.n) || ![...m.p, ...m.n].every(Number.isFinite)) break;
+        if (Math.hypot(m.p[0] - p.st[0], m.p[1] - p.st[1], m.p[2] - p.st[2]) > 8) break;
+        p.lastSpray = now;
+        this.broadcast({ t: 'spray', id, p: m.p.map(r2), n: m.n.map(r2), img: m.img, c: String(p.cos.clan).slice(0, 5) });
+        break;
+      }
       case 'ping': { // team modes only; one ping per 2.5 s, at most 4 in 15 s
         if (!this.mode.teams || !p.alive || !Array.isArray(m.p) || m.p.length !== 3 || !m.p.every(Number.isFinite)) break;
         const now = Date.now();

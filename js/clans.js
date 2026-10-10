@@ -13,6 +13,9 @@ const V = 'whffa/v1/';
 const CLAN = V + 'clan/', REQ = V + 'clanreq/', LEAVE = V + 'clanleave/', CHAT = V + 'clanchat/';
 export const CLAN_TAG_RE = /^[A-Z0-9]{2,5}$/;
 export const MAX_MEMBERS = 30;
+// Clan spray: 16x16 pixels, one hex digit each (0 = see-through, 1-f = SPRAY_PALETTE).
+export const SPRAY_RE = /^[0-9a-f]{256}$/;
+export const SPRAY_PALETTE = [null, '#ffffff', '#111111', '#7f8c8d', '#e74c3c', '#ff8a1a', '#ffd23f', '#2ecc71', '#16a085', '#3498db', '#1f3a8a', '#9b59b6', '#ff6fb5', '#8b5a2b', '#f5cba7', '#00e5ff'];
 export const CLAN_COLORS = ['#ffb020', '#e74c3c', '#3498db', '#2ecc71', '#9b59b6', '#1abc9c', '#ff6fb5', '#ecf0f1'];
 const low = (s) => String(s || '').toLowerCase();
 const clip = (s, n) => String(s ?? '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, n);
@@ -70,6 +73,7 @@ class Clans {
           tag: b.tag, name: clip(b.name, 24), color: CLAN_COLORS.includes(b.color) ? b.color : CLAN_COLORS[0], leader: b.from,
           members: [...new Set((Array.isArray(b.members) ? b.members : []).map((m) => clip(m, 16)).filter(Boolean))].slice(0, MAX_MEMBERS),
           since: Number(b.since) || 0, ts: Number(b.ts) || 0, disbanded: !!b.disbanded,
+          spray: typeof b.spray === 'string' && SPRAY_RE.test(b.spray) ? b.spray : null,
         };
         if (!clan.members.some((m) => low(m) === low(clan.leader))) clan.members.unshift(clan.leader);
         const old = this.records.get(k);
@@ -132,6 +136,7 @@ class Clans {
 
   async publishClan(c) {
     const body = { tag: c.tag, name: c.name, color: c.color, leader: c.leader, members: c.members, since: c.since };
+    if (c.spray && SPRAY_RE.test(c.spray)) body.spray = c.spray;
     if (c.disbanded) body.disbanded = true;
     const signed = await this.social.sign(body);
     this.social.relay.publish(CLAN + low(c.tag), signed, { retain: true });
@@ -199,6 +204,14 @@ class Clans {
     if (c.members.length >= MAX_MEMBERS) throw new Error('Your clan is full.');
     this.clearReq(low(c.tag), low(who));
     await this.publishClan({ ...c, members: [...c.members, r.tag] });
+  }
+  // Leader: set the clan spray (or null to remove it).
+  async setSpray(spray) {
+    const c = this.myClan();
+    if (!c || !this.isLeader()) throw new Error('Only the clan leader can make the clan spray.');
+    if (spray !== null && !SPRAY_RE.test(spray)) throw new Error('Bad spray.');
+    const full = this.records.get(low(c.tag));
+    await this.publishClan({ ...full, spray });
   }
   deny(who) { const c = this.myClan(); if (c) this.clearReq(low(c.tag), low(who)); this.changed(); }
 

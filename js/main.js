@@ -35,7 +35,7 @@ import { gifts } from './gifts.js';
 import { Shop } from './shop.js';
 import { grantWrap, COSMETICS, allStats } from './missions.js';
 import { profiles } from './profiles.js';
-import { clans, CLAN_COLORS, MAX_MEMBERS } from './clans.js';
+import { clans, CLAN_COLORS, MAX_MEMBERS, SPRAY_PALETTE, SPRAY_RE } from './clans.js';
 import { seasons, TIERS, TIER_XP, tierTokens } from './seasons.js';
 import { bannerOf, bannerHtml } from './banners.js';
 import { invites, INVITE_TOKENS, MAX_INVITES } from './invites.js';
@@ -839,18 +839,87 @@ function renderClan() {
   el.innerHTML = `<div class="cl-head"><b class="cl-name" style="color:${c.color}">[${esc(c.tag)}] ${esc(c.name)}</b><small>${c.members.length}/${MAX_MEMBERS} members</small>
       ${lead ? '<button class="danger" id="cl-disband">Disband</button>' : '<button id="cl-leave">Leave</button>'}</div>
     ${lead && reqs.length ? `<div class="cl-reqs">${reqs.map((r) => `<div class="fr-row"><span class="fr-name pf-link" data-profile="${esc(r.tag)}">${esc(r.tag)}</span><small>wants to join</small><button class="primary" data-cacc="${esc(r.tag)}">Accept</button><button data-cdeny="${esc(r.tag)}">Deny</button></div>`).join('')}</div>` : ''}
+    <div class="cl-spray">${c.spray ? `<canvas class="cl-spray-img" width="16" height="16" data-spray="${c.spray}"></canvas><small>Clan spray · press <kbd>${esc(keysLabel('spray'))}</kbd> in a match to spray it</small>` : `<small class="muted">${lead ? 'No clan spray yet.' : 'Your leader hasn\'t made a clan spray yet.'}</small>`}${lead ? `<button id="cl-spray">🎨 ${c.spray ? 'Edit' : 'Make'} clan spray</button>` : ''}</div>
     <div class="cl-members">${c.members.map((m) => `<span class="cl-m"><span class="pf-link" data-profile="${esc(m)}">${m.toLowerCase() === c.leader.toLowerCase() ? '👑 ' : ''}${esc(m)}</span>${lead && m.toLowerCase() !== c.leader.toLowerCase() ? `<button class="ghost" data-ckick="${esc(m)}" title="Remove from clan">✕</button>` : ''}</span>`).join('')}</div>
     <div class="cl-chat" id="cl-chat">${clans.chat.length ? clans.chat.map((x) => `<div><b>${esc(x.from)}</b> ${esc(x.text)}</div>`).join('') : '<small class="muted">Clan chat: messages show for members who are online.</small>'}</div>
     <form id="cl-chat-form" class="fr-add" autocomplete="off"><input id="cl-say" maxlength="200" placeholder="Message your clan" value="${esc(draft.say)}"><button class="primary" type="submit">Send</button></form>`;
   const log = $('cl-chat'); log.scrollTop = log.scrollHeight;
   $('cl-say').addEventListener('keydown', (e) => e.stopPropagation());
   $('cl-chat-form').onsubmit = async (e) => { e.preventDefault(); const v = $('cl-say').value.trim(); if (!v) return; $('cl-say').value = ''; try { await clans.say(v); } catch (err) { toast(err.message); } };
+  el.querySelectorAll('[data-spray]').forEach((cv) => drawSpray(cv, cv.dataset.spray));
+  if ($('cl-spray')) $('cl-spray').onclick = () => openSprayEditor(c.spray);
   if ($('cl-leave')) $('cl-leave').onclick = async () => { if (confirm(`Leave [${c.tag}]?`)) try { await clans.leave(); } catch (e) { toast(e.message); } };
   if ($('cl-disband')) $('cl-disband').onclick = async () => { if (confirm(`Disband [${c.tag}] for everyone? The tag becomes free.`)) await clans.disband(); };
   el.querySelectorAll('[data-cacc]').forEach((b) => { b.onclick = async () => { try { await clans.accept(b.dataset.cacc); } catch (e) { toast(e.message); } }; });
   el.querySelectorAll('[data-cdeny]').forEach((b) => { b.onclick = () => clans.deny(b.dataset.cdeny); });
   el.querySelectorAll('[data-ckick]').forEach((b) => { b.onclick = async () => { if (confirm(`Remove ${b.dataset.ckick} from the clan?`)) await clans.kick(b.dataset.ckick); }; });
 }
+
+// ---------- Clan spray editor (leader) ----------
+function drawSpray(canvas, spray) {
+  const g = canvas.getContext('2d'), s = canvas.width / 16;
+  g.clearRect(0, 0, canvas.width, canvas.height);
+  for (let i = 0; i < 256; i++) { const col = SPRAY_PALETTE[parseInt(spray[i], 16)]; if (col) { g.fillStyle = col; g.fillRect((i % 16) * s, ((i / 16) | 0) * s, s, s); } }
+}
+let sprayPix = null, sprayColor = 4, sprayTool = 'paint';
+function openSprayEditor(current) {
+  sprayPix = (current && SPRAY_RE.test(current) ? current : '0'.repeat(256)).split('');
+  $('spray-msg').textContent = '';
+  $('spray-pal').innerHTML = SPRAY_PALETTE.slice(1).map((c, i) => `<button data-col="${i + 1}" style="background:${c}" class="${i + 1 === sprayColor ? 'sel' : ''}"></button>`).join('');
+  $('spray-pal').querySelectorAll('[data-col]').forEach((b) => { b.onclick = () => { sprayColor = Number(b.dataset.col); sprayTool = sprayTool === 'erase' ? 'paint' : sprayTool; syncSprayUi(); }; });
+  document.querySelectorAll('.spray-btns [data-tool]').forEach((b) => { b.onclick = () => { sprayTool = b.dataset.tool; syncSprayUi(); }; });
+  $('spray-pop').classList.remove('hidden');
+  syncSprayUi();
+}
+function syncSprayUi() {
+  $('spray-pal').querySelectorAll('[data-col]').forEach((b) => b.classList.toggle('sel', Number(b.dataset.col) === sprayColor && sprayTool !== 'erase'));
+  document.querySelectorAll('.spray-btns [data-tool]').forEach((b) => b.classList.toggle('sel', b.dataset.tool === sprayTool));
+  const str = sprayPix.join(''), big = $('spray-canvas'), g = big.getContext('2d');
+  g.fillStyle = '#20252e'; g.fillRect(0, 0, 320, 320);
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) if ((x + y) % 2) { g.fillStyle = '#272d38'; g.fillRect(x * 20, y * 20, 20, 20); } // see-through checkers
+  drawSpray(big, str);
+  g.strokeStyle = 'rgba(255,255,255,0.06)';
+  for (let i = 0; i <= 16; i++) { g.beginPath(); g.moveTo(i * 20, 0); g.lineTo(i * 20, 320); g.moveTo(0, i * 20); g.lineTo(320, i * 20); g.stroke(); }
+  drawSpray($('spray-small'), str);
+}
+function sprayAt(e) {
+  const r = $('spray-canvas').getBoundingClientRect();
+  const x = Math.floor(((e.clientX - r.left) / r.width) * 16), y = Math.floor(((e.clientY - r.top) / r.height) * 16);
+  if (x < 0 || y < 0 || x > 15 || y > 15) return;
+  const i = y * 16 + x, v = sprayTool === 'erase' ? '0' : sprayColor.toString(16);
+  if (sprayTool === 'fill') { // flood fill from here
+    const from = sprayPix[i];
+    if (from === v) return;
+    const stack = [i];
+    while (stack.length) {
+      const j = stack.pop();
+      if (sprayPix[j] !== from) continue;
+      sprayPix[j] = v;
+      const jx = j % 16, jy = (j / 16) | 0;
+      if (jx > 0) stack.push(j - 1); if (jx < 15) stack.push(j + 1); if (jy > 0) stack.push(j - 16); if (jy < 15) stack.push(j + 16);
+    }
+  } else sprayPix[i] = v;
+  syncSprayUi();
+}
+{
+  const cv = $('spray-canvas');
+  let down = false;
+  cv.addEventListener('pointerdown', (e) => { down = sprayTool !== 'fill'; cv.setPointerCapture(e.pointerId); sprayAt(e); });
+  cv.addEventListener('pointermove', (e) => { if (down) sprayAt(e); });
+  cv.addEventListener('pointerup', () => { down = false; });
+  $('spray-clear').onclick = () => { sprayPix = '0'.repeat(256).split(''); syncSprayUi(); };
+  $('spray-cancel').onclick = () => $('spray-pop').classList.add('hidden');
+  $('spray-remove').onclick = async () => { try { await clans.setSpray(null); $('spray-pop').classList.add('hidden'); toast('Clan spray removed.'); } catch (e) { $('spray-msg').textContent = e.message; } };
+  $('spray-save').onclick = async () => {
+    const str = sprayPix.join('');
+    if (!/[1-9a-f]/.test(str)) { $('spray-msg').textContent = 'Draw something first.'; return; }
+    try { await clans.setSpray(str); $('spray-pop').classList.add('hidden'); toast('🎨 Clan spray saved! Members can spray it in matches.'); } catch (e) { $('spray-msg').textContent = e.message; }
+  };
+}
+// Your clan's spray, for the X key in matches.
+function syncMySpray() { const c = clans.myClan(); game.mySpray = c && c.spray ? c.spray : null; game.myClanTag = c ? c.tag : null; }
+setInterval(syncMySpray, 3000);
+setTimeout(syncMySpray, 1500);
 
 function renderFriends() {
   renderInvite();

@@ -1,8 +1,7 @@
 {
-  "version": "2026.10.10.8",
+  "version": "2026.10.10.9",
   "notes": [
-    "New Shop screen: every cosmetic, banner and wrap in one place, always the same stock",
-    "Gifts: send tokens or buy items for your friends"
+    "Clan sprays: clan leaders draw a pixel spray, members spray it on walls with X"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",
