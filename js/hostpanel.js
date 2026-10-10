@@ -173,7 +173,7 @@ export class HostPanel {
     for (const p of rows) {
       const row = document.createElement('div');
       row.className = 'prow';
-      const color = L.s.mode === 'infection' && p.team === 2 ? ZOMBIE_COLOR : teams && TEAM_COLORS[p.team] ? TEAM_COLORS[p.team] : p.color;
+      const color = MODES[L.s.mode].infect && p.team === 2 ? ZOMBIE_COLOR : teams && TEAM_COLORS[p.team] ? TEAM_COLORS[p.team] : p.color;
       row.innerHTML = `<span class="dot" style="background:${esc(color)}"></span><span class="nm">${esc(p.name)}${p.id === 'host' ? ' (you)' : ''}${p.acStrikes ? ` <em class="ac-flag" title="Anti-cheat: ${esc(p.acWhy || '')} (${p.acStrikes}×)">⚠ ${p.acStrikes}</em>` : ''}</span>`;
       if (p.bot) {
         const sel = document.createElement('select');

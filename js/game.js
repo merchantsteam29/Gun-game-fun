@@ -245,7 +245,7 @@ export class Game {
   }
 
   colorFor(p) {
-    if (this.rules.mode === 'infection') return p.team === 2 ? pal.zombie || ZOMBIE_COLOR : p.color;
+    if (MODES[this.rules.mode].infect) return p.team === 2 ? pal.zombie || ZOMBIE_COLOR : p.color;
     if (this.rules.mode === 'zombies') return p.team === 2 ? (p.name === 'Brute' ? '#8b1e1e' : pal.zombie || ZOMBIE_COLOR) : p.color;
     if (this.rules.mode === 'juggernaut' || this.rules.mode === 'bounty') return p.team === JUGG_TEAM ? JUGG_COLOR : p.color;
     if (this.teams && TEAM_COLORS[p.team]) return TEAM_COLORS[p.team];
@@ -264,7 +264,7 @@ export class Game {
     const big = !!MODES[this.rules.mode].bigHead;
     for (const r of this.remotes.values()) {
       const p = this.players.get(r.id);
-      if (p) r.setLook(this.colorFor(p), this.teams && p.team === this.myTeam && this.rules.mode !== 'infection');
+      if (p) r.setLook(this.colorFor(p), this.teams && p.team === this.myTeam && !MODES[this.rules.mode].infect);
       r.setBigHead(big);
     }
     const me = this.players.get(this.myId);
@@ -615,6 +615,7 @@ export class Game {
 
   reset() {
     this.endKillcam();
+    this.horrorOff();
     this.clearSprays();
     this.stopAim(true);
     this.hist = null;
@@ -831,7 +832,7 @@ export class Game {
         const was = this.players.get(m.id);
         this.players.delete(m.id);
         const r = this.remotes.get(m.id);
-        if (r) { r.dispose(); this.remotes.delete(m.id); }
+        if (r) { if (r.hBeam) { this.scene.remove(r.hBeam); this.scene.remove(r.hEyes); } r.dispose(); this.remotes.delete(m.id); }
         if (!m.quiet && !(was && was.z)) this.hud.say(`${m.name} left`);
         break;
       }
@@ -1142,7 +1143,7 @@ export class Game {
     let won;
     if (MODES[mode].redBlue) won = (team === 1 && m.title === 'RED TEAM WINS') || (team === 2 && m.title === 'BLUE TEAM WINS');
     if (this.rules.war) won = (team === 1 && m.title === `[${this.rules.war.a}] WINS THE CLAN WAR`) || (team === 2 && m.title === `[${this.rules.war.b}] WINS THE CLAN WAR`);
-    else if (mode === 'infection') won = (team === 2 && m.title === 'ZOMBIES WIN') || (team === 1 && m.title === 'SURVIVORS WIN');
+    else if (MODES[mode].infect) won = (team === 2 && m.title === 'ZOMBIES WIN') || (team === 1 && m.title === 'SURVIVORS WIN');
     else won = !!m.scores && m.scores[0] && m.scores[0].id === this.myId;
     const mine = (m.scores || []).find((s) => s.id === this.myId);
     if (this.onMatchTracked) this.onMatchTracked();
@@ -1158,7 +1159,7 @@ export class Game {
     }
     track.matchEnd({
       mode, won, map: this.mapId, teams: !!MODES[mode].redBlue,
-      survived: mode === 'infection' && team === 1 && m.title === 'SURVIVORS WIN',
+      survived: MODES[mode].infect && team === 1 && m.title === 'SURVIVORS WIN',
       hillPoints: mode === 'koth' && mine ? mine.sc : 0,
     });
   }
@@ -1299,6 +1300,7 @@ export class Game {
     this.updateProjectiles(dt);
     this.updateZone(now);
     this.updateStorm();
+    this.updateHorror(dt, now);
     this.updateProps();
     this.updateAim(now);
     this.updateTags(now);
@@ -2185,6 +2187,113 @@ export class Game {
 
   // Domination: three zones, each a ring + light wall in its owner's color, a letter above it
   // and an arc showing capture progress.
+  // ---------- Lights Out (horror Infection) ----------
+  // The map goes dark: black sky, thick fog, dim lights, rain and lightning. Survivors carry a
+  // flashlight (others' show as beams in the fog); zombies get glowing red eyes, no name tags,
+  // and see a little better in the dark. A heartbeat when a zombie is close.
+  updateHorror(dt, now) {
+    const on = !!(this.active && MODES[this.rules.mode] && MODES[this.rules.mode].horror);
+    const h = this.horror || (this.horror = { on: false });
+    if (!on) { if (h.on) this.horrorOff(); return; }
+    if (!h.on || h.map !== this.mapGroup) this.horrorOn();
+    const me = this.players.get(this.myId), zombie = !!me && me.team === 2, cam = this.camera;
+    // Lights: dark; zombies see a bit more (with a red tint); lightning flashes.
+    h.flashT -= dt;
+    if (h.flashT < -h.nextBolt) { h.flashT = 0.12; h.nextBolt = 12 + Math.random() * 25; h.second = 0.25; this.posSound(sfx.explosion, cam.position.clone().add(new THREE.Vector3((Math.random() - 0.5) * 120, 40, (Math.random() - 0.5) * 120)), 0.9); }
+    if (h.second > 0) { h.second -= dt; if (h.second <= 0) h.flashT = 0.08; }
+    const flash = h.flashT > 0 ? 1 : 0;
+    for (const L of h.lights) L.light.intensity = L.base * (flash ? 0.9 : zombie ? 0.32 : 0.1);
+    this.scene.fog.color.set(flash ? '#5a6478' : zombie ? '#1a0606' : '#05060a');
+    this.scene.background.copy(this.scene.fog.color);
+    // My flashlight
+    const lit = me && me.team !== 2 && this.me.alive && !this.spectating;
+    h.flash.visible = !!lit;
+    if (lit) {
+      h.flash.position.copy(cam.position);
+      const dir = _c.set(0, 0, -1).applyQuaternion(cam.quaternion);
+      h.flash.target.position.copy(cam.position).addScaledVector(dir, 10);
+      h.flash.target.updateMatrixWorld();
+    }
+    // Other players: survivors' beams, zombies' eyes and hidden name tags.
+    let near = false;
+    for (const r of this.remotes.values()) {
+      const p = this.players.get(r.id);
+      const isZ = !!p && p.team === 2;
+      if (!r.hBeam) {
+        r.hBeam = new THREE.Mesh(h.beamGeo, h.beamMat); r.hBeam.renderOrder = 4; this.scene.add(r.hBeam);
+        r.hEyes = new THREE.Sprite(h.eyeMat); r.hEyes.scale.set(0.5, 0.18, 1); this.scene.add(r.hEyes);
+      }
+      const head = r.headPos(_r);
+      r.hBeam.visible = r.alive && !isZ;
+      r.hEyes.visible = r.alive && isZ;
+      if (r.hBeam.visible) {
+        r.hBeam.position.copy(head);
+        r.hBeam.rotation.set(0, 0, 0);
+        r.hBeam.rotation.order = 'YXZ';
+        r.hBeam.rotation.y = r.yaw; r.hBeam.rotation.x = (r.pitch || 0) + Math.PI / 2; // cone tip at the head, opening forward
+        r.hBeam.translateY(-3.2);
+      }
+      if (r.hEyes.visible) { r.hEyes.position.set(head.x, head.y + 0.02, head.z); if (!zombie) r.tag.visible = false; }
+      if (isZ && r.alive && me && me.team === 1 && this.me.alive && r.pos.distanceTo(this.me.pos) < 9) near = true;
+    }
+    this.horrorNear = near;
+    // Rain around the camera
+    if (h.rain) {
+      const a = h.rain.geometry.attributes.position.array, cx = cam.position.x, cy = cam.position.y, cz = cam.position.z;
+      for (let i = 0; i < a.length; i += 6) {
+        a[i + 1] -= 26 * dt; a[i + 4] -= 26 * dt;
+        if (a[i + 4] < cy - 12 || Math.abs(a[i] - cx) > 22 || Math.abs(a[i + 2] - cz) > 22) {
+          const x = cx + (Math.random() - 0.5) * 44, z = cz + (Math.random() - 0.5) * 44, y = cy + 6 + Math.random() * 14;
+          a[i] = a[i + 3] = x + 0.02; a[i + 2] = a[i + 5] = z; a[i + 1] = y + 0.5; a[i + 4] = y;
+        }
+      }
+      h.rain.geometry.attributes.position.needsUpdate = true;
+    }
+  }
+  horrorOn() {
+    const h = this.horror;
+    if (h.on) this.horrorOff(true);
+    h.on = true; h.map = this.mapGroup;
+    h.fog = { color: this.scene.fog.color.clone(), near: this.scene.fog.near, far: this.scene.fog.far };
+    h.bg = this.scene.background.clone();
+    this.scene.fog.near = 2; this.scene.fog.far = 26;
+    h.lights = [];
+    this.mapGroup.traverse((o) => { if (o.isLight) h.lights.push({ light: o, base: o.intensity }); });
+    h.flashT = 0; h.nextBolt = 8; h.second = 0;
+    if (!h.flash) {
+      h.flash = new THREE.SpotLight('#fff3dc', 22, 34, 0.42, 0.65, 1.4); // physical units (three r160): bright in front, no blow-out up close
+      h.flash.add(h.flash.target);
+      h.beamGeo = new THREE.ConeGeometry(1.1, 6.4, 18, 1, true);
+      h.beamMat = new THREE.MeshBasicMaterial({ color: '#fff3dc', transparent: true, opacity: 0.06, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false });
+      const c = document.createElement('canvas'); c.width = 64; c.height = 24;
+      const g = c.getContext('2d');
+      for (const x of [20, 44]) { const gr = g.createRadialGradient(x, 12, 0, x, 12, 11); gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.25, '#ff2a1a'); gr.addColorStop(1, 'rgba(255,0,0,0)'); g.fillStyle = gr; g.fillRect(x - 12, 0, 24, 24); }
+      h.eyeMat = new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
+    }
+    this.scene.add(h.flash);
+    this.scene.add(h.flash.target);
+    if (this.gfx !== 'potato') {
+      const n = 700, pos = new Float32Array(n * 6);
+      for (let i = 0; i < n * 6; i += 6) pos[i + 1] = pos[i + 4] = -999;
+      const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      h.rain = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: '#8fa3c0', transparent: true, opacity: 0.35, fog: false }));
+      h.rain.frustumCulled = false;
+      this.scene.add(h.rain);
+    }
+  }
+  horrorOff(keepState = false) {
+    const h = this.horror;
+    if (!h || !h.on) return;
+    h.on = false;
+    if (h.map === this.mapGroup && h.fog) { this.scene.fog.color.copy(h.fog.color); this.scene.fog.near = h.fog.near; this.scene.fog.far = h.fog.far; this.scene.background.copy(h.bg); }
+    for (const L of h.lights || []) L.light.intensity = L.base;
+    if (h.flash) { this.scene.remove(h.flash); this.scene.remove(h.flash.target); }
+    if (h.rain) { this.scene.remove(h.rain); h.rain.geometry.dispose(); h.rain.material.dispose(); h.rain = null; }
+    for (const r of this.remotes.values()) { if (r.hBeam) { this.scene.remove(r.hBeam); this.scene.remove(r.hEyes); r.hBeam = r.hEyes = null; } }
+    this.horrorNear = false;
+    void keepState;
+  }
+
   // Battle Royale storm: a tall purple wall on the circle's edge; the screen tints while you're outside.
   updateStorm() {
     const b = this.brData;
@@ -2548,7 +2657,7 @@ export class Game {
       if (brk > 0) return wave ? `WAVE ${wave} CLEARED · NEXT WAVE IN ${brk}s` : `FIRST WAVE IN ${brk}s · GET READY`;
       return `<span class="team zombie">WAVE ${wave}</span> · ${left} ZOMBIE${left === 1 ? '' : 'S'} LEFT · ${up}/${all} STANDING`;
     }
-    if (mode === 'infection') {
+    if (MODES[mode].infect) {
       let s = 0, z = 0;
       for (const p of this.players.values()) if (p.team === 2) z++; else s++;
       if (this.infection > 0) return `INFECTION IN ${this.infection}s`;
@@ -2569,7 +2678,7 @@ export class Game {
       const w = this.rules.war, nm = (t) => (w ? `[${t === 1 ? w.a : w.b}]` : t === 1 ? 'RED' : 'BLUE');
       return { l: side(mineT, nm(mineT) + ' · YOU'), r: side(other, nm(other)) };
     }
-    if (this.teams || mode === 'infection' || mode === 'lms' || mode === 'br') return null;
+    if (this.teams || MODES[mode].infect || mode === 'lms' || mode === 'br') return null;
     const total = mode === 'gungame' ? GUNGAME_LADDER.length : lim;
     const val = (p) => (mode === 'gungame' ? Math.min(p.sc + 1, total) : p.sc);
     let best = null;
@@ -2587,7 +2696,7 @@ export class Game {
       if (!r.alive) continue;
       const p = this.players.get(r.id);
       if (!p) continue;
-      const ally = !!p.team && p.team === this.myTeam && (this.teams || this.rules.mode === 'infection');
+      const ally = !!p.team && p.team === this.myTeam && (this.teams || MODES[this.rules.mode].infect);
       if (ally) { blips.push({ x: r.pos.x, z: r.pos.z, color: '#4fc3ff', kind: 'ally' }); continue; }
       // Zombie Survival: the last few zombies of a wave always show, so nobody has to hunt for them.
       if (p.z && this.zw && this.zw[1] <= 3 && !this.zw[2]) { blips.push({ x: r.pos.x, z: r.pos.z, color: '#ff4a3a', kind: 'enemy', a: 1 }); continue; }
@@ -2628,7 +2737,7 @@ export class Game {
       const ang = Math.atan2(-(a.x - me.pos.x), -(a.z - me.pos.z));
       return { angle: -(ang - me.yaw), alpha: a.k * (1 - (now - a.t) / 1500) };
     }));
-    hud.lowPulse(me.alive && me.hp > 0 && me.hp <= this.maxHp * 0.3);
+    hud.lowPulse(me.alive && ((me.hp > 0 && me.hp <= this.maxHp * 0.3) || !!this.horrorNear)); // Lights Out: heartbeat when a zombie is close
     hud.captions(opts.captions ? this.capList(now) : []);
     // Watching (spectators, viewers, players knocked out of an event): every player marked through
     // walls, and a live scoreboard.

@@ -18,7 +18,7 @@ export const MODES = {
   tdm: { name: 'Team Deathmatch', short: 'TDM', teams: true, redBlue: true, score: 50, time: 10, desc: 'Red vs Blue. First team to the score limit.' },
   gungame: { name: 'Gun Game', short: 'GUN GAME', teams: false, score: GUNGAME_LADDER.length, time: 12, desc: 'Each kill upgrades your weapon. Finish with a knife kill.' },
   koth: { name: 'King of the Hill', short: 'KOTH', teams: false, hill: true, score: 90, time: 10, desc: 'Hold the zone alone to score. It moves every minute.' },
-  infection: { name: 'Infection', short: 'INFECTION', teams: true, score: 0, time: 4, desc: 'Zombies infect survivors. Survive until time runs out.' },
+  infection: { name: 'Infection', short: 'INFECTION', teams: true, infect: true, score: 0, time: 4, desc: 'Zombies infect survivors. Survive until time runs out.' },
   hardpoint: { name: 'Hardpoint', short: 'HARDPOINT', teams: true, redBlue: true, hill: true, score: 150, time: 10, desc: 'Red vs Blue fight over a moving zone. Hold it with only your team inside to score.' },
   juggernaut: { name: 'Juggernaut', short: 'JUGGERNAUT', teams: false, score: 15, time: 10, desc: 'First kill makes you the Juggernaut: 4x health and a minigun. Kill the Juggernaut to take over. Only Juggernaut kills (and killing it) score.' },
   lms: { name: 'Last Man Standing', short: 'LMS', teams: false, score: 3, time: 8, desc: 'Everyone gets a few lives (the score limit). Last player with lives left wins.' },
@@ -35,6 +35,9 @@ export const MODES = {
   zombies: { name: 'Zombie Survival', short: 'ZOMBIES', teams: true, coop: true, score: 0, time: 0, desc: 'Co-op. Hold out against waves of zombies that get bigger, tougher and faster. Downed players come back when the wave is cleared. Every 5th wave brings a Brute.' },
   dom: { name: 'Domination', short: 'DOMINATION', teams: true, redBlue: true, dom: true, score: 200, time: 10, desc: 'Red vs Blue over three zones (A, B, C). Stand in a zone with only your team to capture it; every zone you own scores a point per second.' },
 };
+// Horror Infection: the same rules as Infection, played in the dark (game.js updateHorror).
+MODES.horror = { name: 'Lights Out', short: 'LIGHTS OUT', teams: true, infect: true, horror: true, score: 0, time: 5,
+  desc: 'Horror Infection: night, thick fog, rain and lightning. Survivors carry flashlights; zombies have glowing eyes and no name tags. Survive until time runs out.' };
 // Game Night event only (never in the mode pickers): started by the Game Night server's host on schedule.
 MODES.br = { name: 'Battle Royale', short: 'BATTLE ROYALE', teams: false, br: true, event: true, score: 0, time: 8, noRegen: true, loadout: ['pistol', 'knife'],
   desc: 'Game Night event. One life, everyone starts with a pistol. Loot guns, health and ammo, stay inside the circle as the storm closes in. Last one standing wins.' };
@@ -49,7 +52,7 @@ const BR_RARE = ['railgun', 'minigun', 'rocket', 'amr', 'gl'];
 // Single-player only (main menu → Practice Range): no timer, no score limit, target dummies.
 MODES.practice = { name: 'Practice Range', short: 'PRACTICE', teams: false, practice: true, score: 0, time: 0, desc: 'Solo target practice with every weapon.' };
 export const MODE_ORDER = ['ffa', 'tdm', 'gungame', 'koth', 'infection', 'ctf', 'dom', 'hardpoint', 'killconfirmed', 'juggernaut', 'bounty', 'lms', 'oitc',
-  'instagib', 'rotation', 'blades', 'boom', 'roulette', 'vampire', 'zombies'];
+  'instagib', 'rotation', 'blades', 'boom', 'roulette', 'vampire', 'zombies', 'horror'];
 const FLAG_RETURN_MS = 20000;
 
 // Runs fn every ms. Browsers slow main-thread timers to once a second in background tabs, which
@@ -202,7 +205,7 @@ export class HostLogic {
     this.setupPickups();
     this.setupProps();
     this.hillHolder = null;
-    this.infectAt = this.s.mode === 'infection' ? Date.now() + INFECT_DELAY_MS : 0;
+    this.infectAt = this.mode.infect ? Date.now() + INFECT_DELAY_MS : 0;
     this.infected = false;
     // Zombie Survival: wave number, zombies still to spawn this wave, and the break before the next one.
     this.zw = this.s.mode === 'zombies' ? { wave: 0, toSpawn: 0, breakUntil: Date.now() + Z_FIRST_MS, spawnT: 0 } : null;
@@ -442,7 +445,7 @@ export class HostLogic {
       for (const q of this.players.values()) if (q !== p) { if (q.team === 1) red++; else if (q.team === 2) blue++; }
       return red <= blue ? 1 : 2;
     }
-    if (this.s.mode === 'infection') return this.infected ? 2 : 1;
+    if (this.mode.infect) return this.infected ? 2 : 1;
     if (this.s.mode === 'zombies') return 1;
     return 0;
   }
@@ -459,7 +462,7 @@ export class HostLogic {
       const w = GUNGAME_LADDER[Math.min(p.level, GUNGAME_LADDER.length - 1)];
       return w === 'knife' ? ['knife'] : [w, 'knife'];
     }
-    if (this.s.mode === 'infection' && p.team === 2) return ['claws'];
+    if (this.mode.infect && p.team === 2) return ['claws'];
     if (p.zombie) return ['claws'];
     if (this.s.mode === 'juggernaut' && p.id === this.jugg) return JUGG_LOADOUT;
     if (this.s.mode === 'roulette') return SLOTS.map((opts) => opts[(Math.random() * opts.length) | 0]);
@@ -487,7 +490,7 @@ export class HostLogic {
 
   maxHp(p) {
     let k = 1;
-    if (this.s.mode === 'infection' && p.team === 2) k = 1.5;
+    if (this.mode.infect && p.team === 2) k = 1.5;
     if (this.s.mode === 'juggernaut' && p.id === this.jugg) k = 4;
     if (p.zombie) return Math.round(100 * (0.6 + 0.12 * ((this.zw && this.zw.wave) || 1)) * (p.brute ? 7 : 1)); // tougher every wave
     return Math.round(this.s.health * k);
@@ -945,6 +948,7 @@ export class HostLogic {
         break;
       }
       case 'infection':
+      case 'horror':
         if (v.team === 1 && this.infected) {
           v.team = 2;
           this.broadcast({ t: 'notice', text: `${v.name} WAS INFECTED` });
@@ -1293,7 +1297,7 @@ export class HostLogic {
   }
 
   checkInfectionEnd() {
-    if (this.s.mode !== 'infection' || this.phase !== 'playing' || !this.infected) return;
+    if (!this.mode.infect || this.phase !== 'playing' || !this.infected) return;
     const all = [...this.players.values()];
     if (all.length && !all.some((p) => p.team === 1)) this.endMatch(2);
   }
@@ -1412,7 +1416,7 @@ export class HostLogic {
         this.endTitle = win ? `[${win}] WINS THE CLAN WAR` : 'CLAN WAR: DRAW';
         this.broadcast({ t: 'warend', a: this.s.war.a, b: this.s.war.b, winner: win, score: [r, b] });
       }
-    } else if (this.s.mode === 'infection') {
+    } else if (this.mode.infect) {
       this.endTitle = winnerTeam === 2 ? 'ZOMBIES WIN' : 'SURVIVORS WIN';
     } else if (this.tour) {
       const t = this.tour, rank = this.tourneyRank();
@@ -1521,7 +1525,7 @@ export class HostLogic {
       p.kills = 0; p.deaths = 0; p.level = 0;
       p.heads = 0; p.streak = 0; p.bestStreak = 0;
       p.score = this.s.mode === 'lms' ? Math.max(1, this.s.scoreLimit) : 0;
-      p.team = this.s.war && this.warTeam(p) ? this.warTeam(p) : this.mode.redBlue ? (i % 2) + 1 : this.s.mode === 'infection' || this.s.mode === 'zombies' ? 1 : 0;
+      p.team = this.s.war && this.warTeam(p) ? this.warTeam(p) : this.mode.redBlue ? (i % 2) + 1 : this.mode.infect || this.s.mode === 'zombies' ? 1 : 0;
       p.alive = false;
       p.respawnAt = 0;
     });
@@ -1562,7 +1566,7 @@ export class HostLogic {
         const max = this.maxHp(p);
         if (p.alive && p.hp < max && now - p.lastDmg > 5000 && this.s.mode !== 'vampire' && !this.mode.noRegen) p.hp = Math.min(max, p.hp + max * 0.25 * rdt);
       }
-      if (this.s.mode === 'infection' && !this.infected && this.infectAt && now >= this.infectAt) this.startInfection();
+      if (this.mode.infect && !this.infected && this.infectAt && now >= this.infectAt) this.startInfection();
       if (this.zw) this.tickZombies(now);
       // Auto bots: every 15 s, nudge their skill toward an even fight with the real players.
       if (now - (this.botSkillT || 0) > 15000) {
@@ -1608,7 +1612,7 @@ export class HostLogic {
     // Barrels and crates still standing: [id, 1 barrel / 2 crate, x, y, z]
     if (this.props && this.props.length) msg.pr = this.props.map((o) => [o.id, o.kind === 'barrel' ? 1 : 2, r2(o.x), r2(o.y), r2(o.z)]);
     if (this.zw) msg.zw = [this.zw.wave, this.zombiesLeft(), this.zw.breakUntil ? Math.max(0, Math.ceil((this.zw.breakUntil - now) / 1000)) : 0];
-    if (this.s.mode === 'infection') msg.inf = this.infected ? 0 : Math.max(0, Math.ceil((this.infectAt - now) / 1000));
+    if (this.mode.infect) msg.inf = this.infected ? 0 : Math.max(0, Math.ceil((this.infectAt - now) / 1000));
     if (this.s.mode === 'killconfirmed') msg.tg = this.tags.map((t) => [t.id, r2(t.x), r2(t.y), r2(t.z), t.team]);
     // Pickups that are ready: [id, kind, x, y, z, power weapon]
     if (this.pickupsOn()) msg.pk = this.pickups.filter((k) => now >= k.readyAt && (k.kind !== 'power' || k.w)).map((k) => [k.id, k.kind, r2(k.x), r2(k.y), r2(k.z), k.w || 0]);

@@ -402,7 +402,7 @@ export class Hud {
   scoreboard(show, players, myId, mode, colorFor) {
     $('scoreboard').classList.toggle('hidden', !show);
     if (!show) return;
-    const scoreLabel = { gungame: 'Lvl', koth: 'Pts', infection: 'Inf', lms: 'Lives', juggernaut: 'Pts', zombies: 'Pts' }[mode] || 'Score';
+    const scoreLabel = { gungame: 'Lvl', koth: 'Pts', infection: 'Inf', horror: 'Inf', lms: 'Lives', juggernaut: 'Pts', zombies: 'Pts' }[mode] || 'Score';
     $('sb-head').innerHTML = `<th>#</th><th>Player</th><th>${scoreLabel}</th><th>K</th><th>D</th><th>K/D</th>`;
     const rows = [...players.values()].sort((a, b) => (a.team || 0) - (b.team || 0) || b.sc - a.sc || b.k - a.k || a.d - b.d);
     $('sb-sub').textContent = `${rows.length} player${rows.length === 1 ? '' : 's'}`;
@@ -473,7 +473,7 @@ export class Hud {
       const x = info.xp;
       $('end-xp').innerHTML = x ? `${levelBadge(x.lv.level)}<span class="ex-txt"><b>+${x.gained.toLocaleString()} XP</b> · ${esc(x.lv.rank.name)} · level ${x.lv.level}</span><span class="ex-bar"><i style="width:${x.lv.pct * 100}%"></i></span><small>${x.lv.need ? `${x.lv.into.toLocaleString()} / ${x.lv.need.toLocaleString()}` : 'MAX'}</small>` : '';
     }
-    const label = { gungame: 'LVL', koth: 'PTS', infection: 'INF', lms: 'LIVES' }[mode] || 'PTS';
+    const label = { gungame: 'LVL', koth: 'PTS', infection: 'INF', horror: 'INF', lms: 'LIVES' }[mode] || 'PTS';
     const voting = !!vote && !showMvp;
     $('endscreen').classList.toggle('mvp-phase', !!showMvp);
     $('endscreen').classList.toggle('vote-phase', voting);

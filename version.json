@@ -1,7 +1,7 @@
 {
-  "version": "2026.10.10.12",
+  "version": "2026.10.10.13",
   "notes": [
-    "Mode of the week: a new silly mode every Monday. Play 3 matches of it for bonus tokens"
+    "New horror mode: Lights Out. Infection in the dark with fog, rain, lightning, flashlights and glowing-eyed zombies"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",
