@@ -1,7 +1,8 @@
 {
-  "version": "2026.10.10.1",
+  "version": "2026.10.10.2",
   "notes": [
-    "Damage drop-off on every gun: the Minigun, DMR, snipers and Railgun now lose some damage at long range"
+    "Smarter bots: they match how good the players are, take cover when hurt, grab health, check corners and stick with their team",
+    "The leaderboard no longer shows XP"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",

@@ -177,7 +177,7 @@ export class HostPanel {
       row.innerHTML = `<span class="dot" style="background:${esc(color)}"></span><span class="nm">${esc(p.name)}${p.id === 'host' ? ' (you)' : ''}${p.acStrikes ? ` <em class="ac-flag" title="Anti-cheat: ${esc(p.acWhy || '')} (${p.acStrikes}×)">⚠ ${p.acStrikes}</em>` : ''}</span>`;
       if (p.bot) {
         const sel = document.createElement('select');
-        sel.innerHTML = ['easy', 'normal', 'hard'].map((d) => `<option value="${d}" ${p.bot.difficulty === d ? 'selected' : ''}>${d}</option>`).join('');
+        sel.innerHTML = ['auto', 'easy', 'normal', 'hard'].map((d) => `<option value="${d}" ${p.bot.difficulty === d ? 'selected' : ''}>${d}</option>`).join('');
         sel.onchange = () => L.setBotDifficulty(p.id, sel.value);
         row.appendChild(sel);
       }

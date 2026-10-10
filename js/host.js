@@ -338,7 +338,7 @@ export class HostLogic {
     const humans = all.filter((p) => !p.bot).length;
     const bots = all.filter((p) => p.bot && !p.zombie);
     const want = Math.max(0, this.botFill - humans);
-    for (let i = bots.length; i < want; i++) this.addBot('normal');
+    for (let i = bots.length; i < want; i++) this.addBot('auto'); // fill bots follow how the players are doing
     for (let i = want; i < bots.length; i++) this.removePlayer(bots[bots.length - 1 - (i - want)].id);
   }
 
@@ -813,6 +813,11 @@ export class HostLogic {
     if (this.onFlag) this.onFlag(p, `${why.join(' · ')} · ${MODES[this.s.mode].name} on ${MAPS[this.s.map].name}`);
   }
   kill(attacker, v, w, head) {
+    // Auto bot difficulty: remember fights between bots and real players.
+    if (attacker !== v && !attacker.zombie && !v.zombie && !v.dummy && !!attacker.bot !== !!v.bot) {
+      this.botFights = (this.botFights || []).filter((f) => Date.now() - f.t < 180000);
+      this.botFights.push({ t: Date.now(), human: !attacker.bot });
+    }
     v.alive = false;
     v.hp = 0;
     v.deaths++;
@@ -1447,6 +1452,17 @@ export class HostLogic {
       }
       if (this.s.mode === 'infection' && !this.infected && this.infectAt && now >= this.infectAt) this.startInfection();
       if (this.zw) this.tickZombies(now);
+      // Auto bots: every 15 s, nudge their skill toward an even fight with the real players.
+      if (now - (this.botSkillT || 0) > 15000) {
+        this.botSkillT = now;
+        if (this.botSkill === undefined) this.botSkill = 0.45;
+        const f = (this.botFights || []).filter((x) => now - x.t < 180000);
+        if (f.length >= 4) {
+          const hk = f.filter((x) => x.human).length, bk = f.length - hk, r = (hk + 1) / (bk + 1);
+          const step = r > 2.2 ? 0.07 : r > 1.4 ? 0.035 : r < 0.55 ? -0.07 : r < 0.85 ? -0.035 : 0;
+          this.botSkill = Math.max(0.1, Math.min(1.3, this.botSkill + step));
+        }
+      }
       if (this.brZone && this.phase === 'playing') this.tickStorm(now, rdt);
       if (this.mode.hill) this.tickHill(rdt, now);
       if (this.s.mode === 'killconfirmed') this.tickTags(now);

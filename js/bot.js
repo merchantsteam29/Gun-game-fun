@@ -8,6 +8,16 @@ const DIFF = {
   normal: { react: 0.85, err: 0.11, turn: 4, see: 38, pause: 0.55, fov: 1.4, head: 0.03, forget: 0.25 },
   hard: { react: 0.5, err: 0.055, turn: 6.5, see: 52, pause: 0.3, fov: 1.6, head: 0.1, forget: 0.1 },
 };
+// Auto difficulty: a skill from 0 (easy) through 0.5 (normal) and 1 (hard) up to 1.3 (expert),
+// blended from the tables above. The host moves it with how the real players are doing.
+const EXPERT = { react: 0.32, err: 0.035, turn: 8, see: 60, pause: 0.2, fov: 1.8, head: 0.16, forget: 0.05 };
+export function skillParams(s) {
+  s = Math.max(0, Math.min(1.3, s));
+  const [a, b, k] = s <= 0.5 ? [DIFF.easy, DIFF.normal, s / 0.5] : s <= 1 ? [DIFF.normal, DIFF.hard, (s - 0.5) / 0.5] : [DIFF.hard, EXPERT, (s - 1) / 0.3];
+  const out = {};
+  for (const key of Object.keys(DIFF.normal)) out[key] = a[key] + (b[key] - a[key]) * k;
+  return out;
+}
 export const BOT_PRIMARIES = ['ar', 'smg', 'burst', 'lmg', 'shotgun', 'dmr', 'br', 'vector', 'doublebarrel', 'carbine', 'pdw', 'autoshot', 'slug', 'flamethrower'];
 export const BOT_NAMES = ['Viper', 'Ghost', 'Razor', 'Blaze', 'Echo', 'Havoc', 'Nova', 'Raptor', 'Specter', 'Talon', 'Onyx', 'Fang', 'Jinx', 'Rook'];
 
@@ -29,7 +39,8 @@ export class Bot {
   constructor(logic, p, difficulty) {
     this.logic = logic;
     this.p = p;
-    this.difficulty = DIFF[difficulty] ? difficulty : 'normal';
+    this.difficulty = DIFF[difficulty] || difficulty === 'auto' ? difficulty : 'normal';
+    this.crouchT = 0; this.retreat = null; this.retreatT = 0;
     this.body = { pos: v3(), vel: v3(), onGround: false };
     this.yaw = 0; this.pitch = 0;
     this.weapon = 'ar';
@@ -42,7 +53,13 @@ export class Bot {
     this.stuckT = 0; this.lastPos = v3();
   }
 
-  get d() { return DIFF[this.difficulty]; }
+  get d() {
+    if (this.difficulty !== 'auto') return DIFF[this.difficulty];
+    const s = this.logic.botSkill ?? 0.45;
+    if (this.dS !== s) { this.dS = s; this.dCache = skillParams(s); }
+    return this.dCache;
+  }
+  get skill() { return this.difficulty === 'auto' ? this.logic.botSkill ?? 0.45 : { easy: 0.1, normal: 0.5, hard: 1 }[this.difficulty]; }
 
   spawn(s, loadout) {
     const b = this.body;
@@ -76,9 +93,14 @@ export class Bot {
     if (m.t === 'dmg') {
       if (m.imp) { this.body.vel.x += m.imp[0]; this.body.vel.y += m.imp[1]; this.body.vel.z += m.imp[2]; }
       const from = this.logic.players.get(m.from);
-      if (from && from !== this.p && from.alive && !this.target) {
+      if (from && from !== this.p && from.alive) {
+        // Turn to face whoever is shooting; switch to them if they're in sight and closer than the current target.
         this.lastSeen = { x: from.st[0], y: from.st[1], z: from.st[2] };
         this.lastSeenT = 4;
+        const b = this.body, eye = { x: b.pos.x, y: b.pos.y + EYE, z: b.pos.z };
+        const dNew = Math.hypot(from.st[0] - b.pos.x, from.st[2] - b.pos.z);
+        const dOld = this.target ? Math.hypot(this.target.st[0] - b.pos.x, this.target.st[2] - b.pos.z) : Infinity;
+        if (this.target !== from && dNew < dOld && this.logic.hostile(this.p, from) && this.visible(from, eye)) { this.target = from; this.reactT = this.d.react * 0.6; }
       }
     } else if (m.t === 'loadout') this.setLoadout(m.l);
   }
@@ -135,10 +157,27 @@ export class Bot {
       else flagGoal = theirs.pos;
     }
     const dz = L.dom && !this.target ? L.domGoal(p) : null;
+    // Badly hurt in a gunfight: back off to somewhere the enemy can't see, and come back once healed.
+    const maxHp = L.maxHp(p);
+    this.coverTryT = (this.coverTryT || 0) - dt;
+    if (!p.zombie && !melee && this.target && p.hp < maxHp * 0.35 && this.skill > 0.2 && !this.retreat && this.coverTryT <= 0) {
+      this.coverTryT = 1.5; // looking for cover is a few raycasts: not every frame
+      this.retreat = this.findCover(this.target);
+      this.retreatT = 4 + Math.random() * 2;
+    }
+    if (this.retreat) { this.retreatT -= dt; if (this.retreatT <= 0 || p.hp > maxHp * 0.7) this.retreat = null; }
+    // Hurt and nothing to shoot: go for a health pickup nearby.
+    let hpGoal = null;
+    if (!this.target && !p.zombie && p.hp < maxHp * 0.6 && L.pickupsOn && L.pickupsOn()) {
+      let bd = 35; const now = Date.now();
+      for (const k of L.pickups) if (k.kind === 'hp' && now >= k.readyAt) { const dd = Math.hypot(k.x - b.pos.x, k.z - b.pos.z); if (dd < bd) { bd = dd; hpGoal = { x: k.x, y: k.y, z: k.z }; } }
+    }
     const sz = L.brZone; // Battle Royale: get back inside the circle
     const brGoal = sz && Math.hypot(b.pos.x - sz.cx, b.pos.z - sz.cz) > Math.max(2, sz.r * 0.75) && (!this.target || Math.hypot(b.pos.x - sz.cx, b.pos.z - sz.cz) > sz.r)
       ? { x: sz.cx + (Math.random() - 0.5) * sz.r * 0.5, y: b.pos.y, z: sz.cz + (Math.random() - 0.5) * sz.r * 0.5 } : null;
     if (brGoal) { if (!this.brGoal || Math.hypot(this.brGoal.x - sz.cx, this.brGoal.z - sz.cz) > sz.r * 0.7) this.brGoal = brGoal; goal = this.brGoal; }
+    else if (this.retreat) goal = this.retreat;
+    else if (hpGoal) goal = hpGoal;
     else if (flagGoal && (!this.target || L.flags[p.team === 1 ? 2 : 1].carrier === p.id)) goal = flagGoal;
     else if (dz && Math.random() < 0.995) goal = { x: dz.x + (Math.random() - 0.5) * dz.r, y: dz.y, z: dz.z + (Math.random() - 0.5) * dz.r };
     else if (this.target && melee) goal = this.lastSeen;
@@ -155,7 +194,10 @@ export class Bot {
     else if (!this.target && hill && Math.random() < 0.995) goal = { x: hill[0] + (Math.random() - 0.5) * hill[3], y: hill[1], z: hill[2] + (Math.random() - 0.5) * hill[3] };
     else if (!this.target) {
       if (!this.goal || Math.hypot(this.goal.x - b.pos.x, this.goal.z - b.pos.z) < 1.5 || this.pathT < -6) {
-        const n = L.nav && L.nav.random();
+        // Team modes: usually move up with a teammate instead of wandering off alone.
+        const mates = L.mode.teams && !p.zombie ? [...L.players.values()].filter((q) => q !== p && q.alive && q.team === p.team && !q.zombie) : [];
+        const mate = mates.length && Math.random() < 0.6 ? mates[(Math.random() * mates.length) | 0] : null;
+        const n = mate ? { x: mate.st[0] + (Math.random() - 0.5) * 8, y: mate.st[1], z: mate.st[2] + (Math.random() - 0.5) * 8 } : L.nav && L.nav.random();
         this.goal = n ? { x: n.x, y: n.y, z: n.z } : null;
         this.pathT = 0;
       }
@@ -170,7 +212,7 @@ export class Bot {
 
     // ---- Movement direction ----
     let mx = 0, mz = 0;
-    if (this.target && !melee) {
+    if (this.target && !melee && !this.retreat) {
       // Strafe in combat, keep a preferred range.
       this.strafeT -= dt;
       if (this.strafeT <= 0) { this.strafe = Math.random() < 0.5 ? -1 : 1; this.strafeT = 0.6 + Math.random() * 1.4; }
@@ -193,7 +235,11 @@ export class Bot {
     const ml = Math.hypot(mx, mz);
     if (ml > 0.01) { mx /= ml; mz /= ml; }
 
-    const speed = WALK * (w.speedMul || 1) * L.s.moveSpeed * (this.target && !melee ? 0.85 : 1) * (p.speedK || 1);
+    // Better bots crouch now and then in a long-range fight (smaller target).
+    this.crouchT -= dt;
+    if (this.target && !melee && !this.retreat && bestD > 12 && this.crouchT < -1.5 && Math.random() < dt * 0.6 * this.skill) this.crouchT = 0.8 + Math.random() * 1.2;
+    const crouching = this.crouchT > 0 && this.target && !melee;
+    const speed = WALK * (w.speedMul || 1) * L.s.moveSpeed * (this.target && !melee ? 0.85 : 1) * (p.speedK || 1) * (crouching ? 0.45 : 1);
     const a = b.onGround ? 1 - Math.exp(-dt * 12) : 1 - Math.exp(-dt * 2);
     b.vel.x += (mx * speed - b.vel.x) * a;
     b.vel.z += (mz * speed - b.vel.z) * a;
@@ -244,6 +290,11 @@ export class Bot {
       const tx = t.st[0] - eye.x, ty = t.st[1] + aimY - eye.y, tz = t.st[2] - eye.z;
       wantYaw = Math.atan2(-tx, -tz) + this.aimErr.x;
       wantPitch = Math.atan2(ty, Math.hypot(tx, tz)) + this.aimErr.y;
+    } else if (this.lastSeen && this.lastSeenT > 0 && this.skill > 0.3) {
+      // Lost sight: keep the gun on where they were last seen (checks the corner).
+      const tx = this.lastSeen.x - eye.x, tz = this.lastSeen.z - eye.z;
+      if (Math.hypot(tx, tz) > 1.5) wantYaw = Math.atan2(-tx, -tz);
+      else if (ml > 0.01) wantYaw = Math.atan2(-mx, -mz);
     } else if (ml > 0.01) {
       wantYaw = Math.atan2(-mx, -mz);
     }
@@ -264,6 +315,7 @@ export class Bot {
         if (bestD < (w.range || 2.4)) this.melee(w);
       } else if (bestD < (w.range || 100)) this.shoot(w, eye);
     }
+    if (!melee && !this.target && this.lastSeenT < 0 && this.reloadT <= 0 && w.mag && this.ammo < w.mag * 0.35 && !L.mode.noReload) this.reloadT = w.reload || 2; // top up between fights
     if (!melee && this.ammo <= 0 && this.reloadT <= 0) {
       // No reloading in One in the Chamber: fall back to the knife until the next kill.
       if (L.mode.noReload && this.loadout && this.loadout[1]) this.weapon = this.loadout[1];
@@ -271,7 +323,28 @@ export class Bot {
     }
 
     const flags = (this.reloadT > 0 ? 1 : 0) | (b.onGround ? 0 : 4);
-    p.st = [b.pos.x, b.pos.y, b.pos.z, this.yaw, this.pitch, this.weapon, 0, flags];
+    p.st = [b.pos.x, b.pos.y, b.pos.z, this.yaw, this.pitch, this.weapon, crouching ? 1 : 0, flags];
+  }
+
+  // A nav spot 6–18 m away, further from the enemy than we are and out of their sight.
+  findCover(enemy) {
+    const L = this.logic, b = this.body;
+    if (!L.nav) return null;
+    const ex = enemy.st[0], ey = enemy.st[1] + 1.5, ez = enemy.st[2];
+    const myD = Math.hypot(b.pos.x - ex, b.pos.z - ez);
+    let best = null, bestScore = -Infinity;
+    for (let i = 0; i < 24; i++) {
+      const n = L.nav.random();
+      if (!n) break;
+      const d = Math.hypot(n.x - b.pos.x, n.z - b.pos.z);
+      if (d < 6 || d > 18 || Math.abs(n.y - b.pos.y) > 3) continue;
+      const fromEnemy = Math.hypot(n.x - ex, n.z - ez);
+      const dx = n.x - ex, dy = n.y + 1.2 - ey, dz = n.z - ez, dl = Math.hypot(dx, dy, dz) || 1;
+      const hidden = !!raycast(ex, ey, ez, dx / dl, dy / dl, dz / dl, dl - 0.3);
+      const score = (hidden ? 20 : 0) + (fromEnemy - myD) - d * 0.3;
+      if (score > bestScore) { bestScore = score; best = { x: n.x, y: n.y, z: n.z }; }
+    }
+    return best;
   }
 
   melee(w) {
