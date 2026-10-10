@@ -1098,6 +1098,14 @@ export class Game {
     if (this.onMatchTracked) this.onMatchTracked();
     this.rankRes = this.rules.ranked && !this.spectating ? rateMatch(m.scores, this.myId) : null;
     if (this.rankRes && this.rankRes.counted && this.onRanked) this.onRanked(this.rankRes);
+    // Event stats (achievements.js)
+    if (!this.spectating) {
+      const ev = {};
+      if (mode === 'zombies' && m.wave) ev.bestWave = Math.max(0, m.wave - 1);
+      if (mode === 'br' && won) ev.brWins = 1;
+      if (this.rules.gn) ev.gnMatches = 1;
+      if (Object.keys(ev).length) track.stat(ev);
+    }
     track.matchEnd({
       mode, won, map: this.mapId, teams: !!MODES[mode].redBlue,
       survived: mode === 'infection' && team === 1 && m.title === 'SURVIVORS WIN',

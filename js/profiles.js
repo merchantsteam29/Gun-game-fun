@@ -2,6 +2,8 @@
 // favorite gun, banner, badges) as a retained message at whffa/v1/prof/<tag>. Click a gamertag
 // (Friends, Leaderboard, your chip…) to read it. Numbers are reported by each player's game.
 
+import { ACH } from './achievements.js';
+
 const V = 'whffa/v1/prof/';
 const low = (s) => String(s || '').toLowerCase();
 const num = (v, hi) => Math.max(0, Math.min(hi, Math.round(Number(v) || 0)));
@@ -15,6 +17,7 @@ export function cleanProfile(b) {
     heads: num(b.heads, 1e7), streak: num(b.streak, 1000), fav: str(b.fav, 20), favKills: num(b.favKills, 1e7),
     banner: str(b.banner, 20), wrap: str(b.wrap, 20), seasons: Array.isArray(b.seasons) ? b.seasons.map((x) => num(x, 999)).slice(0, 50) : [],
     since: Number(b.since) || 0, ts: Number(b.ts) || 0, sr: num(b.sr, 5000), srPlayed: num(b.srPlayed, 1e6),
+    ach: Array.isArray(b.ach) ? b.ach.filter((x) => typeof x === 'string' && ACH[x]).slice(0, 3) : [], achN: num(b.achN, 100),
   };
 }
 

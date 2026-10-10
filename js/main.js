@@ -29,6 +29,8 @@ import { myLevel, levelBadge, RANKS, loginState, claimLogin, LOGIN_REWARDS, STRE
 import { gameNight, GN_NAME, GN_XP, describe as describeGn } from './gamenight.js';
 import { watchEvents, nextEvent, EVENT_NAMES, TOURNEY_TOKENS } from './events.js';
 import { activeHolidays, upcomingHolidays, HOLIDAY_XP, HOLIDAY_TOKENS } from './holidays.js';
+import { achievements, ACHIEVEMENTS, ACH, TIER_COLOR } from './achievements.js';
+import { claimSeasonRewards, seasonPeak } from './ranked.js';
 import { grantWrap, COSMETICS, allStats } from './missions.js';
 import { profiles } from './profiles.js';
 import { clans, CLAN_COLORS, MAX_MEMBERS } from './clans.js';
@@ -39,7 +41,7 @@ import { RULE_PRESETS, presetRules, savedPresets, WEAPON_RULES } from './ruleset
 import { myRanked, srBadge, RANKED_MATCH, PLACEMENTS, divisionOf } from './ranked.js';
 import { tutorial, tutorialDone, TUTORIAL_TOKENS } from './tutorial.js';
 import { highlights } from './highlights.js';
-import { addTokens, grantItem } from './missions.js';
+import { addTokens, grantItem, track } from './missions.js';
 import { addXp } from './progress.js';
 import { leaderboard, BOARDS, MODE_BOARDS, weekEnds, CHAMP_TOKENS } from './leaderboard.js';
 import { MODS, MOD_SLOTS, MOD_SLOT_NAMES, modOptions, hasMods, cleanMods, cleanModMap, statsFor } from './mods.js';
@@ -143,11 +145,12 @@ function renderMissions() {
   if (!msTab) msTab = login.claimed ? 'season' : 'daily';
   const bar = document.createElement('div');
   bar.className = 'seg-tabs';
-  const tabs = [['daily', `Daily${login.claimed ? '' : ' 🎁'}`], ['season', 'Season & level'], ['missions', `Missions ${done}/${MISSIONS.length}`]];
+  const tabs = [['daily', `Daily${login.claimed ? '' : ' 🎁'}`], ['season', 'Season & level'], ['missions', `Missions ${done}/${MISSIONS.length}`], ['ach', `Achievements ${achievements.count()}/${ACHIEVEMENTS.length}`]];
   bar.innerHTML = tabs.map(([k, n]) => `<button data-mt="${k}" class="${k === msTab ? 'sel' : ''}">${n}</button>`).join('');
   bar.querySelectorAll('[data-mt]').forEach((b) => { b.onclick = () => { msTab = b.dataset.mt; renderMissions(); }; });
   let body;
   if (msTab === 'missions') body = settingsUI.special('missions', { goCustomize: () => showPane('character') });
+  else if (msTab === 'ach') body = achievementsView();
   else {
     body = document.createElement('div');
     body.innerHTML = dailyHtml();
@@ -159,6 +162,33 @@ function renderMissions() {
   $('menu-missions').replaceChildren(bar, body);
   updateMissionCount();
 }
+// Achievements: every feat with its progress; tap an unlocked one to show it on your profile (up to 3).
+function achievementsView() {
+  const el = document.createElement('div');
+  const show = achievements.showcase();
+  el.innerHTML = `<p class="note">Feats you unlock once and keep. Tap an unlocked one to show it on your profile (up to 3). Showing: ${show.length ? show.map((id) => ACH[id].icon + ' ' + esc(ACH[id].name)).join(', ') : 'none yet'}.</p>
+    <div class="ach-grid">${ACHIEVEMENTS.map((a) => {
+      const p = achievements.progress(a), on = show.includes(a.id);
+      return `<button class="ach ${p.done ? 'done' : 'locked'} ${on ? 'shown' : ''}" data-ach="${a.id}" style="--tier:${TIER_COLOR[a.tier]}" ${p.done ? '' : 'disabled'}>
+        <span class="ach-ic">${a.icon}</span><span class="ach-txt"><b>${esc(a.name)}</b><small>${esc(a.desc)}</small>
+        ${p.done ? `<em>${on ? '★ On your profile' : 'Unlocked · tap to show'}</em>` : `<span class="hs-bar"><i style="width:${(p.have / p.goal) * 100}%"></i></span><em>${p.have.toLocaleString()} / ${p.goal.toLocaleString()}</em>`}</span></button>`;
+    }).join('')}</div>`;
+  el.querySelectorAll('[data-ach]').forEach((b) => { b.onclick = () => { achievements.toggleShow(b.dataset.ach); renderMissions(); if (profiles.social) profiles.publish(myProfile()); }; });
+  return el;
+}
+achievements.onUnlock((a) => {
+  if (game.active) game.hud.mission(`${a.icon} ${a.name}`, a.desc, 'ACHIEVEMENT UNLOCKED');
+  else toast(`🏅 Achievement unlocked: ${a.icon} ${a.name}`);
+  if (!game.active && menuPane === 'missions') renderMissions();
+});
+setTimeout(() => achievements.check(), 1500); // older stats might already count
+// Ranked season rewards: when a season has ended, its banners.
+function claimRanked() {
+  for (const r of claimSeasonRewards(grantItem)) toast(`🏆 Ranked Season ${r.season}: you finished at ${r.div.icon} ${r.div.name}. Banner unlocked!`);
+}
+setTimeout(claimRanked, 2500);
+setInterval(claimRanked, 10 * 60000);
+
 function updateMissionCount() {
   $('nav-missions-count').textContent = `${MISSIONS.filter(missionDone).length}/${MISSIONS.length}`;
   $('nav-missions-count').classList.toggle('alert', !loginState().claimed);
@@ -702,6 +732,7 @@ function myProfile() {
     wins: st.wins || 0, matches: st.matches || 0, heads: st.headshots || 0, streak: st.bestStreak || 0, fav, favKills,
     banner: getCos().banner, wrap: (m && m.camo) || '', seasons: seasons.badges(), since: store.get('firstPlayed', 0),
     sr: myRanked().sr, srPlayed: myRanked().played,
+    ach: achievements.showcase(), achN: achievements.count(),
   };
 }
 async function openProfile(tag) {
@@ -726,6 +757,7 @@ async function openProfile(tag) {
     </div>
     ${p.srPlayed ? `<div class="pf-fav pf-sr"><i style="background:${divisionOf(p.sr).color}"></i><span><small>Ranked</small><b>${divisionOf(p.sr).icon} ${esc(divisionOf(p.sr).name)}</b></span><em>${p.srPlayed >= PLACEMENTS ? p.sr + ' SR' : 'Placements'}</em></div>` : ''}
     ${W ? `<div class="pf-fav">${camo && camo.id !== 'default' ? `<i style="background:${camoSwatch(camo)}" title="${esc(camo.name)} wrap"></i>` : '<i></i>'}<span><small>Favorite gun</small><b>${esc(W.name)}</b></span><em>${p.favKills.toLocaleString()} kills</em></div>` : ''}
+    ${p.ach && p.ach.length ? `<div class="pf-ach"><small>Achievements · ${p.achN}/${ACHIEVEMENTS.length}</small>${p.ach.map((id) => `<span class="pf-achip" style="--tier:${TIER_COLOR[ACH[id].tier]}" title="${esc(ACH[id].desc)}">${ACH[id].icon} ${esc(ACH[id].name)}</span>`).join('')}</div>` : ''}
     ${p.seasons.length ? `<div class="pf-badges"><small>Season badges</small>${p.seasons.map((n) => `<span class="pf-sb">S${n}</span>`).join('')}</div>` : ''}
     <div class="pf-foot"><small>${p.since ? 'Playing since ' + new Date(p.since).toLocaleDateString([], { month: 'short', year: 'numeric' }) : ''}</small>
       ${!mine && social.tag && !isFriend ? '<button class="primary" id="pf-add">Add friend</button>' : ''}</div>`;
@@ -1144,6 +1176,7 @@ function chatOnNet(m) {
     const place = m.champ === game.myId ? 0 : m.second === game.myId ? 1 : -1;
     if (place >= 0 && !game.spectating) {
       addTokens(TOURNEY_TOKENS[place]);
+      if (!place) track.stat({ tourneyWins: 1 });
       game.hud.mission(place ? 'Tournament runner-up' : 'Tournament champion', `+${TOURNEY_TOKENS[place]} tokens`, 'GAME NIGHT');
       if (!place) grantWrap('champion');
       renderChip();

@@ -425,3 +425,20 @@ button:active { transform: translateY(1px) scale(0.985); }
 .hs-holiday { border-color: rgba(255,207,74,0.45); background: linear-gradient(100deg, rgba(255,207,74,0.12), rgba(255,207,74,0.02)); cursor: default; }
 .hs-holiday.soon { border-color: var(--line, rgba(255,255,255,0.12)); background: none; }
 .hs-holiday .hs-ic { font-size: 22px; }
+
+/* Achievements */
+.ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; }
+.ach { display: flex; gap: 10px; align-items: flex-start; text-align: left; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line, rgba(255,255,255,0.1)); background: rgba(255,255,255,0.03); }
+.ach.done { border-color: var(--tier); background: linear-gradient(100deg, color-mix(in srgb, var(--tier) 16%, transparent), transparent 70%); }
+.ach.shown { box-shadow: 0 0 0 2px var(--tier) inset; }
+.ach.locked { opacity: 0.75; cursor: default; }
+.ach.locked .ach-ic { filter: grayscale(1); opacity: 0.6; }
+.ach-ic { font-size: 26px; line-height: 1; flex: none; }
+.ach-txt { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.ach-txt b { font-size: 14px; }
+.ach-txt small { font-size: 12px; color: var(--muted); }
+.ach-txt em { font-style: normal; font-size: 11px; color: var(--tier); }
+.ach.locked .ach-txt em { color: var(--muted); }
+.pf-ach { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0; }
+.pf-ach small { width: 100%; color: var(--muted); }
+.pf-achip { padding: 4px 10px; border-radius: 999px; font-size: 12px; border: 1px solid var(--tier); background: color-mix(in srgb, var(--tier) 15%, transparent); }

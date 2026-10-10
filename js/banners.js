@@ -1,5 +1,6 @@
 import { esc } from './util.js';
 import { HOLIDAY_BANNERS } from './holidays.js';
+import { RANKED_BANNERS } from './ranked.js';
 
 // Player banners: the card shown behind your name when you kill someone ("[BOT] Razor killed you").
 // bg is a CSS background, accent tints the edge / emblem, anim adds a moving effect (see .bnr-* in style.css).
@@ -69,6 +70,8 @@ export const BANNER_STYLE = {
 
 // Holiday banners (holidays.js)
 Object.assign(BANNER_STYLE, HOLIDAY_BANNERS);
+// Ranked season banners (ranked.js)
+Object.assign(BANNER_STYLE, RANKED_BANNERS);
 
 // Season pass banners (seasons.js)
 Object.assign(BANNER_STYLE, {

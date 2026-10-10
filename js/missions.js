@@ -1,5 +1,6 @@
 import { store } from './util.js';
 import { HOLIDAY_BANNER_ITEMS } from './holidays.js';
+import { RANKED_BANNER_ITEMS } from './ranked.js';
 import { camoOf } from './camos.js';
 
 // Cosmetics shown on your character to other players. `free` items are owned from the start;
@@ -95,6 +96,8 @@ export const COSMETICS = {
     { id: 's2elite', name: 'Frostbite Elite (S2)', reward: true, how: 'Season 2, tier 25' },
     // Holiday events (holidays.js): one per holiday, for playing a match during it
     ...HOLIDAY_BANNER_ITEMS,
+    // Ranked seasons (ranked.js): your best division when a season ends, and every one below it
+    ...RANKED_BANNER_ITEMS,
   ],
 };
 export const SLOT_LABELS = { hat: 'Hat', hair: 'Hair', face: 'Face', back: 'Back', banner: 'Banner' };
@@ -302,7 +305,7 @@ export function onStats(fn) { statListeners.push(fn); }
 function bump(updates, pre = null, mode = null) {
   if (pre) pre();
   for (const [k, v] of Object.entries(updates)) {
-    if (k === 'bestStreak') stats[k] = Math.max(stats[k] || 0, v);
+    if (k.startsWith('best')) stats[k] = Math.max(stats[k] || 0, v); // bestStreak, bestWave
     else stats[k] = (stats[k] || 0) + v;
   }
   store.set('stats', stats);
@@ -334,6 +337,8 @@ export const track = {
     bump(u, null, mode);
   },
   died() { streak = 0; bump({ deaths: 1 }); },
+  // Event stats for achievements: bestWave, brWins, tourneyWins, gnMatches
+  stat(updates) { bump(updates); },
   tag() { bump({ tags: 1 }); },
   matchEnd({ mode, map, won, survived, hillPoints, teams }) {
     streak = 0;
