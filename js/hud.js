@@ -342,6 +342,27 @@ export class Hud {
     });
   }
 
+  // Spectating: a name tag over every player, seen through walls.
+  specMarks(list) {
+    const box = $('spec-marks');
+    while (box.children.length < list.length) { const e = document.createElement('div'); e.className = 'smark'; e.innerHTML = '<i></i><b></b>'; box.appendChild(e); }
+    for (let i = 0; i < box.children.length; i++) {
+      const e = box.children[i], m = list[i];
+      if (!m) { if (!e.hidden) e.hidden = true; continue; }
+      e.hidden = false;
+      e.style.transform = `translate(${(m.x + 1) * 50}vw, ${(1 - m.y) * 50}vh) translate(-50%, -100%)`;
+      e.style.setProperty('--c', m.color);
+      const b = e.querySelector('b'); if (b.textContent !== m.name) b.textContent = m.name;
+    }
+  }
+  // Spectating: live scoreboard (null hides it).
+  specBoard(rows, title = '') {
+    const el = $('spec-board');
+    if (!rows) { el.classList.add('hidden'); return; }
+    el.classList.remove('hidden');
+    el.innerHTML = `<div class="sb-t">👁 LIVE · ${esc(title)}</div>` + rows.slice(0, 12).map((r, i) => `<div class="sb-r ${r.alive ? '' : 'dead'} ${r.out ? 'out' : ''} ${r.watched ? 'watched' : ''}"><span class="n">${i + 1}</span><i style="background:${esc(r.color)}"></i><b>${esc(r.name)}</b><span class="s">${r.sc}</span><small>${r.k}/${r.d}</small></div>`).join('');
+  }
+
   // Red pulsing edges (and a heartbeat) at low health.
   lowPulse(on) {
     if (on === this.pulsing) return;

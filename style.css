@@ -1740,3 +1740,20 @@ body.in-storm #storm-fx { opacity: 1; animation: storm-pulse 1.6s ease-in-out in
 /* Aim trainer button (practice pause menu) */
 .pr-aim { display: flex; align-items: center; gap: 10px; margin: 6px 0 10px; flex-wrap: wrap; }
 .pr-aim small { color: var(--muted); font-size: 12px; }
+
+/* Spectating: markers through walls + live scoreboard */
+#spec-marks { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.smark { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; will-change: transform; }
+.smark b { font-size: 11px; font-weight: 800; padding: 1px 6px; border-radius: 6px; background: rgba(8,10,14,0.7); border-bottom: 2px solid var(--c); white-space: nowrap; }
+.smark i { order: 2; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 8px solid var(--c); }
+#spec-board { position: absolute; right: 14px; top: 120px; width: 230px; padding: 8px; border-radius: 12px; background: rgba(8,10,14,0.78); border: 1px solid rgba(255,255,255,0.1); pointer-events: none; font-size: 12px; }
+#spec-board .sb-t { font-weight: 800; letter-spacing: 1px; color: #ff6a5a; margin-bottom: 6px; font-size: 11px; }
+#spec-board .sb-r { display: grid; grid-template-columns: 18px 8px 1fr auto 44px; gap: 6px; align-items: center; padding: 3px 4px; border-radius: 6px; }
+#spec-board .sb-r i { width: 8px; height: 8px; border-radius: 50%; }
+#spec-board .sb-r b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+#spec-board .sb-r .n, #spec-board .sb-r small { color: var(--muted); }
+#spec-board .sb-r .s { font-weight: 800; }
+#spec-board .sb-r.dead { opacity: 0.55; }
+#spec-board .sb-r.out { opacity: 0.35; text-decoration: line-through; }
+#spec-board .sb-r.watched { background: rgba(255,176,32,0.18); }
+body.mobile #spec-board { top: 70px; right: 8px; width: 180px; font-size: 11px; }

@@ -372,6 +372,15 @@ export class HostLogic {
   // Staff can watch a match invisibly. They prove who they are when connecting (signed lobby code);
   // anyone else asking to spectate is turned away.
   async addSpectator(id, proof) {
+    // Anyone may watch a Game Night tournament or Battle Royale (no player slot, up to 30 viewers).
+    if (proof === 'watch') {
+      const viewers = [...this.specs.values()].filter((x) => x.viewer).length;
+      if (!(this.tour || this.mode.br) || viewers >= 30) { this.rawSend(id, { t: 'kicked', reason: viewers >= 30 ? 'Too many people are watching right now.' : 'There is nothing to watch on this server right now.' }); if (this.onKick) this.onKick(id); return; }
+      this.specs.set(id, { id, name: 'Viewer', role: null, spec: true, viewer: true });
+      this.sendTo(id, { t: 'welcome', id, spec: true, viewer: true, settings: this.s, players: [...this.players.values()].map((q) => this.info(q)) });
+      if (this.phase !== 'playing') this.sendTo(id, this.endMsg());
+      return;
+    }
     const r = typeof proof === 'string' ? await roles.check(proof, this.code, 'spec') : null;
     if (!r) { this.rawSend(id, { t: 'kicked' }); if (this.onKick) this.onKick(id); return; }
     this.specs.set(id, { id, name: r.tag, role: r.role, spec: true });

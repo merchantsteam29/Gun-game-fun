@@ -1,8 +1,7 @@
 {
-  "version": "2026.10.10.10",
+  "version": "2026.10.10.11",
   "notes": [
-    "Clan wars: challenge another clan to a clan-vs-clan match; wins and losses go on your clan's record",
-    "The top clan each week gets tokens and the Top Clan banner"
+    "Spectator mode: watch Game Night tournaments and Battle Royales live, with player markers, a live scoreboard and a free camera"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",

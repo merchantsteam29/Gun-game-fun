@@ -1257,7 +1257,7 @@ export class Game {
       if (!this.deathSpectate(dt, now)) { this.endDeathSpectate(); this.deathCam(dt, now); }
     } else {
       // Waiting to spawn (joined mid-round, or out of a Game Night event): watch the players, if any.
-      if (MODES[this.rules.mode].event && [...this.remotes.values()].some((r) => r.alive)) this.specCam(dt, null, false);
+      if (MODES[this.rules.mode].event && [...this.remotes.values()].some((r) => r.alive)) this.specCam(dt, null, true);
       else this.menuCam(now);
     }
     cam.updateMatrixWorld();
@@ -1381,7 +1381,7 @@ export class Game {
       this.me.pitch = -0.25;
     }
     const keep = this.me.pos.clone();
-    this.specCam(dt, list, false);
+    this.specCam(dt, list, !out); // out of the event for good: free camera allowed (F)
     this.me.pos.copy(keep); // stay where we died (radar, sounds)
     return true;
   }
@@ -2630,6 +2630,30 @@ export class Game {
     }));
     hud.lowPulse(me.alive && me.hp > 0 && me.hp <= this.maxHp * 0.3);
     hud.captions(opts.captions ? this.capList(now) : []);
+    // Watching (spectators, viewers, players knocked out of an event): every player marked through
+    // walls, and a live scoreboard.
+    const mine = this.players.get(this.myId);
+    const watching = !this.matchOver && (this.spectating || (!me.alive && MODES[this.rules.mode].event && (this.rules.mode === 'br' || (this.tourData && !this.tourData[2].includes(this.myId)) || !mine)));
+    if (watching) {
+      const marks = [];
+      for (const r of this.remotes.values()) {
+        if (!r.alive || r === this.specTarget) continue;
+        const p = this.players.get(r.id);
+        const v = _c.set(r.pos.x, r.pos.y + 2.1, r.pos.z).project(this.camera);
+        if (v.z > 1 || Math.abs(v.x) > 1.1 || Math.abs(v.y) > 1.1) continue;
+        marks.push({ x: v.x, y: v.y, name: p ? p.name : '', color: p ? this.colorFor(p) : '#fff', hp: r.hp });
+      }
+      hud.specMarks(marks);
+      if (now - (this.specBoardT || 0) > 500) {
+        this.specBoardT = now;
+        const rows = [...this.players.values()].filter((p) => !p.z).map((p) => {
+          const r = this.remotes.get(p.id);
+          return { name: p.name, color: this.colorFor(p), sc: p.sc || 0, k: p.k || 0, d: p.d || 0, alive: p.id === this.myId ? me.alive : !!(r && r.alive), out: this.tourData ? !this.tourData[2].includes(p.id) : false, watched: this.specTarget && this.specTarget.id === p.id };
+        }).sort((a, b) => (a.out - b.out) || b.sc - a.sc || b.k - a.k);
+        hud.specBoard(rows, MODES[this.rules.mode].short);
+      }
+    } else if (this.wasWatching) { hud.specMarks([]); hud.specBoard(null); }
+    this.wasWatching = watching;
     // Pings: enemy marks follow the enemy for 5 s, spot marks last 7 s.
     this.pings = (this.pings || []).filter((x) => now - x.t < (x.e ? 5000 : 7000));
     hud.pings(this.pings.map((x) => {

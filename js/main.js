@@ -1208,10 +1208,11 @@ function renderServers() {
       <div class="sv-main"><b>${s.gn ? '🌙 ' : ''}${esc(s.name)}${s.ranked ? ` ${srBadge(s.sr || 1000)}` : ''}</b><small>${s.mode === featuredMode() ? '⭐ ' : ''}${esc(mode)} · ${esc(map)}${s.rules ? ` · <em class="sv-rules">${esc(s.rules)}</em>` : ''}</small></div>
       ${s.region ? `<span class="sv-region">${esc(s.region)}</span>` : '<span></span>'}
       <div class="sv-players ${full ? 'full' : ''}">${s.players}/${s.max}${s.bots ? `<small>+${s.bots} bots</small>` : ''}</div>
-      <button class="primary" data-join="${esc(s.code)}" ${full ? 'disabled' : ''}>${full ? 'Full' : 'Join'}</button>
+      ${s.mode === 'tourney' || s.mode === 'br' ? `<button data-watch="${esc(s.code)}" title="Watch without playing">👁 Watch</button>` : ''}<button class="primary" data-join="${esc(s.code)}" ${full ? 'disabled' : ''}>${full ? 'Full' : 'Join'}</button>
     </div>`;
   }).join('');
   el.querySelectorAll('[data-join]').forEach((b) => { b.onclick = () => { $('join-code').value = b.dataset.join; joinLobby(); }; });
+  el.querySelectorAll('[data-watch]').forEach((b) => { b.onclick = () => { $('join-code').value = b.dataset.watch; joinLobby('watch'); }; });
 }
 browser.onChange = () => { renderServers(); if (!game.active && menuPane === 'play') renderHome(); };
 
@@ -1608,6 +1609,8 @@ watchEvents(() => gameNight.window(), (e) => {
   } else if (e.step === 'go' && inGn && net.isHost && net.logic) {
     if (e.kind === 'br') net.logic.startEvent('br', BR_MAPS[(Math.random() * BR_MAPS.length) | 0]);
     if (e.kind === 'tourney') net.logic.startEvent('tourney');
+  } else if (e.step === 'go' && !(net && !net.practice)) {
+    toast(`${name} is starting! Watch it live: Play → Servers → 👁 Watch on the Game Night server.`);
   }
 });
 
@@ -1913,7 +1916,8 @@ async function hostLobby(preset = null) {
 
 // spectate: staff only; joins invisibly with a signed proof instead of a player.
 async function joinLobby(spectateArg = false) {
-  const spectate = spectateArg === true; // only an explicit true (never a click event)
+  const watch = spectateArg === 'watch'; // public viewer of a Game Night event
+  const spectate = spectateArg === true || watch; // only an explicit true (never a click event)
   if (busy) return;
   if (moderation.myBan()) { moderation.lastBan = null; moderation.applyMine(); return; }
   const code = $('join-code').value.trim().toUpperCase();
@@ -1923,7 +1927,7 @@ async function joinLobby(spectateArg = false) {
   status(`Joining ${code}…`);
   net = newNet();
   try {
-    const spec = spectate ? await roles.proof(code, 'spec') : null;
+    const spec = watch ? 'watch' : spectate ? await roles.proof(code, 'spec') : null;
     if (spectate && !spec) throw new Error('Only staff can spectate.');
     await net.join(code, settings.name || 'Player', settings.color, myCos(), spec);
     game.spectating = spectate; // set before the welcome arrives so enterGame() knows
