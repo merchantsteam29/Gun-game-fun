@@ -55,6 +55,7 @@ class Leaderboard {
     this.mine = this.loadMine();
     this.entries = { cur: new Map(), prev: new Map(), all: new Map() }; // lower tag -> { tag, xp, kills, wins, heads, m: { mode: {...} } }
     this.modesAll = store.get('lbModesAll', {}); // your all-time per-mode counts
+    this.aim = new Map(); // lower tag -> { tag, value } best aim trainer score (all time)
     this.champs = new Set(); // lower tags of last week's #1s
     this.hidden = new Set(); // lower tags staff took off the board
     this.hideRaw = null;
@@ -111,11 +112,12 @@ class Leaderboard {
   subscribe() {
     const s = this.social;
     for (const t of this.subs || []) s.relay.unsubscribe(t);
-    this.subs = [V + this.week + '/+', V + prevWeek(this.week) + '/+', V + 'all/+'];
+    this.subs = [V + this.week + '/+', V + prevWeek(this.week) + '/+', V + 'all/+', V + 'aim/+'];
     for (const t of this.subs) s.relay.subscribe(t);
   }
 
   async receive(path, text) {
+    if (path.startsWith('aim/')) { this.receiveAim(path.slice(4), text); return; }
     const [week, tag] = path.split('/');
     const which = week === 'all' ? 'all' : week === this.week ? 'cur' : week === prevWeek(this.week) ? 'prev' : null;
     if (!which || !tag) return;
@@ -159,6 +161,29 @@ class Leaderboard {
   lifetime() {
     const st = allStats();
     return { xp: myLevel().total || 0, kills: st.kills || 0, wins: st.wins || 0, heads: st.headshots || 0, m: this.modesAll };
+  }
+
+  // ---------- Aim trainer (all time) ----------
+  // Your best: posted signed at whffa/v1/lb/aim/<tag> when it improves. 60 s can't really go past ~150.
+  async postAim(score) {
+    const s = this.social;
+    store.set('aimBest', Math.max(store.get('aimBest', 0), score));
+    if (!s || !s.tag) return;
+    const signed = await s.sign({ aim: Math.min(250, Math.round(score)) });
+    s.relay.publish(V + 'aim/' + low(s.tag), signed, { retain: true });
+    this.receiveAim(low(s.tag), signed);
+  }
+  async receiveAim(tag, text) {
+    if (!text) { this.aim.delete(tag); if (this.onChange) this.onChange(); return; }
+    const b = await this.social.verify(text);
+    if (!b || low(b.from) !== tag) return;
+    this.aim.set(tag, { tag: b.from, value: Math.max(0, Math.min(250, Math.round(Number(b.aim) || 0))) });
+    if (this.onChange) this.onChange();
+  }
+  aimRows() {
+    const me = this.social && low(this.social.tag);
+    return [...this.aim.values()].filter((e) => e.value > 0 && !this.hidden.has(low(e.tag)) && !moderation.isGone(e.tag))
+      .sort((a, b) => b.value - a.value || a.tag.localeCompare(b.tag)).map((e, i) => ({ ...e, rank: i + 1, me: low(e.tag) === me }));
   }
 
   // Sorted rows for a board: [{ tag, value, rank, me }]. which: 'cur' | 'prev' | 'all'; mode: one game mode, or all of them.

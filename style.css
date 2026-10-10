@@ -1736,3 +1736,7 @@ body.in-storm #storm-fx { opacity: 1; animation: storm-pulse 1.6s ease-in-out in
 /* Time zone (read-only: follows the device) */
 .tz-now { margin-top: 6px; font-size: 13px; color: var(--muted); }
 .tz-now b { color: var(--text, #fff); }
+
+/* Aim trainer button (practice pause menu) */
+.pr-aim { display: flex; align-items: center; gap: 10px; margin: 6px 0 10px; flex-wrap: wrap; }
+.pr-aim small { color: var(--muted); font-size: 12px; }

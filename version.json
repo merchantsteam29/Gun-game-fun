@@ -1,8 +1,7 @@
 {
-  "version": "2026.10.10.6",
+  "version": "2026.10.10.7",
   "notes": [
-    "Achievements: 28 feats to unlock (Missions, Achievements tab). Show your best 3 on your profile",
-    "Ranked season rewards: a banner for the best division you reach each season"
+    "Aim trainer: a 60-second target challenge in the Practice Range, with its own leaderboard"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",

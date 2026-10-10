@@ -570,6 +570,7 @@ export class Game {
 
   reset() {
     this.endKillcam();
+    this.stopAim(true);
     this.hist = null;
     this.active = false;
     this.myId = null;
@@ -1250,6 +1251,7 @@ export class Game {
     this.updateZone(now);
     this.updateStorm();
     this.updateProps();
+    this.updateAim(now);
     this.updateTags(now);
     this.updatePickups(now);
     this.updateFlags(now);
@@ -1642,6 +1644,9 @@ export class Game {
     const hits = new Map();
     const propHits = new Map(); // barrels / crates hit by this shot
     const ends = [];
+    const aiming = this.aim && this.aim.go;
+    let aimHit = false;
+    if (aiming) this.aim.shots++;
     for (let i = 0; i < w.pellets; i++) {
       const a = Math.random() * Math.PI * 2, r = this.spread * Math.sqrt(Math.random());
       const dir = _d.copy(_f).addScaledVector(_r, Math.cos(a) * r).addScaledVector(_u, Math.sin(a) * r).normalize();
@@ -1653,6 +1658,21 @@ export class Game {
         for (const hb of rp.hitboxes()) {
           const t = rayAABB(o.x, o.y, o.z, dir.x, dir.y, dir.z, hb.x0, hb.y0, hb.z0, hb.x1, hb.y1, hb.z1, maxT);
           if (t >= 0 && t < maxT) { maxT = t; best = { rp, head: hb.head }; }
+        }
+      }
+      if (aiming) {
+        for (let k = 0; k < this.aim.targets.length; k++) {
+          const tp = this.aim.targets[k].mesh.position, r = 0.34;
+          const t = rayAABB(o.x, o.y, o.z, dir.x, dir.y, dir.z, tp.x - r, tp.y - r, tp.z - r, tp.x + r, tp.y + r, tp.z + r, maxT);
+          if (t >= 0 && t < maxT && !aimHit) {
+            aimHit = true;
+            this.aim.hits++;
+            this.scene.remove(this.aim.targets[k].mesh);
+            this.fx.burst(tp.clone(), null, '#ff9a3a', 10, 4, 0.06, 0.4);
+            this.aim.targets.splice(k, 1);
+            maxT = t;
+            break;
+          }
         }
       }
       let prop = null;
@@ -1690,6 +1710,7 @@ export class Game {
       this.hud.hit(h.head ? 'head' : null, !!h.head, h.dmg);
       (h.head ? sfx.head : sfx.hit)(0.8);
     }
+    if (aimHit) { this.hud.hit(null); sfx.hit(0.8); }
     for (const [pid, dmg] of propHits) this.net.send({ t: 'prop', id: pid, dmg: Math.round(dmg) });
     this.net.send({ t: 'shot', w: id, o: arr(muzzle), e: ends, q: w.quiet ? 1 : 0 });
   }
@@ -2138,6 +2159,55 @@ export class Game {
     document.body.classList.toggle('in-storm', !this.matchOver && Math.hypot(p.x - cx, p.z - cz) > r);
   }
 
+  // ---------- Aim trainer (Practice Range) ----------
+  // 60 seconds: targets pop up around where you're looking; hit as many as you can. Score = hits,
+  // accuracy shown too. Starts after a 3-second countdown.
+  startAim() {
+    this.stopAim(true);
+    const now = performance.now();
+    this.aim = { start: now + 3000, end: now + 63000, hits: 0, shots: 0, targets: [], yaw: this.me.yaw, count: 4 };
+    if (!this.aimGeo) {
+      this.aimGeo = new THREE.SphereGeometry(0.32, 18, 12);
+      this.aimMat = new THREE.MeshStandardMaterial({ color: '#ff7a1a', emissive: '#ff5a00', emissiveIntensity: 0.6, roughness: 0.4 });
+    }
+  }
+  stopAim(quiet = false) {
+    const a = this.aim;
+    if (!a) return;
+    for (const t of a.targets) this.scene.remove(t.mesh);
+    this.aim = null;
+    if (!quiet && this.onAimDone) this.onAimDone(a.hits, a.shots ? Math.round((a.hits / a.shots) * 100) : 0);
+  }
+  spawnAimTarget() {
+    const a = this.aim, me = this.me, eye = new THREE.Vector3(me.pos.x, me.pos.y + me.eye, me.pos.z);
+    for (let i = 0; i < 20; i++) {
+      const yaw = a.yaw + (Math.random() - 0.5) * 1.6, d = 7 + Math.random() * 15, h = 0.8 + Math.random() * 2.6;
+      const p = new THREE.Vector3(me.pos.x - Math.sin(yaw) * d, me.pos.y + h, me.pos.z - Math.cos(yaw) * d);
+      const v = p.clone().sub(eye), dl = v.length();
+      if (raycast(eye.x, eye.y, eye.z, v.x / dl, v.y / dl, v.z / dl, dl - 0.4)) continue; // must be in plain sight
+      if (a.targets.some((t) => t.mesh.position.distanceTo(p) < 1.5)) continue;
+      const mesh = new THREE.Mesh(this.aimGeo, this.aimMat);
+      mesh.position.copy(p);
+      mesh.scale.setScalar(0.01);
+      this.scene.add(mesh);
+      a.targets.push({ mesh, born: performance.now() });
+      return;
+    }
+  }
+  updateAim(now) {
+    const a = this.aim;
+    if (!a) return;
+    if (now < a.start) {
+      const n = Math.ceil((a.start - now) / 1000);
+      if (n !== a.cd) { a.cd = n; this.hud.say(String(n)); sfx.beep(0.4); }
+      return;
+    }
+    if (!a.go) { a.go = true; this.hud.say('GO!'); sfx.beep(0.7); }
+    if (now >= a.end || this.rules.mode !== 'practice') { this.stopAim(this.rules.mode !== 'practice'); return; }
+    while (a.targets.length < a.count) this.spawnAimTarget();
+    for (const t of a.targets) { const k = Math.min(1, (now - t.born) / 120); t.mesh.scale.setScalar(k); }
+  }
+
   // Barrels (red, explode) and crates (wood, break) from the host's snapshot.
   updateProps() {
     if (!this.propMeshes) this.propMeshes = new Map();
@@ -2346,6 +2416,11 @@ export class Game {
 
   modeBar() {
     const mode = this.rules.mode, me = this.players.get(this.myId);
+    if (mode === 'practice' && this.aim) {
+      const a = this.aim, now = performance.now();
+      if (now < a.start) return `🎯 AIM TRAINER · STARTING IN ${Math.ceil((a.start - now) / 1000)}`;
+      return `🎯 AIM TRAINER · ${Math.max(0, Math.ceil((a.end - now) / 1000))}s · ${a.hits} HITS · ${a.shots ? Math.round((a.hits / a.shots) * 100) : 0}%`;
+    }
     if (mode === 'practice') return `PRACTICE RANGE<span class="lim"> · Esc to pick any weapon · targets respawn</span>`;
     if (MODES[mode].redBlue && this.teamScore) {
       // The team scores themselves are in the score strip above; this line only adds objective info.

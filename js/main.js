@@ -392,7 +392,7 @@ function holidayRow() {
 }
 
 // ---------- Weekly leaderboard ----------
-let lbBoard = ['kills', 'wins', 'heads', 'clans'].includes(store.get('lbBoard', 'kills')) ? store.get('lbBoard', 'kills') : 'kills', lbWhich = 'cur', lbMode = '', lbT = 0;
+let lbBoard = ['kills', 'wins', 'heads', 'clans', 'aim'].includes(store.get('lbBoard', 'kills')) ? store.get('lbBoard', 'kills') : 'kills', lbWhich = 'cur', lbMode = '', lbT = 0;
 function updateLbNav() {
   const r = leaderboard.rows('kills').find((x) => x.me);
   $('nav-lb-rank').textContent = r ? '#' + r.rank : '';
@@ -408,10 +408,10 @@ function renderLeaderboard() {
   const el = $('menu-lb');
   if (!el) return;
   // XP and clans aren't split by mode; clans are weekly only.
-  if (lbMode && lbBoard === 'clans') lbBoard = 'kills';
+  if (lbMode && (lbBoard === 'clans' || lbBoard === 'aim')) lbBoard = 'kills';
   if (lbWhich === 'all' && lbBoard === 'clans') lbBoard = 'kills';
   if (lbBoard === 'clans') clans.loadAll();
-  const rows = lbBoard === 'clans' ? clanRows(lbWhich) : leaderboard.rows(lbBoard, lbWhich, lbMode || null), b = lbBoard === 'clans' ? { name: 'Kills' } : BOARDS.find((x) => x.id === lbBoard) || BOARDS[0];
+  const rows = lbBoard === 'aim' ? leaderboard.aimRows() : lbBoard === 'clans' ? clanRows(lbWhich) : leaderboard.rows(lbBoard, lbWhich, lbMode || null), b = lbBoard === 'aim' ? { name: 'hits' } : lbBoard === 'clans' ? { name: 'Kills' } : BOARDS.find((x) => x.id === lbBoard) || BOARDS[0];
   const me = rows.find((r) => r.me), top = rows.slice(0, 50);
   const all = lbWhich === 'all', life = leaderboard.lifetime();
   const mineSrc = all ? life : leaderboard.mine;
@@ -427,9 +427,9 @@ function renderLeaderboard() {
         <select id="lb-mode" class="lb-mode" title="Show one game mode"><option value="">All modes</option>${MODE_ORDER.filter((id) => MODES[id] && id !== 'practice').map((id) => `<option value="${id}" ${id === lbMode ? 'selected' : ''}>${esc(MODES[id].name)}</option>`).join('')}</select>
         <small>${all ? 'Lifetime totals' : lbWhich === 'cur' ? `Resets in ${fmtDuration(weekEnds() - Date.now())} (${new Date(weekEnds()).toLocaleString([], { weekday: 'long', hour: 'numeric', minute: '2-digit' })} your time)` : 'Final results'}</small>
       </div>
-      <div class="lb-tabs">${shownBoards.map((x) => `<button data-board="${x.id}" class="${x.id === lbBoard ? 'sel' : ''}">${x.icon} ${x.name}</button>`).join('')}${lbMode || all ? '' : `<button data-board="clans" class="${lbBoard === 'clans' ? 'sel' : ''}">🛡 Clans</button>`}</div>
+      <div class="lb-tabs">${shownBoards.map((x) => `<button data-board="${x.id}" class="${x.id === lbBoard ? 'sel' : ''}">${x.icon} ${x.name}</button>`).join('')}${lbMode || all ? '' : `<button data-board="clans" class="${lbBoard === 'clans' ? 'sel' : ''}">🛡 Clans</button>`}${lbMode ? '' : `<button data-board="aim" class="${lbBoard === 'aim' ? 'sel' : ''}" title="Best Aim trainer score (Practice Range), all time">🎯 Aim trainer</button>`}</div>
       <table class="lb-table"><tbody>${top.length ? top.map((r) => `<tr class="${r.me ? 'me' : ''} ${r.rank <= 3 ? 'top' + r.rank : ''}"><td class="rk">${r.rank <= 3 ? ['🥇', '🥈', '🥉'][r.rank - 1] : r.rank}</td><td ${r.clan ? '' : `class="pf-link" data-profile="${esc(r.tag)}"`}>${esc(r.tag)}${leaderboard.isChamp(r.tag) ? ' <span class="trophy" title="#1 last week">🏆</span>' : ''}</td><td class="sc">${fmt(r.value)} <small>${esc(b.name)}</small></td></tr>`).join('')
-        : `<tr><td class="lb-empty">${lbMode ? `Nobody on the ${esc(modeName)} board yet. Play some ${esc(modeName)} to be first!` : all ? 'Nobody on the all-time board yet.' : lbWhich === 'cur' ? 'Nobody on the board yet this week. Play a match to be first!' : 'No results from last week.'}</td></tr>`}</tbody></table>
+        : `<tr><td class="lb-empty">${lbBoard === 'aim' ? 'No Aim trainer scores yet. Try it in the Practice Range (pause menu → 🎯 Aim trainer)!' : lbMode ? `Nobody on the ${esc(modeName)} board yet. Play some ${esc(modeName)} to be first!` : all ? 'Nobody on the all-time board yet.' : lbWhich === 'cur' ? 'Nobody on the board yet this week. Play a match to be first!' : 'No results from last week.'}</td></tr>`}</tbody></table>
       ${me && me.rank > 50 ? `<div class="lb-you">You: #${me.rank} · ${fmt(me.value)} ${esc(b.name)}</div>` : ''}
     </div>
     <div class="lb-side">
@@ -1700,11 +1700,21 @@ tutorial.onDone = (first) => {
 };
 tutorial.onPlay = () => { leave(); quickPlay(); };
 
+// Aim trainer results (Practice Range): best score goes on the Aim trainer leaderboard.
+game.onAimDone = (hits, acc) => {
+  const best = store.get('aimBest', 0), isBest = hits > best;
+  game.hud.mission(`🎯 Aim trainer: ${hits} hits`, `${acc}% accuracy${isBest ? ' · NEW BEST!' : ` · best ${best}`}`, 'PRACTICE');
+  chat.system(`🎯 Aim trainer: ${hits} hits, ${acc}% accuracy.${isBest ? ' New best!' : ''}${!social.tag ? ' Get a gamertag to show up on the Aim trainer leaderboard.' : ''}`);
+  if (isBest) leaderboard.postAim(hits);
+  renderPractice();
+};
 // Pause menu in practice: every weapon, equipped (and refilled) as soon as you pick it.
 function renderPractice() {
   const on = !!(net && net.practice);
   $('pause-practice').classList.toggle('hidden', !on);
   if (!on) return;
+  $('aim-best').textContent = store.get('aimBest', 0) ? `Your best: ${store.get('aimBest', 0)} hits` : 'Hit as many targets as you can';
+  $('btn-aim').onclick = () => { game.startAim(); $('btn-resume').click(); };
   $('pr-inf').checked = !!net.logic.s.infiniteAmmo;
   $('pr-inf').onchange = () => { store.set('practiceInf', $('pr-inf').checked); net.logic.applySettings({ infiniteAmmo: $('pr-inf').checked }); };
   $('pr-weapons').innerHTML = SLOTS.map((ids, slot) => `<div class="pr-slot"><h4>${slot + 1} · ${SLOT_NAMES[slot]}</h4><div class="pr-grid">${ids.map((id) =>
