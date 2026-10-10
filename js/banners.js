@@ -70,6 +70,8 @@ export const BANNER_STYLE = {
 
 // Holiday banners (holidays.js)
 Object.assign(BANNER_STYLE, HOLIDAY_BANNERS);
+// Weekly top clan (main.js claimTopClan)
+BANNER_STYLE.clantop = { bg: 'radial-gradient(circle at 84% 50%, #ffd34a66 0 16%, transparent 40%), repeating-linear-gradient(135deg, #1b1407 0 14px, #241a09 14px 28px)', accent: '#ffd34a', emblem: '🛡' };
 // Ranked season banners (ranked.js)
 Object.assign(BANNER_STYLE, RANKED_BANNERS);
 

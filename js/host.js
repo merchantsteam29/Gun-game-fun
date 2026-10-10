@@ -155,6 +155,7 @@ export class HostLogic {
     this.specs = new Map(); // staff spectating: get every update but aren't players
     this.s = defaultSettings(MODES[opts.mode] ? opts.mode : 'ffa', MAPS[opts.map] ? opts.map : MAP_ORDER[0]);
     if (opts.gn) this.s.gn = true; // Game Night server (double XP for players while it's live)
+    if (opts.war && opts.war.a && opts.war.b) this.s.war = { a: String(opts.war.a).slice(0, 5), b: String(opts.war.b).slice(0, 5) }; // clan war: [a] red vs [b] blue, members only
     if (opts.ranked) this.s.ranked = true; // ranked server: standard rules, SR on (ranked.js)
     if (opts.rules) Object.assign(this.s, cleanRules(opts.rules), { rulesName: String(opts.rules.rulesName || '').slice(0, 24) }); // custom rules preset
     this.botCount = 0;
@@ -313,6 +314,11 @@ export class HostLogic {
   addPlayer(id, name, color, cos) {
     const p = this.record(id, name, color);
     p.cos = sanitizeCos(cos);
+    if (this.s.war && !this.warTeam(p) && id !== 'host') { // clan wars: only the two clans
+      this.rawSend(id, { t: 'kicked', reason: `This is a clan war: only [${this.s.war.a}] and [${this.s.war.b}] members can join.` });
+      if (this.onKick) this.onKick(id);
+      return;
+    }
     p.team = this.autoTeam(p);
     this.players.set(id, p);
     // Names of the owner and moderators are only for them: whoever uses one has a few seconds to
@@ -413,7 +419,14 @@ export class HostLogic {
     }
   }
 
+  // Clan war side: 1 for clan a, 2 for clan b, 0 for anyone else.
+  warTeam(p) {
+    const w = this.s.war, c = p.cos && p.cos.clan;
+    return !w || !c ? 0 : c === w.a ? 1 : c === w.b ? 2 : 0;
+  }
+
   autoTeam(p) {
+    if (this.s.war && this.warTeam(p)) return this.warTeam(p);
     if (this.mode.redBlue) {
       let red = 0, blue = 0;
       for (const q of this.players.values()) if (q !== p) { if (q.team === 1) red++; else if (q.team === 2) blue++; }
@@ -1384,6 +1397,11 @@ export class HostLogic {
     if (this.mode.redBlue) {
       const r = Math.floor(this.teamScore[1]), b = Math.floor(this.teamScore[2]);
       this.endTitle = r === b ? 'DRAW' : r > b ? 'RED TEAM WINS' : 'BLUE TEAM WINS';
+      if (this.s.war) { // clan war result
+        const win = r === b ? null : r > b ? this.s.war.a : this.s.war.b;
+        this.endTitle = win ? `[${win}] WINS THE CLAN WAR` : 'CLAN WAR: DRAW';
+        this.broadcast({ t: 'warend', a: this.s.war.a, b: this.s.war.b, winner: win, score: [r, b] });
+      }
     } else if (this.s.mode === 'infection') {
       this.endTitle = winnerTeam === 2 ? 'ZOMBIES WIN' : 'SURVIVORS WIN';
     } else if (this.tour) {
@@ -1493,7 +1511,7 @@ export class HostLogic {
       p.kills = 0; p.deaths = 0; p.level = 0;
       p.heads = 0; p.streak = 0; p.bestStreak = 0;
       p.score = this.s.mode === 'lms' ? Math.max(1, this.s.scoreLimit) : 0;
-      p.team = this.mode.redBlue ? (i % 2) + 1 : this.s.mode === 'infection' || this.s.mode === 'zombies' ? 1 : 0;
+      p.team = this.s.war && this.warTeam(p) ? this.warTeam(p) : this.mode.redBlue ? (i % 2) + 1 : this.s.mode === 'infection' || this.s.mode === 'zombies' ? 1 : 0;
       p.alive = false;
       p.respawnAt = 0;
     });

@@ -7,10 +7,15 @@ import { moderation } from './moderation.js';
 //   clanreq/<tag>/<me>     retained, signed by a player asking to join (or '' to cancel)
 //   clanleave/<tag>/<me>   retained, signed by a member who left (the leader's game drops them)
 //   clanchat/<tag>/<id>    signed chat messages for members (not kept)
+//   clanwar/<them>/<us>    retained, signed by our leader: a war challenge to clan <them>
+//   clanwarok/<us>/<them>  retained, signed by their leader: they accepted our challenge
+//   clanwargo/<tag>        retained, signed by the hosting leader: { code, a, b } the war is on
 // A player's [TAG] is only shown when the clan's signed member list includes them.
 
 const V = 'whffa/v1/';
 const CLAN = V + 'clan/', REQ = V + 'clanreq/', LEAVE = V + 'clanleave/', CHAT = V + 'clanchat/';
+const WAR = V + 'clanwar/', WAROK = V + 'clanwarok/', WARGO = V + 'clanwargo/';
+export const WAR_LIVE_MS = 40 * 60000; // a war's join link stays up this long
 export const CLAN_TAG_RE = /^[A-Z0-9]{2,5}$/;
 export const MAX_MEMBERS = 30;
 // Clan spray: 16x16 pixels, one hex digit each (0 = see-through, 1-f = SPRAY_PALETTE).
@@ -30,6 +35,9 @@ class Clans {
     this.onChange = null;
     this.onChat = null;
     this.mine = store.get('myClan', null); // { tag } I belong to (or asked to join: pending)
+    this.challenges = new Map(); // lower clan tag -> { tag, ts } challenges to my clan (leader)
+    this.accepted = new Map(); // lower clan tag -> { tag, ts } clans that accepted my challenge (leader)
+    this.war = null; // { code, a, b, ts } a war my clan is in, live now
   }
 
   init(social) {
@@ -43,6 +51,9 @@ class Clans {
     else if (t.startsWith(REQ)) this.receiveReq(t.slice(REQ.length), text);
     else if (t.startsWith(LEAVE)) this.receiveLeave(t.slice(LEAVE.length), text);
     else if (t.startsWith(CHAT)) this.receiveChat(text);
+    else if (t.startsWith(WAROK)) this.receiveWarOk(t.slice(WAROK.length), text);
+    else if (t.startsWith(WARGO)) this.receiveWarGo(t.slice(WARGO.length), text);
+    else if (t.startsWith(WAR)) this.receiveWar(t.slice(WAR.length), text);
   }
 
   // Subscriptions for my clan (record, chat; requests and leaves when I lead it).
@@ -53,8 +64,8 @@ class Clans {
     if (this.mine) {
       const k = low(this.mine.tag);
       want.add(CLAN + k);
-      if (this.myClan() && this.isLeader()) { want.add(REQ + k + '/+'); want.add(LEAVE + k + '/+'); }
-      if (this.myClan()) want.add(CHAT + k + '/+');
+      if (this.myClan() && this.isLeader()) { want.add(REQ + k + '/+'); want.add(LEAVE + k + '/+'); want.add(WAR + k + '/+'); want.add(WAROK + k + '/+'); }
+      if (this.myClan()) { want.add(CHAT + k + '/+'); want.add(WARGO + k); }
     }
     for (const w of this.subs || []) if (!want.has(w)) s.relay.unsubscribe(w);
     for (const w of want) if (!(this.subs || new Set()).has(w)) s.relay.subscribe(w);
@@ -74,6 +85,7 @@ class Clans {
           members: [...new Set((Array.isArray(b.members) ? b.members : []).map((m) => clip(m, 16)).filter(Boolean))].slice(0, MAX_MEMBERS),
           since: Number(b.since) || 0, ts: Number(b.ts) || 0, disbanded: !!b.disbanded,
           spray: typeof b.spray === 'string' && SPRAY_RE.test(b.spray) ? b.spray : null,
+          warW: Math.max(0, Math.min(1e5, Number(b.warW) || 0)), warL: Math.max(0, Math.min(1e5, Number(b.warL) || 0)),
         };
         if (!clan.members.some((m) => low(m) === low(clan.leader))) clan.members.unshift(clan.leader);
         const old = this.records.get(k);
@@ -137,6 +149,8 @@ class Clans {
   async publishClan(c) {
     const body = { tag: c.tag, name: c.name, color: c.color, leader: c.leader, members: c.members, since: c.since };
     if (c.spray && SPRAY_RE.test(c.spray)) body.spray = c.spray;
+    if (c.warW) body.warW = c.warW;
+    if (c.warL) body.warL = c.warL;
     if (c.disbanded) body.disbanded = true;
     const signed = await this.social.sign(body);
     this.social.relay.publish(CLAN + low(c.tag), signed, { retain: true });
@@ -213,6 +227,91 @@ class Clans {
     const full = this.records.get(low(c.tag));
     await this.publishClan({ ...full, spray });
   }
+  // ---------- Clan wars ----------
+  // Leader: challenge another clan. Their leader sees it on their clan card and can accept.
+  async challenge(tag) {
+    const c = this.myClan(), s = this.social;
+    if (!c || !this.isLeader()) throw new Error('Only clan leaders can start a clan war.');
+    tag = String(tag || '').toUpperCase().replace(/[[\]\s]/g, '');
+    if (low(tag) === low(c.tag)) throw new Error("You can't challenge your own clan.");
+    const them = await this.lookup(tag);
+    if (!them) throw new Error(`No clan has the tag [${tag}].`);
+    s.relay.publish(WAR + low(them.tag) + '/' + low(c.tag), await s.sign({ clan: c.tag, to: them.tag }), { retain: true });
+    return them;
+  }
+  async receiveWar(path, text) {
+    const [k, from] = path.split('/');
+    const c = this.myClan();
+    if (!c || !this.isLeader() || low(c.tag) !== k) return;
+    if (!text) { this.challenges.delete(from); this.changed(); return; }
+    const b = await this.social.verify(text);
+    if (!b || low(b.clan) !== from || low(b.to) !== k || Date.now() - (Number(b.ts) || 0) > 3 * 864e5) return;
+    const them = await this.lookup(b.clan);
+    if (!them || low(them.leader) !== low(b.from)) return; // only their leader can challenge
+    this.challenges.set(from, { tag: them.tag, ts: Number(b.ts) || 0 });
+    this.changed();
+  }
+  // Leader: accept / decline a challenge.
+  async acceptWar(tag) {
+    const c = this.myClan(), s = this.social, k = low(tag);
+    if (!c || !this.isLeader() || !this.challenges.has(k)) return;
+    s.relay.publish(WAR + low(c.tag) + '/' + k, '', { retain: true });
+    s.relay.publish(WAROK + k + '/' + low(c.tag), await s.sign({ clan: c.tag, to: tag }), { retain: true });
+    this.challenges.delete(k);
+    this.changed();
+  }
+  declineWar(tag) {
+    const c = this.myClan(), k = low(tag);
+    if (!c || !this.isLeader()) return;
+    this.social.relay.publish(WAR + low(c.tag) + '/' + k, '', { retain: true });
+    this.challenges.delete(k);
+    this.changed();
+  }
+  async receiveWarOk(path, text) {
+    const [k, from] = path.split('/');
+    const c = this.myClan();
+    if (!c || !this.isLeader() || low(c.tag) !== k) return;
+    if (!text) { this.accepted.delete(from); this.changed(); return; }
+    const b = await this.social.verify(text);
+    if (!b || low(b.clan) !== from || low(b.to) !== k || Date.now() - (Number(b.ts) || 0) > 864e5) return;
+    const them = await this.lookup(b.clan);
+    if (!them || low(them.leader) !== low(b.from)) return;
+    this.accepted.set(from, { tag: them.tag, ts: Number(b.ts) || 0 });
+    this.changed();
+  }
+  // Leader hosting the war: tell both clans the code.
+  async announceWar(code, other) {
+    const c = this.myClan(), s = this.social;
+    if (!c || !this.isLeader()) return;
+    const signed = await s.sign({ code, a: c.tag, b: other });
+    for (const t of [c.tag, other]) s.relay.publish(WARGO + low(t), signed, { retain: true });
+    s.relay.publish(WAROK + low(c.tag) + '/' + low(other), '', { retain: true });
+    this.accepted.delete(low(other));
+    await this.receiveWarGo(low(c.tag), signed);
+  }
+  async receiveWarGo(k, text) {
+    const c = this.myClan();
+    if (!c || low(c.tag) !== k) return;
+    if (!text) { this.war = null; this.changed(); return; }
+    const b = await this.social.verify(text);
+    if (!b || !/^[A-Z0-9]{5}$/.test(String(b.code)) || Date.now() - (Number(b.ts) || 0) > WAR_LIVE_MS) return;
+    if (low(b.a) !== k && low(b.b) !== k) return;
+    const host = await this.lookup(b.a);
+    if (!host || low(host.leader) !== low(b.from)) return; // posted by the leader of the hosting clan
+    const fresh = !this.war || this.war.code !== b.code;
+    this.war = { code: b.code, a: host.tag, b: String(b.b).toUpperCase(), ts: Number(b.ts) || 0 };
+    if (fresh && this.onWar) this.onWar(this.war);
+    this.changed();
+  }
+  liveWar() { return this.war && Date.now() - this.war.ts < WAR_LIVE_MS ? this.war : null; }
+  // Leader: add a win or a loss to the clan's record.
+  async recordWar(won) {
+    const c = this.myClan();
+    if (!c || !this.isLeader()) return;
+    const full = this.records.get(low(c.tag));
+    await this.publishClan({ ...full, warW: (full.warW || 0) + (won ? 1 : 0), warL: (full.warL || 0) + (won ? 0 : 1) });
+  }
+
   deny(who) { const c = this.myClan(); if (c) this.clearReq(low(c.tag), low(who)); this.changed(); }
 
   async kick(who) {

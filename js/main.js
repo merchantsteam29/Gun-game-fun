@@ -836,9 +836,10 @@ function renderClan() {
   }
   const lead = clans.isLeader();
   const reqs = [...clans.requests.values()];
-  el.innerHTML = `<div class="cl-head"><b class="cl-name" style="color:${c.color}">[${esc(c.tag)}] ${esc(c.name)}</b><small>${c.members.length}/${MAX_MEMBERS} members</small>
+  el.innerHTML = `<div class="cl-head"><b class="cl-name" style="color:${c.color}">[${esc(c.tag)}] ${esc(c.name)}</b><small>${c.members.length}/${MAX_MEMBERS} members${c.warW || c.warL ? ` · ⚔ ${c.warW || 0}W ${c.warL || 0}L` : ''}</small>
       ${lead ? '<button class="danger" id="cl-disband">Disband</button>' : '<button id="cl-leave">Leave</button>'}</div>
     ${lead && reqs.length ? `<div class="cl-reqs">${reqs.map((r) => `<div class="fr-row"><span class="fr-name pf-link" data-profile="${esc(r.tag)}">${esc(r.tag)}</span><small>wants to join</small><button class="primary" data-cacc="${esc(r.tag)}">Accept</button><button data-cdeny="${esc(r.tag)}">Deny</button></div>`).join('')}</div>` : ''}
+    ${warHtml(c, lead)}
     <div class="cl-spray">${c.spray ? `<canvas class="cl-spray-img" width="16" height="16" data-spray="${c.spray}"></canvas><small>Clan spray · press <kbd>${esc(keysLabel('spray'))}</kbd> in a match to spray it</small>` : `<small class="muted">${lead ? 'No clan spray yet.' : 'Your leader hasn\'t made a clan spray yet.'}</small>`}${lead ? `<button id="cl-spray">🎨 ${c.spray ? 'Edit' : 'Make'} clan spray</button>` : ''}</div>
     <div class="cl-members">${c.members.map((m) => `<span class="cl-m"><span class="pf-link" data-profile="${esc(m)}">${m.toLowerCase() === c.leader.toLowerCase() ? '👑 ' : ''}${esc(m)}</span>${lead && m.toLowerCase() !== c.leader.toLowerCase() ? `<button class="ghost" data-ckick="${esc(m)}" title="Remove from clan">✕</button>` : ''}</span>`).join('')}</div>
     <div class="cl-chat" id="cl-chat">${clans.chat.length ? clans.chat.map((x) => `<div><b>${esc(x.from)}</b> ${esc(x.text)}</div>`).join('') : '<small class="muted">Clan chat: messages show for members who are online.</small>'}</div>
@@ -847,6 +848,12 @@ function renderClan() {
   $('cl-say').addEventListener('keydown', (e) => e.stopPropagation());
   $('cl-chat-form').onsubmit = async (e) => { e.preventDefault(); const v = $('cl-say').value.trim(); if (!v) return; $('cl-say').value = ''; try { await clans.say(v); } catch (err) { toast(err.message); } };
   el.querySelectorAll('[data-spray]').forEach((cv) => drawSpray(cv, cv.dataset.spray));
+  if ($('cl-war-go')) $('cl-war-go').onclick = async () => { const v = $('cl-war-tag').value; try { const t = await clans.challenge(v); toast(`⚔ Challenge sent to [${t.tag}]. Their leader can accept it from their clan card.`); $('cl-war-tag').value = ''; } catch (e) { toast(e.message); } };
+  if ($('cl-war-tag')) $('cl-war-tag').addEventListener('keydown', (e) => e.stopPropagation());
+  el.querySelectorAll('[data-waracc]').forEach((b) => { b.onclick = async () => { await clans.acceptWar(b.dataset.waracc); toast(`⚔ Accepted! [${b.dataset.waracc}]'s leader will start the war.`); }; });
+  el.querySelectorAll('[data-wardec]').forEach((b) => { b.onclick = () => clans.declineWar(b.dataset.wardec); });
+  el.querySelectorAll('[data-warhost]').forEach((b) => { b.onclick = () => hostWar(b.dataset.warhost); });
+  if ($('cl-war-join')) $('cl-war-join').onclick = () => { $('join-code').value = clans.liveWar().code; showPane('play'); joinLobby(); };
   if ($('cl-spray')) $('cl-spray').onclick = () => openSprayEditor(c.spray);
   if ($('cl-leave')) $('cl-leave').onclick = async () => { if (confirm(`Leave [${c.tag}]?`)) try { await clans.leave(); } catch (e) { toast(e.message); } };
   if ($('cl-disband')) $('cl-disband').onclick = async () => { if (confirm(`Disband [${c.tag}] for everyone? The tag becomes free.`)) await clans.disband(); };
@@ -920,6 +927,51 @@ function sprayAt(e) {
 function syncMySpray() { const c = clans.myClan(); game.mySpray = c && c.spray ? c.spray : null; game.myClanTag = c ? c.tag : null; }
 setInterval(syncMySpray, 3000);
 setTimeout(syncMySpray, 1500);
+
+// ---------- Clan wars ----------
+// Leaders challenge other clans; once accepted, the challenger hosts a private Team Deathmatch
+// with only the two clans' members (red vs blue), and both clans get a Join button.
+function warHtml(c, lead) {
+  const war = clans.liveWar();
+  const ch = [...clans.challenges.values()], ok = [...clans.accepted.values()];
+  return `<div class="cl-war">
+    ${war ? `<div class="cl-war-live">⚔ <b>Clan war: [${esc(war.a)}] vs [${esc(war.b)}] is on!</b>${game.active && net && net.code === war.code ? ' <small>(you\'re in it)</small>' : ' <button class="primary" id="cl-war-join">Join the war</button>'}</div>` : ''}
+    ${lead ? `${ch.map((x) => `<div class="fr-row"><span class="fr-name">⚔ [${esc(x.tag)}]</span><small>challenges your clan to a war</small><button class="primary" data-waracc="${esc(x.tag)}">Accept</button><button data-wardec="${esc(x.tag)}">Decline</button></div>`).join('')}
+      ${ok.map((x) => `<div class="fr-row"><span class="fr-name">⚔ [${esc(x.tag)}]</span><small>accepted your challenge</small><button class="primary" data-warhost="${esc(x.tag)}">Start the war</button></div>`).join('')}
+      <form class="fr-add" onsubmit="return false"><input id="cl-war-tag" maxlength="7" placeholder="Clan tag to challenge, like ABC"><button id="cl-war-go" type="button">⚔ Challenge</button></form>` : ''}
+  </div>`;
+}
+function hostWar(other) {
+  const c = clans.myClan();
+  if (!c) return;
+  const maps = ['warehouse', 'yard', 'town', 'compound', 'station', 'castle', 'mall', 'arctic'];
+  hostLobby({ name: `[${c.tag}] vs [${other}] clan war`, mode: 'tdm', map: maps[(Math.random() * maps.length) | 0], max: 12, bots: 0, rotate: false, vis: 'private', war: { a: c.tag, b: other } });
+}
+clans.onWar = (w) => { if (!(net && net.code === w.code)) toast(`⚔ Clan war [${w.a}] vs [${w.b}] is on! Join it from your clan card (Friends).`); };
+// War over: each clan's leader adds the result to their clan's record.
+function onWarEnd(m) {
+  const c = clans.myClan();
+  if (!c || !clans.isLeader() || (c.tag !== m.a && c.tag !== m.b) || !m.winner) return;
+  clans.recordWar(m.winner === c.tag);
+}
+
+// ---------- Weekly top clan ----------
+// The #1 clan on last week's Clans board (members' kills): every member gets tokens and the Top Clan banner, once.
+const CLAN_TOP_TOKENS = 300;
+function claimTopClan() {
+  const c = clans.myClan();
+  if (!c || !social.tag) return;
+  const top = clanRows('prev')[0];
+  if (!top || top.clan !== c.tag || store.get('clanTopClaimed', '') === leaderboard.week) return;
+  store.set('clanTopClaimed', leaderboard.week);
+  addTokens(CLAN_TOP_TOKENS);
+  grantItem('banner', 'clantop');
+  toast(`🏆 [${c.tag}] was the top clan last week! +${CLAN_TOP_TOKENS} tokens and the Top Clan banner.`);
+  renderChip();
+}
+setTimeout(() => { clans.loadAll(); }, 4000);
+setInterval(claimTopClan, 60000);
+setTimeout(claimTopClan, 20000);
 
 function renderFriends() {
   renderInvite();
@@ -1257,6 +1309,7 @@ function chatOnNet(m) {
   if (m.t === 'pjoin' && !m.bot && net && net.isHost && (!m.cos || !m.cos.v || cmpVersion(m.cos.v, APP_VERSION) < 0)) chat.system(`⚠ ${m.name}'s game is out of date. Tell them to refresh the page.`);
   // Game Night voice room: who's in it comes through the match.
   if (m.t === 'vc' && m.gt) voice.onAnnounce(m.gt, m.in, 'gn');
+  if (m.t === 'warend') onWarEnd(m);
   if (m.t === 'tourney') {
     chat.system(m.champ ? `🏆 ${m.name} is the Game Night tournament champion!` : '🏆 The tournament is over.');
     const place = m.champ === game.myId ? 0 : m.second === game.myId ? 1 : -1;
@@ -1834,7 +1887,7 @@ async function hostLobby(preset = null) {
     net = newNet();
     try {
       await net.host(code, settings.name || 'Player', settings.color,
-        preset ? { map: preset.map, mode: preset.mode, maxPlayers: preset.max, botFill: Math.min(preset.bots, preset.max), gn: !!preset.gn, ranked: !!preset.ranked }
+        preset ? { map: preset.map, mode: preset.mode, maxPlayers: preset.max, botFill: Math.min(preset.bots, preset.max), gn: !!preset.gn, ranked: !!preset.ranked, war: preset.war || null }
           : { map: settings.map, mode: settings.mode, maxPlayers: serverCfg.max, botFill: Math.min(serverCfg.bots, serverCfg.max), rules }, myCos());
       net.logic.s.rotate = preset ? preset.rotate : serverCfg.rotate;
       net.logic.onFlag = (p, details) => moderation.autoFlag({ target: p.name, lobby: net.code, details });
@@ -1846,6 +1899,7 @@ async function hostLobby(preset = null) {
       enterGame();
       setPublic((preset ? preset.vis : serverCfg.vis) === 'public');
       showCreate(false);
+      if (preset && preset.war) clans.announceWar(net.code, preset.war.b); // both clans get the join code
       return;
     } catch (e) {
       net.destroy();
@@ -2052,7 +2106,7 @@ $('btn-hostpanel').onclick = () => {
   $('hp-public').checked = !!(hosting && hosting.public);
 };
 $('hp-public').onchange = () => setPublic($('hp-public').checked);
-game.onKicked = () => leave('You were kicked from the match.');
+game.onKicked = (reason) => leave(reason || 'You were kicked from the match.');
 $('btn-copy').onclick = async () => {
   const link = invites.link(location.origin + location.pathname, net ? net.code : '');
   try {

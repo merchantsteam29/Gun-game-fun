@@ -98,6 +98,7 @@ export const COSMETICS = {
     ...HOLIDAY_BANNER_ITEMS,
     // Ranked seasons (ranked.js): your best division when a season ends, and every one below it
     ...RANKED_BANNER_ITEMS,
+    { id: 'clantop', name: 'Top Clan', reward: true, how: 'Be in the #1 clan of a week (Leaderboard → Clans)' },
   ],
 };
 export const SLOT_LABELS = { hat: 'Hat', hair: 'Hair', face: 'Face', back: 'Back', banner: 'Banner' };

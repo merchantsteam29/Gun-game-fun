@@ -1,7 +1,8 @@
 {
-  "version": "2026.10.10.9",
+  "version": "2026.10.10.10",
   "notes": [
-    "Clan sprays: clan leaders draw a pixel spray, members spray it on walls with X"
+    "Clan wars: challenge another clan to a clan-vs-clan match; wins and losses go on your clan's record",
+    "The top clan each week gets tokens and the Top Clan banner"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",

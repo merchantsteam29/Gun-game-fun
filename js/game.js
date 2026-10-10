@@ -818,7 +818,7 @@ export class Game {
         break;
       }
       case 'kicked':
-        if (this.onKicked) this.onKicked();
+        if (this.onKicked) this.onKicked(m.reason);
         break;
       case 'loadout':
         if (this.me.alive) {
@@ -1141,6 +1141,7 @@ export class Game {
     const mode = this.rules.mode, me = this.players.get(this.myId), team = me ? me.team : 0;
     let won;
     if (MODES[mode].redBlue) won = (team === 1 && m.title === 'RED TEAM WINS') || (team === 2 && m.title === 'BLUE TEAM WINS');
+    if (this.rules.war) won = (team === 1 && m.title === `[${this.rules.war.a}] WINS THE CLAN WAR`) || (team === 2 && m.title === `[${this.rules.war.b}] WINS THE CLAN WAR`);
     else if (mode === 'infection') won = (team === 2 && m.title === 'ZOMBIES WIN') || (team === 1 && m.title === 'SURVIVORS WIN');
     else won = !!m.scores && m.scores[0] && m.scores[0].id === this.myId;
     const mine = (m.scores || []).find((s) => s.id === this.myId);
@@ -2565,7 +2566,8 @@ export class Game {
     if (MODES[mode].redBlue && this.teamScore) {
       const mineT = me.team === 2 ? 2 : 1, other = 3 - mineT;
       const side = (t, label) => ({ label, score: this.teamScore[t - 1], pct: this.teamScore[t - 1] / lim, color: TEAM_COLORS[t] });
-      return { l: side(mineT, mineT === 1 ? 'RED · YOU' : 'BLUE · YOU'), r: side(other, other === 1 ? 'RED' : 'BLUE') };
+      const w = this.rules.war, nm = (t) => (w ? `[${t === 1 ? w.a : w.b}]` : t === 1 ? 'RED' : 'BLUE');
+      return { l: side(mineT, nm(mineT) + ' · YOU'), r: side(other, nm(other)) };
     }
     if (this.teams || mode === 'infection' || mode === 'lms' || mode === 'br') return null;
     const total = mode === 'gungame' ? GUNGAME_LADDER.length : lim;
