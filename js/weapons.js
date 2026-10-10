@@ -29,7 +29,7 @@ export const WEAPONS = {
   sniper: {
     id: 'sniper', name: 'Sniper Rifle', type: 'gun', auto: false,
     rate: 1.25, dmg: 85, head: 2.0, pellets: 1, mag: 5, reload: 3.0,
-    spread: 0.09, moveSpread: 0.05, adsMul: 0, range: 400,
+    spread: 0.09, moveSpread: 0.05, adsMul: 0, range: 400, falloff: [80, 200, 0.8], // still a headshot kill at any range
     recoil: 0.08, speedMul: 0.88, switch: 0.6, reloadStyle: 'mag',
     scope: true, zoom: 22, cycle: 'bolt',
   },
@@ -54,13 +54,13 @@ export const WEAPONS = {
   dmr: {
     id: 'dmr', name: 'DMR', type: 'gun', auto: false,
     rate: 0.24, dmg: 40, head: 2.0, pellets: 1, mag: 15, reload: 2.2,
-    spread: 0.015, moveSpread: 0.04, adsMul: 0.12, range: 300, adsFov: 42,
+    spread: 0.015, moveSpread: 0.04, adsMul: 0.12, range: 300, adsFov: 42, falloff: [50, 120, 0.8],
     recoil: 0.03, speedMul: 0.95, switch: 0.4, reloadStyle: 'mag',
   },
   minigun: {
     id: 'minigun', name: 'Minigun', type: 'gun', auto: true, spinup: 0.8,
     rate: 0.045, dmg: 12, head: 1.4, pellets: 1, mag: 200, reload: 5,
-    spread: 0.035, moveSpread: 0.03, adsMul: 0.7, range: 150,
+    spread: 0.035, moveSpread: 0.03, adsMul: 0.7, range: 150, falloff: [25, 60, 0.6],
     recoil: 0.006, speedMul: 0.7, switch: 0.8, reloadStyle: 'box',
   },
   rocket: {
@@ -185,7 +185,7 @@ export const WEAPONS = {
   amr: {
     id: 'amr', name: 'Heavy Sniper Rifle', type: 'gun', auto: false,
     rate: 1.7, dmg: 130, head: 1.5, pellets: 1, mag: 4, reload: 3.6,
-    spread: 0.12, moveSpread: 0.06, adsMul: 0, range: 450,
+    spread: 0.12, moveSpread: 0.06, adsMul: 0, range: 450, falloff: [90, 220, 0.8], // still a body-shot kill at any range
     recoil: 0.12, speedMul: 0.78, switch: 0.8, reloadStyle: 'mag',
     scope: true, zoom: 18, cycle: 'bolt',
   },
@@ -263,7 +263,7 @@ export const WEAPONS = {
   railgun: {
     id: 'railgun', name: 'Railgun', type: 'gun', auto: false,
     rate: 1.3, dmg: 90, head: 1.6, pellets: 1, mag: 4, reload: 2.8,
-    spread: 0.03, moveSpread: 0.02, adsMul: 0, range: 400, adsFov: 38,
+    spread: 0.03, moveSpread: 0.02, adsMul: 0, range: 400, adsFov: 38, falloff: [80, 200, 0.85],
     recoil: 0.07, speedMul: 0.9, switch: 0.55, reloadStyle: 'mag',
   },
   // ---------- Fun / experimental ----------

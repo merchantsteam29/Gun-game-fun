@@ -1,7 +1,7 @@
 {
-  "version": "2026.10.09.16",
+  "version": "2026.10.10.1",
   "notes": [
-    "Small fixes and polish"
+    "Damage drop-off on every gun: the Minigun, DMR, snipers and Railgun now lose some damage at long range"
   ],
   "files": [
     "./", "index.html", "style.css", "version.json", "manifest.webmanifest", "sw.js",
