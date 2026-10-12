@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trigger Happy has moved</title>
+<meta name="robots" content="noindex">
+<link rel="canonical" href="https://merchantsteam29.github.io/trigger-happy/">
+<!-- Fallback if scripts are off (drops ?join= codes, the script below keeps them). -->
+<noscript><meta http-equiv="refresh" content="0; url=/trigger-happy/"></noscript>
+<style>
+  html, body { margin: 0; height: 100%; background: #0c0a16; color: #f5f2ff; font: 16px system-ui, sans-serif; }
+  body { display: grid; place-items: center; text-align: center; padding: 16px; box-sizing: border-box; }
+  h1 { margin: 0 0 8px; font-size: 26px; }
+  h1 span { color: #ff2d75; }
+  p { color: #a39abd; margin: 0 0 18px; }
+  a { display: inline-block; padding: 12px 22px; border-radius: 10px; color: #fff; text-decoration: none; font-weight: 700;
+      background: linear-gradient(100deg, #ff5b95, #ff2d75 45%, #ff8a1f); }
+</style>
+</head>
+<body>
+<div>
+  <h1>Gun Game 3D is now <span>Trigger Happy</span></h1>
+  <p>The game has a new address. Taking you there…</p>
+  <a id="go" href="/trigger-happy/">Play Trigger Happy</a>
+</div>
+<script>
+  // Old address: https://merchantsteam29.github.io/Gun-game-fun/  ->  /trigger-happy/
+  // Keeps ?join=CODE invite links and #hash. Same site, so players' saved progress carries over.
+  var target = '/trigger-happy/' + location.search + location.hash;
+  document.getElementById('go').href = target;
+  var done = false;
+  function go() { if (!done) { done = true; location.replace(target); } }
+  // Remove the old game's offline helper (it only covers /Gun-game-fun/) so it can't serve the old game.
+  try {
+    navigator.serviceWorker.getRegistrations().then(function (regs) {
+      return Promise.all(regs.filter(function (r) { return /\/Gun-game-fun\/$/i.test(new URL(r.scope).pathname); })
+        .map(function (r) { return r.unregister(); }));
+    }).then(go, go);
+  } catch (e) { go(); }
+  setTimeout(go, 800);
+</script>
+</body>
+</html>
